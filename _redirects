@@ -1,3 +1,1 @@
-# Cloudflare Pages _redirects
-# Worker handles /api/* — everything else serves index.html
-/*    /index.html   200
+# No redirect rules — Worker handles all routing

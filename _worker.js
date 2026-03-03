@@ -20,7 +20,7 @@ export default {
       return json({ status: 'ok', service: 'Asset Management (Cloudflare Worker)', ts: new Date().toISOString() });
     }
 
-    if (path.startsWith('/api/')) {
+    if (path.startsWith('/api')) {
       if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
         return json({ success: false, error: 'Supabase secrets not set. Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Cloudflare Pages → Settings → Environment Variables, then redeploy.' }, 500);
       }
@@ -39,7 +39,7 @@ export default {
 
 async function router(path, method, url, request, sb) {
   const q        = url.searchParams;
-  const seg      = path.replace(/^\/api\//, '').split('/');
+  const seg      = path.replace(/^\/api\/?/, '').split('/');
   const resource = seg[0];
   const id       = seg[1];
   const action   = seg[2];
@@ -60,7 +60,7 @@ async function router(path, method, url, request, sb) {
     if (method === 'POST')   return ok(await sb.from('assets').insert(body).select().single().run());
     if (method === 'PUT')  { const {asset_id,created_at,updated_at,...u}=body; return ok(await sb.from('assets').update(u).eq('asset_id',id).select().single().run()); }
     if (method === 'PATCH')  return ok(await sb.from('assets').update(body).eq('asset_id',id).select().single().run());
-    if (method === 'DELETE') { await sb.from('assets').delete().eq('asset_id',id).run(); return ok({deleted:id}); }
+    if (method === 'DELETE') { const {error:de}=await sb.from('assets').delete().eq('asset_id',id).run(); if(de) return err500(de); return ok({deleted:id}); }
   }
 
   // RIGS
@@ -69,7 +69,7 @@ async function router(path, method, url, request, sb) {
     if (method === 'GET')    return ok(await sb.from('rigs').select('*').eq('id',id).single().run());
     if (method === 'POST')   return ok(await sb.from('rigs').insert(body).select().single().run());
     if (method === 'PUT')  { const {id:_,created_at,updated_at,...u}=body; return ok(await sb.from('rigs').update(u).eq('id',id).select().single().run()); }
-    if (method === 'DELETE') { await sb.from('rigs').delete().eq('id',id).run(); return ok({deleted:id}); }
+    if (method === 'DELETE') { const {error:de}=await sb.from('rigs').delete().eq('id',id).run(); if(de) return err500(de); return ok({deleted:id}); }
   }
 
   // COMPANIES
@@ -77,7 +77,7 @@ async function router(path, method, url, request, sb) {
     if (method === 'GET')    return ok(await sb.from('companies').select('*').order('name').run());
     if (method === 'POST')   return ok(await sb.from('companies').insert(body).select().single().run());
     if (method === 'PUT')  { const {id:_,created_at,updated_at,...u}=body; return ok(await sb.from('companies').update(u).eq('id',id).select().single().run()); }
-    if (method === 'DELETE') { await sb.from('companies').delete().eq('id',id).run(); return ok({deleted:id}); }
+    if (method === 'DELETE') { const {error:de}=await sb.from('companies').delete().eq('id',id).run(); if(de) return err500(de); return ok({deleted:id}); }
   }
 
   // CONTRACTS
@@ -102,7 +102,7 @@ async function router(path, method, url, request, sb) {
     if (method === 'GET')    return ok(await sb.from('bom_items').select('*').eq('id',id).single().run());
     if (method === 'POST') { if (!body.id) body.id='BOM-'+Date.now().toString().slice(-8); return ok(await sb.from('bom_items').insert(body).select().single().run()); }
     if (method === 'PUT')  { const {id:_,created_at,updated_at,...u}=body; return ok(await sb.from('bom_items').update(u).eq('id',id).select().single().run()); }
-    if (method === 'DELETE') { await sb.from('bom_items').delete().eq('id',id).run(); return ok({deleted:id}); }
+    if (method === 'DELETE') { const {error:de}=await sb.from('bom_items').delete().eq('id',id).run(); if(de) return err500(de); return ok({deleted:id}); }
   }
 
   // CERTIFICATES
@@ -118,7 +118,7 @@ async function router(path, method, url, request, sb) {
       return ok(await sb.from('certificates').insert(body).select().single().run());
     }
     if (method === 'PUT')  { const {cert_id,created_at,updated_at,...u}=body; return ok(await sb.from('certificates').update(u).eq('cert_id',id).select().single().run()); }
-    if (method === 'DELETE') { await sb.from('certificates').delete().eq('cert_id',id).run(); return ok({deleted:id}); }
+    if (method === 'DELETE') { const {error:de}=await sb.from('certificates').delete().eq('cert_id',id).run(); if(de) return err500(de); return ok({deleted:id}); }
   }
 
   // MAINTENANCE
@@ -154,7 +154,7 @@ async function router(path, method, url, request, sb) {
       if (['Overdue','Due Soon'].includes(u.status)) u.status='Scheduled';
       return ok(await sb.from('maintenance_schedules').update(u).eq('id',id).select().single().run());
     }
-    if (method === 'DELETE') { await sb.from('maintenance_schedules').delete().eq('id',id).run(); return ok({deleted:id}); }
+    if (method === 'DELETE') { const {error:de}=await sb.from('maintenance_schedules').delete().eq('id',id).run(); if(de) return err500(de); return ok({deleted:id}); }
   }
 
   // TRANSFERS
@@ -196,7 +196,7 @@ async function router(path, method, url, request, sb) {
     if (method === 'GET')    return ok(await sb.from('app_users').select('*').order('name').run());
     if (method === 'POST')   return ok(await sb.from('app_users').insert(body).select().single().run());
     if (method === 'PUT')  { const {id:_,created_at,updated_at,...u}=body; return ok(await sb.from('app_users').update(u).eq('id',id).select().single().run()); }
-    if (method === 'DELETE') { await sb.from('app_users').delete().eq('id',id).run(); return ok({deleted:id}); }
+    if (method === 'DELETE') { const {error:de}=await sb.from('app_users').delete().eq('id',id).run(); if(de) return err500(de); return ok({deleted:id}); }
   }
 
   // NOTIFICATIONS
@@ -213,41 +213,98 @@ async function router(path, method, url, request, sb) {
 // ── Supabase REST client (pure fetch, no npm) ─────────────────────────────────
 function supabase(supabaseUrl, serviceKey) {
   const base = supabaseUrl.replace(/\/$/, '') + '/rest/v1';
-  const h = { 'apikey':serviceKey, 'Authorization':`Bearer ${serviceKey}`, 'Content-Type':'application/json', 'Prefer':'return=representation' };
+  const authH = {
+    'apikey':        serviceKey,
+    'Authorization': `Bearer ${serviceKey}`,
+    'Content-Type':  'application/json',
+  };
 
   function q(table) {
-    const s = { method:'GET', filters:[], select:'*', orderCol:null, orderAsc:true, lim:null, body:null, isSingle:false, isCount:false };
+    const s = {
+      method: 'GET', filters: [], select: '*',
+      orderCol: null, orderAsc: true,
+      lim: null, body: null, isSingle: false, isCount: false,
+    };
+
     const qb = {
-      select:  (v)        => { s.select=v; return qb; },
-      eq:      (c,v)      => { s.filters.push([c,`eq.${v}`]);    return qb; },
-      ilike:   (c,v)      => { s.filters.push([c,`ilike.${v}`]); return qb; },
-      order:   (c,asc=true)=>{ s.orderCol=c; s.orderAsc=asc; return qb; },
-      limit:   (n)        => { s.lim=n; return qb; },
-      single:  ()         => { s.isSingle=true; return qb; },
-      count:   ()         => { s.isCount=true;  return qb; },
-      insert:  (d)        => { s.method='POST';  s.body=d; return qb; },
-      update:  (d)        => { s.method='PATCH'; s.body=d; return qb; },
-      delete:  ()         => { s.method='DELETE'; return qb; },
+      select:  (v)         => { s.select = v;                           return qb; },
+      eq:      (col, val)  => { s.filters.push([col, `eq.${val}`]);     return qb; },
+      ilike:   (col, val)  => { s.filters.push([col, `ilike.${val}`]);  return qb; },
+      order:   (col, asc=true) => { s.orderCol = col; s.orderAsc = asc; return qb; },
+      limit:   (n)         => { s.lim = n;                              return qb; },
+      single:  ()          => { s.isSingle = true;                      return qb; },
+      count:   ()          => { s.isCount  = true;                      return qb; },
+      insert:  (d)         => { s.method = 'POST';   s.body = d;        return qb; },
+      update:  (d)         => { s.method = 'PATCH';  s.body = d;        return qb; },
+      delete:  ()          => { s.method = 'DELETE';                    return qb; },
+
       run: async () => {
         const u = new URL(`${base}/${table}`);
-        u.searchParams.set('select', s.select);
-        s.filters.forEach(([c,v]) => u.searchParams.append(c, v));
-        if (s.orderCol) u.searchParams.set('order', `${s.orderCol}.${s.orderAsc?'asc':'desc'}`);
-        if (s.isCount) u.searchParams.set('limit','0'); else if (s.lim) u.searchParams.set('limit',String(s.lim));
-        const hh = {...h};
-        if (s.isSingle) hh['Accept']='application/vnd.pgjson';
-        if (s.isCount)  hh['Prefer']='count=exact';
-        const resp = await fetch(u.toString(), { method:s.method, headers:hh, body:s.body?JSON.stringify(s.body):undefined });
-        if (s.isCount) { const r=resp.headers.get('content-range')||'0/0'; return {count:parseInt(r.split('/')[1])||0,error:null}; }
+
+        // Add filters (column=eq.value) — required for UPDATE and DELETE to target correct row
+        s.filters.forEach(([col, val]) => u.searchParams.append(col, val));
+
+        // select= only makes sense for GET and write ops that return data (not DELETE count)
+        if (s.method !== 'DELETE') {
+          u.searchParams.set('select', s.select);
+        }
+
+        if (s.orderCol) u.searchParams.set('order', `${s.orderCol}.${s.orderAsc ? 'asc' : 'desc'}`);
+        if (s.isCount)  u.searchParams.set('limit', '0');
+        else if (s.lim) u.searchParams.set('limit', String(s.lim));
+
+        // Build headers
+        const hh = { ...authH };
+
+        if (s.method === 'DELETE') {
+          // No Prefer header for DELETE — just delete, don't ask for returned rows
+          hh['Prefer'] = 'return=minimal';
+        } else if (s.isCount) {
+          hh['Prefer'] = 'count=exact';
+        } else {
+          // POST/PATCH: return the affected rows so we can update UI
+          hh['Prefer'] = 'return=representation';
+        }
+
+        if (s.isSingle && s.method === 'GET') {
+          hh['Accept'] = 'application/vnd.pgjson';
+        }
+
+        const resp = await fetch(u.toString(), {
+          method:  s.method,
+          headers: hh,
+          body:    s.body ? JSON.stringify(s.body) : undefined,
+        });
+
+        // DELETE with return=minimal gives 204 No Content — that's success
+        if (s.method === 'DELETE') {
+          if (resp.ok) return { data: null, error: null };
+          const txt = await resp.text();
+          let msg;
+          try { msg = JSON.parse(txt)?.message; } catch(_) { msg = txt; }
+          return { data: null, error: { message: msg || `DELETE failed: HTTP ${resp.status}` } };
+        }
+
+        if (s.isCount) {
+          const range = resp.headers.get('content-range') || '0/0';
+          return { count: parseInt(range.split('/')[1]) || 0, error: null };
+        }
+
         const text = await resp.text();
-        let data; try { data=JSON.parse(text); } catch(_){ data=null; }
-        if (!resp.ok) return { data:null, error:{ message: data?.message||data?.error||`HTTP ${resp.status}: ${text.slice(0,200)}` } };
-        if (s.isSingle) return { data: Array.isArray(data) ? (data[0]??null) : data, error:null };
-        return { data: data??[], error:null };
+        let data;
+        try { data = JSON.parse(text); } catch(_) { data = null; }
+
+        if (!resp.ok) {
+          return { data: null, error: { message: data?.message || data?.error || `HTTP ${resp.status}: ${text.slice(0, 200)}` } };
+        }
+
+        if (s.isSingle) return { data: Array.isArray(data) ? (data[0] ?? null) : data, error: null };
+        return { data: data ?? [], error: null };
       },
     };
     return qb;
   }
+
   return { from: (table) => q(table) };
 }
 
