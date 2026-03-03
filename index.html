@@ -1868,8 +1868,15 @@
       // Hide login screen
       document.getElementById('loginScreen').style.display = 'none';
 
-      // Session persistence (so refresh doesn't log you out)
+      // Session persistence — sessionStorage always, localStorage if Remember Me
       try { sessionStorage.setItem('ams_user', JSON.stringify(user)); } catch (e) { }
+      try {
+        if (document.getElementById('rememberMe')?.checked) {
+          localStorage.setItem('ams_user', JSON.stringify(user));
+        } else {
+          localStorage.removeItem('ams_user');
+        }
+      } catch (e) { }
 
       // Toast in the main app
       if (typeof showToast === 'function') {
@@ -1904,6 +1911,7 @@
     window.__currentUserName = null;
 
     try { sessionStorage.removeItem('ams_user'); } catch (e) { }
+    try { localStorage.removeItem('ams_user'); } catch (e) { }
 
     // Clear password field for security
     const pwEl = document.getElementById('loginPassword');
@@ -1922,27 +1930,42 @@
   // ── Auto-restore session on page load ────────────────────────────────────────
   (function restoreSession() {
     try {
-      const saved = sessionStorage.getItem('ams_user');
-      if (saved) {
-        const user = JSON.parse(saved);
-        window.__currentUser = user;
-        window.__currentUserRole = user.role;
-        window.__currentUserName = user.name;
+      // localStorage = "Remember Me" (survives browser close)
+      // sessionStorage = normal session (tab only)
+      const saved = localStorage.getItem('ams_user') || sessionStorage.getItem('ams_user');
+      if (!saved) return;
 
-        const nameEl = document.getElementById('ahmed mohamed');
-        const roleEl = document.getElementById('asset manager');
-        const avatarEl = document.getElementById('shellUserAvatar');
-        if (nameEl) nameEl.textContent = user.name;
-        if (roleEl) roleEl.textContent = user.role;
-        if (avatarEl) {
-          avatarEl.textContent = user.initials || user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-          avatarEl.style.background = user.color || '#0070F2';
+      const user = JSON.parse(saved);
+      if (!user || !user.email) return;
+
+      window.__currentUser = user;
+      window.__currentUserRole = user.role;
+      window.__currentUserName = user.name;
+
+      // Pre-fill email field and tick Remember Me if restored from localStorage
+      try {
+        const emailEl = document.getElementById('loginEmail');
+        if (emailEl) emailEl.value = user.email;
+        if (localStorage.getItem('ams_user')) {
+          const cb = document.getElementById('rememberMe');
+          if (cb) cb.checked = true;
         }
+      } catch(e) {}
 
-        document.getElementById('loginScreen').style.display = 'none';
+      // Update shell user display
+      const nameEl   = document.getElementById('shellUserName');
+      const roleEl   = document.getElementById('shellUserRole');
+      const avatarEl = document.getElementById('shellUserAvatar');
+      if (nameEl)   nameEl.textContent = user.name;
+      if (roleEl)   roleEl.textContent = user.role;
+      if (avatarEl) {
+        avatarEl.textContent = user.initials || user.name.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase();
+        avatarEl.style.background = user.color || '#0070F2';
       }
+
+      document.getElementById('loginScreen').style.display = 'none';
     } catch (e) {
-      // No session — login screen stays visible
+      // No valid session — login screen stays visible
     }
   })();
 
@@ -2024,6 +2047,16 @@
         </div>
       </div>
 
+      <!-- Remember Me -->
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:18px">
+        <input type="checkbox" id="rememberMe"
+          style="width:15px; height:15px; accent-color:#0070F2; cursor:pointer; flex-shrink:0">
+        <label for="rememberMe"
+          style="font-size:13px; color:#354A5E; cursor:pointer; user-select:none">
+          Remember me on this device
+        </label>
+      </div>
+
       <!-- Sign In button -->
       <button id="loginBtn" onclick="doLogin()" style="
       width:100%; padding:12px; background:#0070F2; color:#fff;
@@ -2034,13 +2067,7 @@
         <i class="fas fa-sign-in-alt"></i> Sign In
       </button>
 
-      <!-- Demo credentials hint -->
-      <div
-        style="margin-top:20px; padding:12px; background:#F0F4FF; border-radius:6px; font-size:12px; color:#5a7ab0; text-align:center; line-height:1.6">
-        <strong>Demo accounts:</strong><br>
-        <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="d6b7f8bbb9beb7bbbbb3b296b5b9bba6b7b8aff8b5b9bb">[email&#160;protected]</a> · <em>any password</em><br>
-        <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="7c0f521d100e1d0f1415183c1f13110c1d1205521f1311">[email&#160;protected]</a> · <em>any password</em>
-      </div>
+
     </div>
   </div>
   <!-- ═══════════════════════════ END LOGIN SCREEN ═══════════════════════ -->
@@ -2262,6 +2289,8 @@
             <button class="btn btn-primary"><i class="fas fa-plus"></i> New Contract</button>
             <button class="btn btn-secondary" onclick="exportContracts()"><i class="fas fa-file-excel"></i>
               Export</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('importFileContracts').click()"><i class="fas fa-upload"></i> Import</button>
+            <input type="file" id="importFileContracts" accept=".xlsx,.xls,.csv" style="display:none" onchange="importContracts(event)">
           </div>
           <div class="filter-bar">
             <div class="filter-group search-wrap">
@@ -2309,6 +2338,8 @@
           <div class="card-header">
             <span class="card-title">Land Rigs</span>
             <button class="btn btn-primary"><i class="fas fa-plus"></i> New Rig</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('importFileRigs').click()"><i class="fas fa-upload"></i> Import</button>
+            <input type="file" id="importFileRigs" accept=".xlsx,.xls,.csv" style="display:none" onchange="importRigs(event)">
           </div>
           <div class="table-wrap">
             <table>
@@ -2337,7 +2368,10 @@
       <div class="content">
         <div class="card">
           <div class="card-header"><span class="card-title">Contracting Companies</span><button
-              class="btn btn-primary"><i class="fas fa-plus"></i> Add Company</button></div>
+              class="btn btn-primary"><i class="fas fa-plus"></i> Add Company</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('importFileCompanies').click()"><i class="fas fa-upload"></i> Import</button>
+            <input type="file" id="importFileCompanies" accept=".xlsx,.xls,.csv" style="display:none" onchange="importCompanies(event)">
+          </div>
           <div class="table-wrap">
             <table>
               <thead>
@@ -2364,7 +2398,10 @@
       <div class="content">
         <div class="card">
           <div class="card-header"><span class="card-title">System Users</span><button class="btn btn-primary"><i
-                class="fas fa-plus"></i> Add User</button></div>
+                class="fas fa-plus"></i> Add User</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('importFileUsers').click()"><i class="fas fa-upload"></i> Import</button>
+            <input type="file" id="importFileUsers" accept=".xlsx,.xls,.csv" style="display:none" onchange="importUsers(event)">
+          </div>
           <div class="user-grid" style="padding:16px" id="userGrid"></div>
         </div>
       </div>
@@ -2379,6 +2416,8 @@
             <button class="btn btn-primary" onclick="openBomModal()"><i class="fas fa-plus"></i> Add BOM</button>
             <button class="btn btn-secondary" onclick="exportBOM()"><i class="fas fa-file-excel"></i> Export
               BOM</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('importFileBom').click()"><i class="fas fa-upload"></i> Import</button>
+            <input type="file" id="importFileBom" accept=".xlsx,.xls,.csv" style="display:none" onchange="importBOM(event)">
             <div class="filter-group search-wrap" style="margin-left:8px">
               <i class="search-icon fas fa-search"></i>
               <input class="filter-input" id="bomSearch" placeholder="Search BOM…" oninput="renderBOMSection()"
@@ -2461,6 +2500,8 @@
               Request</button>
             <button class="btn btn-secondary" onclick="exportTransfers()"><i class="fas fa-file-excel"></i>
               Export</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('importFileTransfers').click()"><i class="fas fa-upload"></i> Import</button>
+            <input type="file" id="importFileTransfers" accept=".xlsx,.xls,.csv" style="display:none" onchange="importTransfers(event)">
           </div>
 
           <!-- Filter Bar -->
@@ -2603,6 +2644,8 @@
               Export</button>
             <button class="btn btn-secondary" onclick="openMaintLogModal(null,'bulk')"><i class="fas fa-history"></i>
               Log Completion</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('importFileMaint').click()"><i class="fas fa-upload"></i> Import</button>
+            <input type="file" id="importFileMaint" accept=".xlsx,.xls,.csv" style="display:none" onchange="importMaintenance(event)">
           </div>
 
           <!-- FILTER BAR -->
@@ -2738,6 +2781,8 @@
               Certificate</button>
             <button class="btn btn-secondary" onclick="exportCertificates()"><i class="fas fa-file-excel"></i>
               Export</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('importFileCerts').click()"><i class="fas fa-upload"></i> Import</button>
+            <input type="file" id="importFileCerts" accept=".xlsx,.xls,.csv" style="display:none" onchange="importCertificates(event)">
           </div>
 
           <!-- Filter Bar -->
@@ -3788,6 +3833,75 @@ Asset Management System</textarea>
     </div>
   </div>
 
+
+  <!-- ══════════════════════════════════════════
+     RIG DETAIL MODAL
+═══════════════════════════════════════════ -->
+  <div class="modal-overlay" id="rigDetailModal">
+    <div class="asset-popup" style="width:720px;max-width:96vw">
+      <div class="popup-header">
+        <div class="popup-header-icon" style="background:linear-gradient(135deg,#354A5E,#0070F2)"><i class="fas fa-oil-well"></i></div>
+        <div class="popup-header-info">
+          <div class="popup-header-title" id="rigPopupTitle">—</div>
+          <div class="popup-header-sub" id="rigPopupSub">—</div>
+        </div>
+        <div id="rigPopupStatus"></div>
+        <button class="shell-btn" style="margin-left:8px" onclick="closeModal('rigDetailModal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="popup-body" style="padding:20px">
+        <div class="section-title">Rig Information</div>
+        <div class="detail-grid" id="rigDetailGrid" style="margin-top:10px"></div>
+        <div class="section-title" style="margin-top:22px">Assets on this Rig <span class="record-count" id="rigAssetCount"></span></div>
+        <div style="margin-top:10px;overflow-x:auto">
+          <table class="mini-table" id="rigAssetsTable">
+            <thead><tr>
+              <th>Asset ID</th><th>Name</th><th>Category</th><th>Status</th><th>Value (USD)</th>
+            </tr></thead>
+            <tbody id="rigAssetsTbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('rigDetailModal')">Close</button>
+        <button class="btn btn-primary" onclick="editCurrentRig()"><i class="fas fa-edit"></i> Edit Rig</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+     CONTRACT DETAIL MODAL
+═══════════════════════════════════════════ -->
+  <div class="modal-overlay" id="contractDetailModal">
+    <div class="asset-popup" style="width:760px;max-width:96vw">
+      <div class="popup-header">
+        <div class="popup-header-icon" style="background:linear-gradient(135deg,#107E3E,#0070F2)"><i class="fas fa-file-contract"></i></div>
+        <div class="popup-header-info">
+          <div class="popup-header-title" id="contractPopupTitle">—</div>
+          <div class="popup-header-sub" id="contractPopupSub">—</div>
+        </div>
+        <div id="contractPopupStatus"></div>
+        <button class="shell-btn" style="margin-left:8px" onclick="closeModal('contractDetailModal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="popup-body" style="padding:20px">
+        <div class="section-title">Contract Information</div>
+        <div class="detail-grid" id="contractDetailGrid" style="margin-top:10px"></div>
+        <div class="section-title" style="margin-top:22px">Assets under this Contract <span class="record-count" id="contractAssetCount"></span></div>
+        <div style="margin-top:10px;overflow-x:auto">
+          <table class="mini-table" id="contractAssetsTable">
+            <thead><tr>
+              <th>Asset ID</th><th>Name</th><th>Category</th><th>Rig</th><th>Status</th><th>Value (USD)</th>
+            </tr></thead>
+            <tbody id="contractAssetsTbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('contractDetailModal')">Close</button>
+        <button class="btn btn-primary" onclick="editCurrentContract()"><i class="fas fa-edit"></i> Edit Contract</button>
+      </div>
+    </div>
+  </div>
+
   <!-- TOAST CONTAINER -->
   <div class="toast-container" id="toastContainer"></div>
 
@@ -4205,7 +4319,7 @@ Asset Management System</textarea>
       <td>${c.end}</td>
       <td style="font-family:'IBM Plex Mono',monospace;font-size:12.5px">$${Number(c.value).toLocaleString()}</td>
       <td>${statusBadge(c.status)}</td>
-      <td><button class="btn btn-ghost btn-icon"><i class="fas fa-eye"></i></button><button class="btn btn-ghost btn-icon"><i class="fas fa-edit"></i></button></td>
+      <td><button class="btn btn-ghost btn-icon" onclick="openContractDetail('${c.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-ghost btn-icon"><i class="fas fa-edit"></i></button></td>
     </tr>`).join('');
     }
 
@@ -4223,7 +4337,7 @@ Asset Management System</textarea>
       <td>${r.depth}</td>
       <td>${statusBadge(r.status)}</td>
       <td>${ASSETS.filter(a => a.rigName === r.name).length}</td>
-      <td><button class="btn btn-ghost btn-icon"><i class="fas fa-eye"></i></button><button class="btn btn-ghost btn-icon"><i class="fas fa-edit"></i></button></td>
+      <td><button class="btn btn-ghost btn-icon" onclick="openRigDetail('${r.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-ghost btn-icon"><i class="fas fa-edit"></i></button></td>
     </tr>`).join('');
     }
 
@@ -4242,6 +4356,102 @@ Asset Management System</textarea>
       <td>${c.contracts}</td>
       <td>${statusBadge(c.status)}</td>
     </tr>`).join('');
+    }
+
+    // ══════════════════════════════════
+    //  RIG DETAIL POPUP
+    // ══════════════════════════════════
+    let currentRig = null;
+    function openRigDetail(rigId) {
+      currentRig = RIGS.find(r => r.id === rigId);
+      if (!currentRig) return;
+      const r = currentRig;
+
+      document.getElementById('rigPopupTitle').textContent = r.name || r.id;
+      document.getElementById('rigPopupSub').textContent = (r.type || 'Rig') + ' · ' + (r.company || '—');
+      document.getElementById('rigPopupStatus').innerHTML = statusBadge(r.status);
+
+      const fields = [
+        { label: 'Rig ID',    value: r.id },
+        { label: 'Rig Name',  value: r.name },
+        { label: 'Type',      value: r.type || '—' },
+        { label: 'Company',   value: r.company || '—' },
+        { label: 'Location',  value: r.location || '—' },
+        { label: 'Max Depth', value: r.depth || '—' },
+        { label: 'Horsepower',value: r.hp ? r.hp.toLocaleString() + ' HP' : '—' },
+        { label: 'Status',    value: r.status || '—' },
+      ];
+      document.getElementById('rigDetailGrid').innerHTML = fields.map(f =>
+        `<div class="detail-field"><span class="detail-label">${f.label}</span><span class="detail-value">${f.value}</span></div>`
+      ).join('');
+
+      const rigAssets = ASSETS.filter(a => a.rigName === r.name);
+      document.getElementById('rigAssetCount').textContent = '(' + rigAssets.length + ')';
+      document.getElementById('rigAssetsTbody').innerHTML = rigAssets.length
+        ? rigAssets.map(a => `<tr>
+            <td><span class="tag blue">${a.assetId}</span></td>
+            <td style="font-weight:500">${a.name}</td>
+            <td>${a.category || '—'}</td>
+            <td>${statusBadge(a.status)}</td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">$${Number(a.value||0).toLocaleString()}</td>
+          </tr>`).join('')
+        : '<tr><td colspan="5" style="text-align:center;color:var(--sap-text-muted);padding:16px">No assets assigned to this rig</td></tr>';
+
+      openModal('rigDetailModal');
+    }
+
+    function editCurrentRig() {
+      showToast('Rig editing coming soon.', 'info');
+    }
+
+    // ══════════════════════════════════
+    //  CONTRACT DETAIL POPUP
+    // ══════════════════════════════════
+    let currentContract = null;
+    function openContractDetail(contractId) {
+      currentContract = CONTRACTS.find(c => c.id === contractId);
+      if (!currentContract) return;
+      const c = currentContract;
+
+      document.getElementById('contractPopupTitle').textContent = c.id;
+      document.getElementById('contractPopupSub').textContent = (c.company || '—') + ' · ' + (c.rig || '—');
+      document.getElementById('contractPopupStatus').innerHTML = statusBadge(c.status);
+
+      const startFmt = c.start ? new Date(c.start).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) : '—';
+      const endFmt   = c.end   ? new Date(c.end).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) : '—';
+      const fields = [
+        { label: 'Contract ID',  value: c.id },
+        { label: 'Company',      value: c.company || '—' },
+        { label: 'Rig',          value: c.rig || '—' },
+        { label: 'Contract Value', value: '$' + Number(c.value||0).toLocaleString(undefined,{minimumFractionDigits:2}) },
+        { label: 'Start Date',   value: startFmt },
+        { label: 'End Date',     value: endFmt },
+        { label: 'Status',       value: c.status || '—' },
+        { label: 'Assets Count', value: (c.assetCount || 0) + ' asset(s)' },
+      ];
+      document.getElementById('contractDetailGrid').innerHTML = fields.map(f =>
+        `<div class="detail-field"><span class="detail-label">${f.label}</span><span class="detail-value">${f.value}</span></div>`
+      ).join('');
+
+      // Show assets linked to this contract (by rig name match or contract_assets table if available)
+      const contractAssets = ASSETS.filter(a => a.rigName === c.rig || a.company === c.company);
+      document.getElementById('contractAssetCount').textContent = '(' + contractAssets.length + ')';
+      document.getElementById('contractAssetsTbody').innerHTML = contractAssets.length
+        ? contractAssets.map(a => `<tr>
+            <td><span class="tag blue">${a.assetId}</span></td>
+            <td style="font-weight:500">${a.name}</td>
+            <td>${a.category || '—'}</td>
+            <td>${a.rigName || '—'}</td>
+            <td>${statusBadge(a.status)}</td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">$${Number(a.value||0).toLocaleString()}</td>
+          </tr>`).join('')
+        : '<tr><td colspan="6" style="text-align:center;color:var(--sap-text-muted);padding:16px">No assets found for this contract</td></tr>';
+
+      openModal('contractDetailModal');
+    }
+
+    function editCurrentContract() {
+      showToast('Contract editing coming soon.', 'info');
     }
 
     // ══════════════════════════════════
@@ -4344,46 +4554,6 @@ Asset Management System</textarea>
       showToast('Contracts exported to Excel successfully.', 'success');
     }
 
-    function importAssets(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        try {
-          const wb = XLSX.read(e.target.result, { type: 'binary' });
-          const ws = wb.Sheets[wb.SheetNames[0]];
-          const rows = XLSX.utils.sheet_to_json(ws);
-          let added = 0;
-          rows.forEach(r => {
-            const id = r['Asset ID'] || ('IMP-' + Date.now());
-            if (!ASSETS.find(a => a.assetId === id)) {
-              ASSETS.push({
-                assetId: id, name: r['Name'] || 'Imported Asset',
-                category: r['Category'] || 'Handling Tools',
-                company: r['Company'] || '', rigName: r['Rig'] || '',
-                location: r['Location'] || '', status: r['Status'] || 'Inactive',
-                value: Number(r['Value (USD)']) || 0,
-                acquisitionDate: r['Acquisition Date'] || '',
-                serial: r['Serial'] || '', notes: r['Notes'] || ''
-              });
-              added++;
-            }
-          });
-          applyFilters();
-          showToast(`${added} assets imported successfully.`, 'success');
-          NOTIFICATIONS.unshift({ icon: 'fas fa-file-import', type: 'ni-blue', title: 'Import Completed', desc: `${added} assets imported from ${file.name}`, time: 'Just now', read: false });
-          renderNotifications();
-        } catch (err) {
-          showToast('Import failed: ' + err.message, 'error');
-        }
-      };
-      reader.readAsBinaryString(file);
-      event.target.value = '';
-    }
-
-    // ══════════════════════════════════
-    //  MODAL HELPERS
-    // ══════════════════════════════════
     function openModal(id) { document.getElementById(id).classList.add('open'); }
     function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
@@ -6138,199 +6308,267 @@ Asset Management System</textarea>
 
 
     // ══════════════════════════════════════════════════════════════════
-    //  AI ASSISTANT CHATBOT MODULE
+    //  AI ASSISTANT CHATBOT MODULE  (Anthropic Claude + Google Gemini)
     // ══════════════════════════════════════════════════════════════════
 
-    let chatHistory = [];
-    window.__CHAT_API_KEY__ = '';
+    let chatHistory  = [];
+    let chatOpen     = false;
+    let chatTyping   = false;
+    let chatProvider = localStorage.getItem('ams_chat_provider') || 'anthropic'; // 'anthropic' | 'gemini'
+
+    // ── Key management ───────────────────────────────────────────────
+    const ANTHROPIC_KEY_STORE = 'ams_anthropic_key';
+    const GEMINI_KEY_STORE    = 'ams_gemini_key';
+
+    function getChatKey(provider) {
+      try { return localStorage.getItem(provider === 'gemini' ? GEMINI_KEY_STORE : ANTHROPIC_KEY_STORE) || ''; } catch(e){ return ''; }
+    }
+    function setChatKey(provider, val) {
+      try { localStorage.setItem(provider === 'gemini' ? GEMINI_KEY_STORE : ANTHROPIC_KEY_STORE, val); } catch(e){}
+    }
+
+    // ── Provider switcher ────────────────────────────────────────────
+    function switchChatProvider(prov) {
+      chatProvider = prov;
+      try { localStorage.setItem('ams_chat_provider', prov); } catch(e){}
+      // Update toggle buttons
+      document.querySelectorAll('.provider-btn').forEach(b => b.classList.toggle('active', b.dataset.prov === prov));
+      // Update header subtitle
+      const labels = { anthropic: 'Claude · Sonnet 4.5', gemini: 'Gemini · 2.0 Flash' };
+      document.getElementById('chatProviderLabel').textContent = labels[prov] || prov;
+      // Show/hide key bar based on whether key exists for this provider
+      refreshKeyBar();
+    }
+
+    function refreshKeyBar() {
+      const key   = getChatKey(chatProvider);
+      const bar   = document.getElementById('chatApiKeyBar');
+      const input = document.getElementById('chatApiKeyInput');
+      if (!key) {
+        bar.style.display = 'flex';
+        const hints = { anthropic: 'Enter Anthropic API key  (sk-ant-…)', gemini: 'Enter Google AI API key  (AIza…)' };
+        input.placeholder = hints[chatProvider] || 'Enter API key…';
+        input.value = '';
+      } else {
+        bar.style.display = 'none';
+      }
+    }
 
     function saveChatApiKey() {
       const val = document.getElementById('chatApiKeyInput').value.trim();
       if (!val) return;
-      window.__CHAT_API_KEY__ = val;
+      setChatKey(chatProvider, val);
       document.getElementById('chatApiKeyBar').style.display = 'none';
-      appendChatMsg('assistant', '✅ API key saved. You can now chat with the AI assistant!');
+      const provName = chatProvider === 'gemini' ? 'Gemini' : 'Claude';
+      appendChatMsg('assistant', `✅ **${provName} API key saved.** You can now chat with the AI assistant!`);
     }
 
-    function initChatKeyBar() {
-      // Hide key bar if key already stored
-      if (window.__CHAT_API_KEY__) {
-        document.getElementById('chatApiKeyBar').style.display = 'none';
-      }
-      // Allow Enter key in API key field
-      document.getElementById('chatApiKeyInput').addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') saveChatApiKey();
-      });
+    function forgetApiKeys() {
+      if (!confirm('Remove saved API keys for all providers?')) return;
+      try { localStorage.removeItem(ANTHROPIC_KEY_STORE); localStorage.removeItem(GEMINI_KEY_STORE); } catch(e){}
+      refreshKeyBar();
+      appendChatMsg('assistant', '🔑 API keys removed. Please enter a new key to continue.');
     }
-    let chatOpen = false;
-    let chatTyping = false;
 
+    // ── Open / close ─────────────────────────────────────────────────
     function toggleChat() {
       chatOpen = !chatOpen;
       const panel = document.getElementById('aiChatPanel');
-      const fab = document.getElementById('aiFab');
+      const fab   = document.getElementById('aiFab');
       panel.classList.toggle('open', chatOpen);
       fab.classList.toggle('active', chatOpen);
       if (chatOpen && chatHistory.length === 0) {
-        initChatKeyBar();
-        appendChatMsg('assistant', `👋 Hello! I'm your AI Assistant for the Asset Management System.\n\nI have full access to your database including **${ASSETS.length} assets**, **${CERTIFICATES.length} certificates**, **${MAINT_SCHEDULES.length} maintenance schedules**, **${CONTRACTS.length} contracts**, and **${RIGS.length} rigs**.\n\nAsk me anything — like:\n• *"Which assets are in Rig 5?"*\n• *"Show overdue maintenance tasks"*\n• *"Which certificates expire soon?"*\n• *"What's the total value of assets in Workshop?"*`);
+        switchChatProvider(chatProvider); // sync UI
+        if (!getChatKey(chatProvider)) refreshKeyBar();
+        appendChatMsg('assistant', `👋 Hello! I\'m your AI Assistant powered by **${chatProvider === 'gemini' ? 'Google Gemini' : 'Anthropic Claude'}**.\n\nI have full access to your live database: **${ASSETS.length} assets**, **${CERTIFICATES.length} certificates**, **${MAINT_SCHEDULES.length} maintenance schedules**, **${CONTRACTS.length} contracts**, **${RIGS.length} rigs**.\n\nSwitch providers anytime using the **Claude / Gemini** buttons in the header. Ask me anything!`);
       }
     }
 
+    // ── System prompt (same for both providers) ──────────────────────
     function buildSystemPrompt() {
-      // Serialize the full database into the system prompt
       const assetsSummary = ASSETS.map(a =>
-        `ID:${a.assetId} | Name:${a.name} | Cat:${a.category} | Rig:${a.rigName} | Location:${a.location} | Status:${a.status} | Value:$${Number(a.value).toLocaleString()} | Acquired:${a.acquisitionDate} | Serial:${a.serial} | LastInspection:${a.lastInspection || 'N/A'} | InspType:${a.inspectionType || 'N/A'} | Notes:${a.notes}`
+        `ID:${a.assetId}|Name:${a.name}|Cat:${a.category}|Rig:${a.rigName}|Loc:${a.location}|Status:${a.status}|Value:$${Number(a.value).toLocaleString()}|Acquired:${a.acquisitionDate}|Serial:${a.serial}|LastInsp:${a.lastInspection||'N/A'}|InspType:${a.inspectionType||'N/A'}`
       ).join('\n');
-
       const certsSummary = CERTIFICATES.map(c =>
-        `AssetID:${c.assetId} | Asset:${c.name} | Serial:${c.serial} | Rig:${c.rigName} | Type:${c.inspectionType} | LastInsp:${c.lastInspection} | NextInsp:${c.nextInspection} | Status:${certStatus(c)} | DaysLeft:${daysUntilCert(c.nextInspection) ?? 'N/A'} | Link:${c.certLink || 'none'}`
+        `AssetID:${c.assetId}|Asset:${c.name}|Serial:${c.serial}|Rig:${c.rigName}|Type:${c.inspectionType}|LastInsp:${c.lastInspection}|NextInsp:${c.nextInspection}|Status:${certStatus(c)}|DaysLeft:${daysUntilCert(c.nextInspection)??'N/A'}`
       ).join('\n');
-
-      const maintSummary = (typeof MAINT_SCHEDULES !== 'undefined' ? MAINT_SCHEDULES : []).map(m => {
-        const asset = ASSETS.find(a => a.assetId === m.assetId);
-        const s = typeof getMaintStatus === 'function' ? getMaintStatus(m) : 'Unknown';
-        return `ID:${m.id} | Asset:${asset?.name || m.assetId} | Task:${m.task} | Type:${m.type} | Priority:${m.priority} | NextDue:${m.nextDue} | Status:${s} | Tech:${m.tech || 'N/A'}`;
+      const maintSummary = (typeof MAINT_SCHEDULES!=='undefined'?MAINT_SCHEDULES:[]).map(m=>{
+        const asset=ASSETS.find(a=>a.assetId===m.assetId);
+        const s=typeof getMaintStatus==='function'?getMaintStatus(m):'Unknown';
+        return `ID:${m.id}|Asset:${asset?.name||m.assetId}|Task:${m.task}|Type:${m.type}|Priority:${m.priority}|NextDue:${m.nextDue}|Status:${s}|Tech:${m.tech||'N/A'}`;
       }).join('\n');
-
-      const contractsSummary = CONTRACTS.map(c =>
-        `ID:${c.id} | Company:${c.company} | Rig:${c.rig} | Assets:${c.assetCount} | Start:${c.start} | End:${c.end} | Value:$${Number(c.value).toLocaleString()} | Status:${c.status}`
+      const contractsSummary = CONTRACTS.map(c=>
+        `ID:${c.id}|Company:${c.company}|Rig:${c.rig}|Assets:${c.assetCount}|Start:${c.start}|End:${c.end}|Value:$${Number(c.value).toLocaleString()}|Status:${c.status}`
       ).join('\n');
-
-      const rigsSummary = RIGS.map(r =>
-        `ID:${r.id} | Name:${r.name} | Type:${r.type} | Company:${r.company} | Location:${r.location} | Status:${r.status} | Assets:${ASSETS.filter(a => a.rigName === r.name).length}`
+      const rigsSummary = RIGS.map(r=>
+        `ID:${r.id}|Name:${r.name}|Type:${r.type}|Company:${r.company}|Location:${r.location}|Status:${r.status}|Assets:${ASSETS.filter(a=>a.rigName===r.name).length}`
       ).join('\n');
-
-      return `You are an intelligent AI Assistant embedded inside an Asset Management System for a Land Rig & Contracting company. You have FULL ACCESS to the live database. Answer questions accurately using ONLY the data below. Be concise, use markdown formatting, and present data in tables when appropriate.
+      return `You are an intelligent AI Assistant embedded inside an Asset Management System for a Land Rig & Contracting company. You have FULL ACCESS to the live database. Answer questions accurately using ONLY the data provided. Be concise, use markdown formatting, and present data in tables when appropriate.
 
 Today's date: ${new Date().toISOString().split('T')[0]}
 
-═══ ASSETS DATABASE (${ASSETS.length} records) ═══
+═══ ASSETS (${ASSETS.length}) ═══
 ${assetsSummary}
 
-═══ CERTIFICATES DATABASE (${CERTIFICATES.length} records) ═══
+═══ CERTIFICATES (${CERTIFICATES.length}) ═══
 ${certsSummary}
 
-═══ MAINTENANCE SCHEDULES (${(typeof MAINT_SCHEDULES !== 'undefined' ? MAINT_SCHEDULES : []).length} records) ═══
+═══ MAINTENANCE SCHEDULES (${(typeof MAINT_SCHEDULES!=='undefined'?MAINT_SCHEDULES:[]).length}) ═══
 ${maintSummary}
 
-═══ CONTRACTS DATABASE (${CONTRACTS.length} records) ═══
+═══ CONTRACTS (${CONTRACTS.length}) ═══
 ${contractsSummary}
 
-═══ LAND RIGS DATABASE (${RIGS.length} records) ═══
+═══ LAND RIGS (${RIGS.length}) ═══
 ${rigsSummary}
 
 Instructions:
 - Answer ONLY from the data above. Do not invent data.
 - For numbers/totals, calculate them accurately.
 - Use markdown tables for lists of records.
-- Highlight alerts (overdue, expired, expiring soon) clearly.
+- Highlight overdue/expiring items with ⚠️.
 - Be conversational and helpful.
 - If asked about something not in the database, say so clearly.`;
     }
 
+    // ── Send message ─────────────────────────────────────────────────
     async function sendChatMessage() {
       const input = document.getElementById('chatInput');
-      const msg = input.value.trim();
+      const msg   = input.value.trim();
       if (!msg || chatTyping) return;
       input.value = '';
       autoResizeChat(input);
-
       appendChatMsg('user', msg);
       chatHistory.push({ role: 'user', content: msg });
-
       setChatTyping(true);
 
-      if (!window.__CHAT_API_KEY__) {
+      const key = getChatKey(chatProvider);
+      if (!key) {
         setChatTyping(false);
-        appendChatMsg('assistant', '⚠️ Please enter your Anthropic API key in the yellow bar above to use the AI assistant.');
+        const provName = chatProvider === 'gemini' ? 'Gemini' : 'Anthropic';
+        appendChatMsg('assistant', `⚠️ Please enter your **${provName} API key** in the yellow bar above to use the AI assistant.`);
+        document.getElementById('chatApiKeyBar').style.display = 'flex';
         return;
       }
 
       try {
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': window.__CHAT_API_KEY__ || '',
-            'anthropic-version': '2023-06-01',
-            'anthropic-dangerous-direct-browser-access': 'true'
-          },
-          body: JSON.stringify({
-            model: 'claude-sonnet-4-20250514',
-            max_tokens: 1000,
-            system: buildSystemPrompt(),
-            messages: chatHistory.slice(-10), // keep last 10 turns for context
-          })
-        });
-
-        const data = await response.json();
-        const reply = data.content?.map(b => b.text || '').join('') || 'Sorry, I could not get a response.';
-
+        let reply = '';
+        if (chatProvider === 'gemini') {
+          reply = await callGemini(key, msg);
+        } else {
+          reply = await callAnthropic(key);
+        }
         setChatTyping(false);
         appendChatMsg('assistant', reply);
         chatHistory.push({ role: 'assistant', content: reply });
-      } catch (err) {
+      } catch(err) {
         setChatTyping(false);
-        appendChatMsg('assistant', '⚠️ Connection error. Please try again.');
-        console.error('Chat API error:', err);
+        appendChatMsg('assistant', `⚠️ **Error:** ${err.message || 'Connection failed. Check your API key and try again.'}`);
+        console.error('[Chat]', err);
       }
     }
 
+    // ── Anthropic Claude ─────────────────────────────────────────────
+    async function callAnthropic(key) {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': key,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 1024,
+          system: buildSystemPrompt(),
+          messages: chatHistory.slice(-12)
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(()=>({error:{message:'HTTP '+res.status}}));
+        throw new Error(err.error?.message || 'Anthropic API error ' + res.status);
+      }
+      const data = await res.json();
+      return data.content?.map(b => b.text||'').join('') || 'No response received.';
+    }
+
+    // ── Google Gemini ─────────────────────────────────────────────────
+    async function callGemini(key, userMsg) {
+      const sysPrompt = buildSystemPrompt();
+      // Build Gemini contents array — system as first user turn, then history
+      const contents = [];
+      // Inject system prompt as a user/model exchange
+      contents.push({ role: 'user',  parts: [{ text: sysPrompt }] });
+      contents.push({ role: 'model', parts: [{ text: 'Understood. I have full access to your asset database and will answer accurately.' }] });
+      // Add chat history (convert anthropic roles)
+      chatHistory.slice(-12).forEach(m => {
+        contents.push({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] });
+      });
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents,
+          generationConfig: { maxOutputTokens: 1024, temperature: 0.3 }
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(()=>({error:{message:'HTTP '+res.status}}));
+        throw new Error(err.error?.message || 'Gemini API error ' + res.status);
+      }
+      const data = await res.json();
+      return data.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('') || 'No response received.';
+    }
+
+    // ── Render & helpers ──────────────────────────────────────────────
     function appendChatMsg(role, text) {
       const body = document.getElementById('chatBody');
-      const div = document.createElement('div');
+      const div  = document.createElement('div');
       div.className = `chat-msg chat-msg-${role}`;
-
-      // Simple markdown renderer
-      const html = renderMarkdown(text);
-
+      const provIcon = role === 'assistant'
+        ? (chatProvider === 'gemini'
+            ? '<div class="chat-avatar-icon gemini-icon"><i class="fas fa-gem"></i></div>'
+            : '<div class="chat-avatar-icon"><i class="fas fa-robot"></i></div>')
+        : '';
       div.innerHTML = `
     <div class="chat-bubble">
-      ${role === 'assistant' ? '<div class="chat-avatar-icon"><i class="fas fa-robot"></i></div>' : ''}
-      <div class="chat-bubble-content">${html}</div>
+      ${provIcon}
+      <div class="chat-bubble-content">${renderMarkdown(text)}</div>
     </div>
-    <div class="chat-msg-time">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-  `;
+    <div class="chat-msg-time">${new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div>`;
       body.appendChild(div);
       body.scrollTop = body.scrollHeight;
     }
 
     function renderMarkdown(text) {
       return text
-        // Bold
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        // Italic
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        // Code inline
-        .replace(/`([^`]+)`/g, '<code style="background:#F0F2F4;padding:1px 5px;border-radius:3px;font-family:monospace;font-size:12px">$1</code>')
-        // Headers
-        .replace(/^### (.*$)/gm, '<div style="font-weight:700;font-size:13.5px;margin:8px 0 4px;color:var(--sap-text)">$1</div>')
-        .replace(/^## (.*$)/gm, '<div style="font-weight:700;font-size:14px;margin:10px 0 4px;color:var(--sap-blue)">$1</div>')
-        .replace(/^# (.*$)/gm, '<div style="font-weight:800;font-size:15px;margin:10px 0 6px;color:var(--sap-blue)">$1</div>')
-        // Tables
-        .replace(/\|(.+)\|\n\|[-| ]+\|\n((?:\|.+\|\n?)*)/g, (_, header, rows) => {
-          const ths = header.split('|').filter(s => s.trim()).map(h => `<th style="background:#F0F2F4;padding:5px 10px;text-align:left;font-size:11.5px;font-weight:600;color:var(--sap-text-muted);white-space:nowrap;border-bottom:2px solid #D9D9D9">${h.trim()}</th>`).join('');
-          const trs = rows.trim().split('\n').map(row => {
-            const tds = row.split('|').filter(s => s.trim()).map(d => `<td style="padding:5px 10px;border-bottom:1px solid #ECEEF0;font-size:12.5px;white-space:nowrap">${d.trim()}</td>`).join('');
-            return `<tr style="transition:background 0.1s" onmouseover="this.style.background='#E8F3FF'" onmouseout="this.style.background=''">${tds}</tr>`;
+        .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g,'<em>$1</em>')
+        .replace(/`([^`]+)`/g,'<code style="background:#F0F2F4;padding:1px 5px;border-radius:3px;font-family:monospace;font-size:12px">$1</code>')
+        .replace(/^### (.*$)/gm,'<div style="font-weight:700;font-size:13.5px;margin:8px 0 4px;color:var(--sap-text)">$1</div>')
+        .replace(/^## (.*$)/gm,'<div style="font-weight:700;font-size:14px;margin:10px 0 4px;color:var(--sap-blue)">$1</div>')
+        .replace(/^# (.*$)/gm,'<div style="font-weight:800;font-size:15px;margin:10px 0 6px;color:var(--sap-blue)">$1</div>')
+        .replace(/\|(.+)\|\n\|[-| ]+\|\n((?:\|.+\|\n?)*)/g,(_,header,rows)=>{
+          const ths=header.split('|').filter(s=>s.trim()).map(h=>`<th style="background:#F0F2F4;padding:5px 10px;text-align:left;font-size:11.5px;font-weight:600;color:var(--sap-text-muted);white-space:nowrap;border-bottom:2px solid #D9D9D9">${h.trim()}</th>`).join('');
+          const trs=rows.trim().split('\n').map(row=>{
+            const tds=row.split('|').filter(s=>s.trim()).map(d=>`<td style="padding:5px 10px;border-bottom:1px solid #ECEEF0;font-size:12.5px;white-space:nowrap">${d.trim()}</td>`).join('');
+            return `<tr onmouseover="this.style.background='#E8F3FF'" onmouseout="this.style.background=''">${tds}</tr>`;
           }).join('');
           return `<div style="overflow-x:auto;margin:8px 0;border-radius:4px;border:1px solid #D9D9D9"><table style="border-collapse:collapse;width:100%"><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table></div>`;
         })
-        // Bullet lists
-        .replace(/^[•\-\*] (.+)$/gm, '<li style="margin:2px 0;padding-left:4px">$1</li>')
-        .replace(/(<li.*<\/li>\n?)+/g, m => `<ul style="margin:6px 0 6px 16px;padding:0">${m}</ul>`)
-        // Numbered lists
-        .replace(/^\d+\. (.+)$/gm, '<li style="margin:2px 0;padding-left:4px">$1</li>')
-        // Line breaks
-        .replace(/\n\n/g, '<br><br>')
-        .replace(/\n/g, '<br>');
+        .replace(/^[•\-\*] (.+)$/gm,'<li style="margin:2px 0;padding-left:4px">$1</li>')
+        .replace(/(<li.*<\/li>\n?)+/g,m=>`<ul style="margin:6px 0 6px 16px;padding:0">${m}</ul>`)
+        .replace(/^\d+\. (.+)$/gm,'<li style="margin:2px 0;padding-left:4px">$1</li>')
+        .replace(/\n\n/g,'<br><br>')
+        .replace(/\n/g,'<br>');
     }
 
     function setChatTyping(typing) {
       chatTyping = typing;
-      const indicator = document.getElementById('chatTypingIndicator');
-      indicator.style.display = typing ? 'flex' : 'none';
+      document.getElementById('chatTypingIndicator').style.display = typing ? 'flex' : 'none';
       const body = document.getElementById('chatBody');
       body.scrollTop = body.scrollHeight;
       document.getElementById('chatSendBtn').disabled = typing;
@@ -6339,7 +6577,7 @@ Instructions:
     function clearChat() {
       chatHistory = [];
       document.getElementById('chatBody').innerHTML = '';
-      appendChatMsg('assistant', `Chat cleared. I still have access to all **${ASSETS.length} assets** and your full database. How can I help?`);
+      appendChatMsg('assistant', `Chat cleared. I still have full access to all **${ASSETS.length} assets** and your database. How can I help?`);
     }
 
     function autoResizeChat(el) {
@@ -6347,13 +6585,11 @@ Instructions:
       el.style.height = Math.min(el.scrollHeight, 100) + 'px';
     }
 
-    // Quick suggestion chips
     function sendQuickMsg(msg) {
       document.getElementById('chatInput').value = msg;
       sendChatMessage();
     }
 
-    // Enter to send (Shift+Enter for newline)
     document.addEventListener('DOMContentLoaded', () => {
       const input = document.getElementById('chatInput');
       if (input) {
@@ -6366,449 +6602,170 @@ Instructions:
 
   </script>
 
+
   <!-- ══════════════════════════════════════════
      AI CHATBOT STYLES
 ═══════════════════════════════════════════ -->
   <style>
-    /* FAB button */
     #aiFab {
-      position: fixed;
-      bottom: 28px;
-      right: 28px;
-      width: 54px;
-      height: 54px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #0070F2, #0040B0);
-      color: #fff;
-      border: none;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 22px;
-      box-shadow: 0 4px 20px rgba(0, 112, 242, 0.45);
-      z-index: 3000;
-      transition: transform 0.2s, box-shadow 0.2s;
+      position:fixed; bottom:28px; right:28px; width:54px; height:54px;
+      border-radius:50%; background:linear-gradient(135deg,#0070F2,#0040B0);
+      color:#fff; border:none; cursor:pointer; display:flex; align-items:center;
+      justify-content:center; font-size:22px;
+      box-shadow:0 4px 20px rgba(0,112,242,.45); z-index:3000;
+      transition:transform .2s,box-shadow .2s;
     }
-
-    #aiFab:hover {
-      transform: scale(1.08);
-      box-shadow: 0 6px 28px rgba(0, 112, 242, 0.55);
-    }
-
-    #aiFab.active {
-      background: linear-gradient(135deg, #354A5E, #1a2d3e);
-    }
-
-    #aiFab .fab-icon-open {
-      display: flex;
-      transition: opacity 0.2s;
-    }
-
-    #aiFab .fab-icon-close {
-      display: none;
-      transition: opacity 0.2s;
-    }
-
-    #aiFab.active .fab-icon-open {
-      display: none;
-    }
-
-    #aiFab.active .fab-icon-close {
-      display: flex;
-    }
-
+    #aiFab:hover { transform:scale(1.08); box-shadow:0 6px 28px rgba(0,112,242,.55); }
+    #aiFab.active { background:linear-gradient(135deg,#354A5E,#1a2d3e); }
+    #aiFab .fab-icon-open  { display:flex; }
+    #aiFab .fab-icon-close { display:none; }
+    #aiFab.active .fab-icon-open  { display:none; }
+    #aiFab.active .fab-icon-close { display:flex; }
     .fab-pulse {
-      position: absolute;
-      top: -3px;
-      right: -3px;
-      width: 14px;
-      height: 14px;
-      background: #E9730C;
-      border-radius: 50%;
-      border: 2px solid #fff;
-      animation: pulse-ring 2s infinite;
+      position:absolute; top:-3px; right:-3px; width:14px; height:14px;
+      background:#E9730C; border-radius:50%; border:2px solid #fff;
+      animation:pulse-ring 2s infinite;
     }
-
     @keyframes pulse-ring {
-
-      0%,
-      100% {
-        transform: scale(1);
-        opacity: 1;
-      }
-
-      50% {
-        transform: scale(1.2);
-        opacity: 0.7;
-      }
+      0%,100% { transform:scale(1); opacity:1; }
+      50%      { transform:scale(1.2); opacity:.7; }
     }
-
-    /* Chat Panel */
     #aiChatPanel {
-      position: fixed;
-      bottom: 92px;
-      right: 28px;
-      width: 420px;
-      max-width: calc(100vw - 40px);
-      height: 580px;
-      max-height: calc(100vh - 120px);
-      background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 16px 64px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
-      display: flex;
-      flex-direction: column;
-      z-index: 2999;
-      overflow: hidden;
-      transform: scale(0.92) translateY(16px);
-      opacity: 0;
-      pointer-events: none;
-      transition: transform 0.22s cubic-bezier(.34, 1.56, .64, 1), opacity 0.18s;
+      position:fixed; bottom:94px; right:28px; width:400px; max-width:calc(100vw - 40px);
+      height:580px; max-height:calc(100vh - 120px);
+      background:#fff; border-radius:14px; box-shadow:0 12px 48px rgba(0,0,0,.22);
+      display:flex; flex-direction:column; z-index:2999; overflow:hidden;
+      transform:translateY(20px) scale(.96); opacity:0; pointer-events:none;
+      transition:transform .25s cubic-bezier(.34,1.56,.64,1), opacity .2s;
     }
-
-    #aiChatPanel.open {
-      transform: scale(1) translateY(0);
-      opacity: 1;
-      pointer-events: all;
-    }
-
-    /* Header */
+    #aiChatPanel.open { transform:translateY(0) scale(1); opacity:1; pointer-events:all; }
     .chat-header {
-      background: linear-gradient(135deg, #354A5E 0%, #1e3249 100%);
-      padding: 14px 16px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-shrink: 0;
+      background:linear-gradient(135deg,#1a2e44,#0070F2);
+      padding:12px 14px; display:flex; align-items:center; gap:10px; flex-shrink:0;
     }
-
     .chat-header-avatar {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #0070F2, #00A3FF);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
-      color: #fff;
-      flex-shrink: 0;
-      box-shadow: 0 2px 8px rgba(0, 112, 242, 0.4);
+      width:36px; height:36px; border-radius:50%;
+      background:rgba(255,255,255,.18); display:flex; align-items:center;
+      justify-content:center; color:#fff; font-size:17px; flex-shrink:0;
     }
+    .chat-header-info { flex:1; min-width:0; }
+    .chat-header-name { font-weight:700; font-size:14px; color:#fff; }
+    .chat-header-status { font-size:11px; color:rgba(255,255,255,.75); display:flex; align-items:center; gap:5px; margin-top:1px; }
+    .chat-status-dot { width:7px; height:7px; border-radius:50%; background:#4CAF50; flex-shrink:0; }
 
-    .chat-header-info {
-      flex: 1;
+    /* ── Provider toggle buttons ── */
+    .provider-toggle {
+      display:flex; gap:4px; background:rgba(0,0,0,.2); border-radius:8px; padding:3px;
     }
-
-    .chat-header-name {
-      font-size: 14px;
-      font-weight: 700;
-      color: #fff;
-      line-height: 1.2;
+    .provider-btn {
+      padding:3px 10px; border:none; border-radius:6px; font-size:11px; font-weight:600;
+      cursor:pointer; color:rgba(255,255,255,.7); background:transparent;
+      transition:all .15s; display:flex; align-items:center; gap:4px; font-family:inherit;
     }
-
-    .chat-header-status {
-      font-size: 11px;
-      color: rgba(255, 255, 255, 0.65);
-      display: flex;
-      align-items: center;
-      gap: 4px;
+    .provider-btn.active {
+      background:#fff; color:#1a2e44;
+      box-shadow:0 1px 4px rgba(0,0,0,.2);
     }
+    .provider-btn:hover:not(.active) { color:#fff; background:rgba(255,255,255,.12); }
 
-    .chat-status-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: #4ADE80;
-      animation: blink 2s infinite;
-    }
-
-    @keyframes blink {
-
-      0%,
-      100% {
-        opacity: 1
-      }
-
-      50% {
-        opacity: .4
-      }
-    }
-
-    .chat-header-actions {
-      display: flex;
-      gap: 4px;
-    }
-
+    .chat-header-actions { display:flex; gap:2px; margin-left:4px; }
     .chat-hbtn {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.12);
-      border: none;
-      color: rgba(255, 255, 255, 0.8);
-      cursor: pointer;
-      font-size: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.15s;
+      background:none; border:none; color:rgba(255,255,255,.7); width:30px; height:30px;
+      border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+      font-size:13px; transition:background .15s;
     }
+    .chat-hbtn:hover { background:rgba(255,255,255,.15); color:#fff; }
 
-    .chat-hbtn:hover {
-      background: rgba(255, 255, 255, 0.22);
-      color: #fff;
-    }
-
-    /* Quick chips */
     .chat-chips {
-      padding: 10px 12px 4px;
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-      background: #FAFBFC;
-      border-bottom: 1px solid #ECEEF0;
-      flex-shrink: 0;
+      display:flex; gap:6px; padding:8px 10px; overflow-x:auto; flex-shrink:0;
+      border-bottom:1px solid #F0F2F4; background:#FAFBFC;
+      scrollbar-width:none;
     }
-
+    .chat-chips::-webkit-scrollbar { display:none; }
     .chat-chip {
-      padding: 4px 10px;
-      background: #EBF4FF;
-      color: #0040B0;
-      border: 1px solid #C5DCF8;
-      border-radius: 20px;
-      font-size: 11.5px;
-      font-weight: 500;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: all 0.15s;
+      white-space:nowrap; padding:4px 10px; border:1px solid #D9D9D9; border-radius:20px;
+      background:#fff; font-size:11.5px; color:var(--sap-text-muted); cursor:pointer;
+      font-family:inherit; transition:all .15s; flex-shrink:0;
+    }
+    .chat-chip:hover { background:#EBF4FF; border-color:#0070F2; color:#0070F2; }
+
+    #chatApiKeyBar {
+      padding:8px 12px; background:#FFF8E1; border-bottom:1px solid #FFE082;
+      display:flex; align-items:center; gap:6px; font-size:12px; flex-shrink:0;
     }
 
-    .chat-chip:hover {
-      background: #0070F2;
-      color: #fff;
-      border-color: #0070F2;
-    }
-
-    /* Body */
     #chatBody {
-      flex: 1;
-      overflow-y: auto;
-      padding: 14px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      background: #F5F6F7;
-      scroll-behavior: smooth;
+      flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:10px;
+      scroll-behavior:smooth;
     }
+    #chatBody::-webkit-scrollbar { width:4px; }
+    #chatBody::-webkit-scrollbar-track { background:transparent; }
+    #chatBody::-webkit-scrollbar-thumb { background:#D9D9D9; border-radius:4px; }
 
-    #chatBody::-webkit-scrollbar {
-      width: 4px;
-    }
-
-    #chatBody::-webkit-scrollbar-thumb {
-      background: #ccc;
-      border-radius: 4px;
-    }
-
-    /* Messages */
-    .chat-msg {
-      display: flex;
-      flex-direction: column;
-      max-width: 100%;
-    }
-
-    .chat-msg-user {
-      align-items: flex-end;
-    }
-
-    .chat-msg-assistant {
-      align-items: flex-start;
-    }
-
-    .chat-bubble {
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-    }
-
-    .chat-msg-user .chat-bubble {
-      flex-direction: row-reverse;
-    }
-
+    .chat-msg { display:flex; flex-direction:column; }
+    .chat-msg-user  { align-items:flex-end; }
+    .chat-msg-assistant { align-items:flex-start; }
+    .chat-bubble { display:flex; gap:8px; align-items:flex-start; max-width:92%; }
+    .chat-msg-user .chat-bubble { flex-direction:row-reverse; }
     .chat-avatar-icon {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #0070F2, #00A3FF);
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 13px;
-      flex-shrink: 0;
-      margin-top: 2px;
+      width:28px; height:28px; border-radius:50%; flex-shrink:0;
+      background:linear-gradient(135deg,#0070F2,#0040B0);
+      display:flex; align-items:center; justify-content:center;
+      color:#fff; font-size:13px; margin-top:2px;
     }
-
+    .chat-avatar-icon.gemini-icon {
+      background:linear-gradient(135deg,#4285F4,#34A853,#EA4335,#FBBC05);
+    }
     .chat-bubble-content {
-      padding: 10px 13px;
-      border-radius: 12px;
-      font-size: 13px;
-      line-height: 1.55;
-      max-width: calc(100% - 40px);
-      word-break: break-word;
+      padding:9px 12px; border-radius:12px; font-size:13px; line-height:1.5;
+      max-width:100%; word-break:break-word;
     }
-
-    .chat-msg-assistant .chat-bubble-content {
-      background: #fff;
-      color: #32363A;
-      border: 1px solid #ECEEF0;
-      border-bottom-left-radius: 4px;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-    }
-
     .chat-msg-user .chat-bubble-content {
-      background: linear-gradient(135deg, #0070F2, #0055CC);
-      color: #fff;
-      border-bottom-right-radius: 4px;
-      box-shadow: 0 2px 8px rgba(0, 112, 242, 0.3);
+      background:linear-gradient(135deg,#0070F2,#0050C8); color:#fff; border-radius:12px 12px 2px 12px;
     }
-
-    .chat-msg-time {
-      font-size: 10px;
-      color: #aaa;
-      margin-top: 3px;
-      padding: 0 4px;
+    .chat-msg-assistant .chat-bubble-content {
+      background:#F5F6F7; color:var(--sap-text); border-radius:12px 12px 12px 2px;
+      border:1px solid #ECEEF0;
     }
+    .chat-msg-time { font-size:10.5px; color:var(--sap-text-muted); margin-top:3px; padding:0 4px; }
 
-    /* Typing indicator */
     #chatTypingIndicator {
-      display: none;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
+      display:none; align-items:center; gap:8px; padding:4px 12px 8px; flex-shrink:0;
     }
-
     .typing-avatar {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #0070F2, #00A3FF);
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 13px;
-      flex-shrink: 0;
+      width:28px; height:28px; border-radius:50%;
+      background:linear-gradient(135deg,#0070F2,#0040B0);
+      display:flex; align-items:center; justify-content:center; color:#fff; font-size:13px;
     }
-
-    .typing-dots {
-      background: #fff;
-      border: 1px solid #ECEEF0;
-      border-radius: 12px;
-      padding: 10px 14px;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-    }
-
+    .typing-dots { display:flex; gap:4px; align-items:center; }
     .typing-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: #C0C8D2;
-      animation: bounce-dot 1.2s infinite;
+      width:7px; height:7px; border-radius:50%; background:#0070F2;
+      animation:typing-bounce .9s infinite;
+    }
+    .typing-dot:nth-child(2) { animation-delay:.18s; }
+    .typing-dot:nth-child(3) { animation-delay:.36s; }
+    @keyframes typing-bounce {
+      0%,80%,100% { transform:scale(.8); opacity:.5; }
+      40%          { transform:scale(1.1); opacity:1; }
     }
 
-    .typing-dot:nth-child(2) {
-      animation-delay: 0.2s;
-    }
-
-    .typing-dot:nth-child(3) {
-      animation-delay: 0.4s;
-    }
-
-    @keyframes bounce-dot {
-
-      0%,
-      60%,
-      100% {
-        transform: translateY(0);
-        background: #C0C8D2;
-      }
-
-      30% {
-        transform: translateY(-5px);
-        background: #0070F2;
-      }
-    }
-
-    /* Input area */
     .chat-input-area {
-      padding: 10px 12px;
-      border-top: 1px solid #ECEEF0;
-      background: #fff;
-      display: flex;
-      align-items: flex-end;
-      gap: 8px;
-      flex-shrink: 0;
+      display:flex; gap:8px; padding:10px 12px; border-top:1px solid #ECEEF0;
+      background:#fff; align-items:flex-end; flex-shrink:0;
     }
-
-    #chatInput {
-      flex: 1;
-      border: 1px solid #D9D9D9;
-      border-radius: 20px;
-      padding: 9px 14px;
-      font-family: 'IBM Plex Sans', sans-serif;
-      font-size: 13px;
-      color: #32363A;
-      resize: none;
-      outline: none;
-      max-height: 100px;
-      overflow-y: auto;
-      line-height: 1.45;
-      transition: border 0.15s;
-      background: #FAFBFC;
+    .chat-input-area textarea {
+      flex:1; border:1px solid #D9D9D9; border-radius:8px; padding:8px 10px;
+      font-size:13px; font-family:inherit; resize:none; outline:none;
+      transition:border .15s; max-height:100px; line-height:1.45;
     }
-
-    #chatInput:focus {
-      border-color: #0070F2;
-      background: #fff;
-      box-shadow: 0 0 0 2px rgba(0, 112, 242, 0.12);
-    }
-
-    #chatInput::placeholder {
-      color: #aaa;
-    }
-
+    .chat-input-area textarea:focus { border-color:#0070F2; }
     #chatSendBtn {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #0070F2, #0055CC);
-      border: none;
-      color: #fff;
-      cursor: pointer;
-      font-size: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      transition: all 0.15s;
-      box-shadow: 0 2px 8px rgba(0, 112, 242, 0.35);
+      width:36px; height:36px; border-radius:8px; background:#0070F2; color:#fff;
+      border:none; cursor:pointer; display:flex; align-items:center; justify-content:center;
+      font-size:14px; flex-shrink:0; transition:background .15s;
     }
-
-    #chatSendBtn:hover:not(:disabled) {
-      transform: scale(1.08);
-      box-shadow: 0 4px 14px rgba(0, 112, 242, 0.5);
-    }
-
-    #chatSendBtn:disabled {
-      background: #D9D9D9;
-      box-shadow: none;
-      cursor: not-allowed;
-    }
+    #chatSendBtn:hover    { background:#0050C8; }
+    #chatSendBtn:disabled { background:#D9D9D9; cursor:not-allowed; }
   </style>
 
   <!-- ══════════════════════════════════════════
@@ -6832,48 +6789,53 @@ Instructions:
         <div class="chat-header-name">Asset AI Assistant</div>
         <div class="chat-header-status">
           <span class="chat-status-dot"></span>
-          Online · Full database access
+          <span id="chatProviderLabel">Claude · Sonnet 4.5</span>
         </div>
       </div>
+      <!-- Provider toggle -->
+      <div class="provider-toggle">
+        <button class="provider-btn active" data-prov="anthropic" onclick="switchChatProvider('anthropic')">
+          <i class="fas fa-robot" style="font-size:10px"></i> Claude
+        </button>
+        <button class="provider-btn" data-prov="gemini" onclick="switchChatProvider('gemini')">
+          <i class="fas fa-gem" style="font-size:10px"></i> Gemini
+        </button>
+      </div>
       <div class="chat-header-actions">
+        <button class="chat-hbtn" onclick="forgetApiKeys()" title="Remove API keys"><i class="fas fa-key"></i></button>
         <button class="chat-hbtn" onclick="clearChat()" title="Clear chat"><i class="fas fa-trash-alt"></i></button>
         <button class="chat-hbtn" onclick="toggleChat()" title="Close"><i class="fas fa-times"></i></button>
       </div>
     </div>
 
-    <!-- Quick suggestion chips -->
+    <!-- Quick chips -->
     <div class="chat-chips">
-      <button class="chat-chip" onclick="sendQuickMsg('Show all overdue maintenance tasks')"><i class="fas fa-tools"
-          style="font-size:10px;margin-right:3px"></i> Overdue Maintenance</button>
-      <button class="chat-chip" onclick="sendQuickMsg('Which certificates expire within 30 days?')"><i
-          class="fas fa-certificate" style="font-size:10px;margin-right:3px"></i> Expiring Certs</button>
-      <button class="chat-chip" onclick="sendQuickMsg('List all assets in Workshop location')"><i
-          class="fas fa-warehouse" style="font-size:10px;margin-right:3px"></i> Workshop Assets</button>
-      <button class="chat-chip" onclick="sendQuickMsg('What is the total value of all assets?')"><i
-          class="fas fa-dollar-sign" style="font-size:10px;margin-right:3px"></i> Total Value</button>
-      <button class="chat-chip" onclick="sendQuickMsg('Show a summary of assets by category')"><i
-          class="fas fa-chart-bar" style="font-size:10px;margin-right:3px"></i> By Category</button>
-      <button class="chat-chip" onclick="sendQuickMsg('Which rigs have the most assets?')"><i class="fas fa-oil-well"
-          style="font-size:10px;margin-right:3px"></i> Assets by Rig</button>
+      <button class="chat-chip" onclick="sendQuickMsg('Show all overdue maintenance tasks')"><i class="fas fa-tools" style="font-size:10px;margin-right:3px"></i> Overdue Maintenance</button>
+      <button class="chat-chip" onclick="sendQuickMsg('Which certificates expire within 30 days?')"><i class="fas fa-certificate" style="font-size:10px;margin-right:3px"></i> Expiring Certs</button>
+      <button class="chat-chip" onclick="sendQuickMsg('List all assets in Workshop location')"><i class="fas fa-warehouse" style="font-size:10px;margin-right:3px"></i> Workshop Assets</button>
+      <button class="chat-chip" onclick="sendQuickMsg('What is the total value of all assets?')"><i class="fas fa-dollar-sign" style="font-size:10px;margin-right:3px"></i> Total Value</button>
+      <button class="chat-chip" onclick="sendQuickMsg('Show a summary of assets by category')"><i class="fas fa-chart-bar" style="font-size:10px;margin-right:3px"></i> By Category</button>
+      <button class="chat-chip" onclick="sendQuickMsg('Which rigs have the most assets?')"><i class="fas fa-oil-well" style="font-size:10px;margin-right:3px"></i> Assets by Rig</button>
     </div>
 
-    <!-- API Key input (shown only when key is not set) -->
-    <div id="chatApiKeyBar" style="padding:8px 12px;background:#FFF8E1;border-bottom:1px solid #FFE082;display:flex;align-items:center;gap:6px;font-size:12px;">
+    <!-- API Key bar -->
+    <div id="chatApiKeyBar" style="display:none">
       <i class="fas fa-key" style="color:#E9730C;flex-shrink:0"></i>
-      <input id="chatApiKeyInput" type="password" placeholder="Enter your Anthropic API key (sk-ant-…)" style="flex:1;border:1px solid #D9D9D9;border-radius:4px;padding:4px 8px;font-size:12px;font-family:monospace;outline:none;" />
-      <button onclick="saveChatApiKey()" style="background:#0070F2;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer;flex-shrink:0;">Save</button>
+      <input id="chatApiKeyInput" type="password" placeholder="Enter API key…"
+        style="flex:1;border:1px solid #D9D9D9;border-radius:4px;padding:4px 8px;font-size:12px;font-family:monospace;outline:none;"
+        onkeydown="if(event.key==='Enter') saveChatApiKey()"/>
+      <button onclick="saveChatApiKey()"
+        style="background:#0070F2;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer;flex-shrink:0;">Save</button>
     </div>
 
     <!-- Messages -->
     <div id="chatBody"></div>
 
     <!-- Typing indicator -->
-    <div id="chatTypingIndicator" style="padding:4px 12px 0">
+    <div id="chatTypingIndicator">
       <div class="typing-avatar"><i class="fas fa-robot" style="font-size:12px"></i></div>
       <div class="typing-dots">
-        <div class="typing-dot"></div>
-        <div class="typing-dot"></div>
-        <div class="typing-dot"></div>
+        <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
       </div>
     </div>
 
@@ -6885,7 +6847,7 @@ Instructions:
 
   </div>
 
-  <!-- ═══════════════════════════════════════════════════════════════════════
+    <!-- ═══════════════════════════════════════════════════════════════════════
      LIVE DATABASE LAYER
      Connects every save / edit / delete action to the Railway + Supabase backend.
      All changes are persisted — data survives page refresh.
@@ -7405,6 +7367,416 @@ Instructions:
           }
         }, 300);
       });
+
+
+      // ══════════════════════════════════════════════════════════════
+      //  IMPORT FUNCTIONS — write directly to database via API
+      // ══════════════════════════════════════════════════════════════
+      // ══════════════════════════════════════════════════════════════
+      //  IMPORT HELPERS — all write to the database via the API
+      // ══════════════════════════════════════════════════════════════
+
+      function readXlsx(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = e => {
+            try {
+              const wb = XLSX.read(e.target.result, { type: 'binary' });
+              resolve(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]));
+            } catch(err) { reject(err); }
+          };
+          reader.onerror = reject;
+          reader.readAsBinaryString(file);
+        });
+      }
+
+      window.importAssets = async function importAssets(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        event.target.value = '';
+        showToast('Importing assets…', 'info');
+        try {
+          const rows = await readXlsx(file);
+          let added = 0, skipped = 0;
+          for (const r of rows) {
+            const asset_id = (r['Asset ID'] || '').toString().trim();
+            if (!asset_id) { skipped++; continue; }
+            const payload = {
+              asset_id,
+              name: r['Name'] || r['Asset Name'] || 'Imported Asset',
+              category: r['Category'] || 'Other',
+              company: r['Company'] || '',
+              rig_name: r['Rig'] || r['Rig Name'] || '',
+              location: r['Location'] || '',
+              status: r['Status'] || 'Active',
+              value: Number(r['Value (USD)'] || r['Value'] || 0) || 0,
+              acquisition_date: r['Acquisition Date'] || null,
+              serial: r['Serial'] || r['Serial Number'] || '',
+              notes: r['Notes'] || '',
+              last_inspection: r['Last Inspection'] || null,
+              inspection_type: r['Inspection Type'] || '',
+              cert_link: r['Cert Link'] || '',
+            };
+            try {
+              const existing = ASSETS.find(a => a.assetId === asset_id);
+              if (existing) {
+                const res = await PUT(`/assets/${asset_id}`, payload);
+                const idx = ASSETS.findIndex(a => a.assetId === asset_id);
+                if (idx >= 0) ASSETS[idx] = normA(res.data);
+              } else {
+                const res = await POST('/assets', payload);
+                ASSETS.push(normA(res.data));
+              }
+              added++;
+            } catch(e) { skipped++; }
+          }
+          filteredAssets = [...ASSETS];
+          rerender('renderAssets', 'updateKPIs');
+          showToast(`${added} asset(s) imported to database.${skipped ? ' ' + skipped + ' skipped.' : ''}`, 'success');
+          NOTIFICATIONS.unshift({ icon: 'fas fa-file-import', type: 'ni-blue', title: 'Assets Imported', desc: `${added} assets from ${file.name}`, time: 'Just now', read: false });
+          renderNotifications();
+        } catch(err) { showToast('Import failed: ' + err.message, 'error'); }
+      }
+
+      window.importContracts = async function importContracts(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        event.target.value = '';
+        showToast('Importing contracts…', 'info');
+        try {
+          const rows = await readXlsx(file);
+          let added = 0, skipped = 0;
+          for (const r of rows) {
+            const id = (r['Contract ID'] || r['ID'] || '').toString().trim();
+            if (!id) { skipped++; continue; }
+            const payload = {
+              id,
+              company: r['Company'] || '',
+              rig: r['Rig'] || '',
+              value: Number(r['Value'] || r['Value (USD)'] || 0) || 0,
+              start_date: r['Start Date'] || null,
+              end_date: r['End Date'] || null,
+              status: r['Status'] || 'Pending',
+            };
+            try {
+              const existing = CONTRACTS.find(c => c.id === id);
+              if (existing) {
+                const res = await PUT(`/contracts/${id}`, payload);
+                const idx = CONTRACTS.findIndex(c => c.id === id);
+                if (idx >= 0) CONTRACTS[idx] = res.data;
+              } else {
+                const res = await POST('/contracts', payload);
+                CONTRACTS.push(res.data);
+              }
+              added++;
+            } catch(e) { skipped++; }
+          }
+          applyContractFilters();
+          showToast(`${added} contract(s) imported to database.${skipped ? ' ' + skipped + ' skipped.' : ''}`, 'success');
+        } catch(err) { showToast('Import failed: ' + err.message, 'error'); }
+      }
+
+      window.importRigs = async function importRigs(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        event.target.value = '';
+        showToast('Importing rigs…', 'info');
+        try {
+          const rows = await readXlsx(file);
+          let added = 0, skipped = 0;
+          for (const r of rows) {
+            const id = (r['Rig ID'] || r['ID'] || '').toString().trim();
+            if (!id) { skipped++; continue; }
+            const payload = {
+              id,
+              name: r['Rig Name'] || r['Name'] || id,
+              type: r['Type'] || '',
+              company: r['Company'] || '',
+              location: r['Location'] || '',
+              depth: r['Depth'] || '',
+              hp: Number(r['HP'] || 0) || 0,
+              status: r['Status'] || 'Active',
+            };
+            try {
+              const existing = RIGS.find(g => g.id === id);
+              if (existing) {
+                const res = await PUT(`/rigs/${id}`, payload);
+                const idx = RIGS.findIndex(g => g.id === id);
+                if (idx >= 0) RIGS[idx] = res.data;
+              } else {
+                const res = await POST('/rigs', payload);
+                RIGS.push(res.data);
+              }
+              added++;
+            } catch(e) { skipped++; }
+          }
+          renderRigs();
+          showToast(`${added} rig(s) imported to database.${skipped ? ' ' + skipped + ' skipped.' : ''}`, 'success');
+        } catch(err) { showToast('Import failed: ' + err.message, 'error'); }
+      }
+
+      window.importCompanies = async function importCompanies(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        event.target.value = '';
+        showToast('Importing companies…', 'info');
+        try {
+          const rows = await readXlsx(file);
+          let added = 0, skipped = 0;
+          for (const r of rows) {
+            const id = (r['Company ID'] || r['ID'] || '').toString().trim();
+            if (!id) { skipped++; continue; }
+            const payload = {
+              id,
+              name: r['Name'] || r['Company Name'] || id,
+              type: r['Type'] || 'Drilling Contractor',
+              country: r['Country'] || '',
+              contact: r['Contact'] || '',
+              email: r['Email'] || '',
+              status: r['Status'] || 'Active',
+            };
+            try {
+              const existing = COMPANIES.find(c => c.id === id);
+              if (existing) {
+                const res = await PUT(`/companies/${id}`, payload);
+                const idx = COMPANIES.findIndex(c => c.id === id);
+                if (idx >= 0) COMPANIES[idx] = res.data;
+              } else {
+                const res = await POST('/companies', payload);
+                COMPANIES.push(res.data);
+              }
+              added++;
+            } catch(e) { skipped++; }
+          }
+          renderCompanies();
+          showToast(`${added} compan(ies) imported to database.${skipped ? ' ' + skipped + ' skipped.' : ''}`, 'success');
+        } catch(err) { showToast('Import failed: ' + err.message, 'error'); }
+      }
+
+      window.importUsers = async function importUsers(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        event.target.value = '';
+        showToast('Importing users…', 'info');
+        try {
+          const rows = await readXlsx(file);
+          let added = 0, skipped = 0;
+          for (const r of rows) {
+            const email = (r['Email'] || '').toString().trim();
+            if (!email) { skipped++; continue; }
+            const payload = {
+              name: r['Name'] || email,
+              role: r['Role'] || 'Viewer',
+              dept: r['Department'] || r['Dept'] || '',
+              email,
+              color: r['Color'] || '#0070F2',
+              initials: r['Initials'] || '',
+              active: r['Active'] !== undefined ? Boolean(r['Active']) : true,
+            };
+            try {
+              const existing = USERS.find(u => u.email === email);
+              if (existing) {
+                const res = await PUT(`/users/${existing.id}`, payload);
+                const idx = USERS.findIndex(u => u.email === email);
+                if (idx >= 0) USERS[idx] = res.data;
+              } else {
+                const res = await POST('/users', payload);
+                USERS.push(res.data);
+              }
+              added++;
+            } catch(e) { skipped++; }
+          }
+          renderUsers();
+          showToast(`${added} user(s) imported to database.${skipped ? ' ' + skipped + ' skipped.' : ''}`, 'success');
+        } catch(err) { showToast('Import failed: ' + err.message, 'error'); }
+      }
+
+      window.importBOM = async function importBOM(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        event.target.value = '';
+        showToast('Importing BOM items…', 'info');
+        try {
+          const rows = await readXlsx(file);
+          let added = 0, skipped = 0;
+          for (const r of rows) {
+            const id = (r['BOM ID'] || r['ID'] || '').toString().trim();
+            const asset_id = (r['Asset ID'] || '').toString().trim();
+            if (!id || !asset_id) { skipped++; continue; }
+            const payload = {
+              id,
+              asset_id,
+              parent_id: r['Parent ID'] || null,
+              name: r['Name'] || id,
+              part_no: r['Part No'] || r['Part Number'] || '',
+              type: r['Type'] || 'Serialized',
+              serial: r['Serial'] || '',
+              manufacturer: r['Manufacturer'] || '',
+              qty: Number(r['Qty'] || r['Quantity'] || 1) || 1,
+              uom: r['UOM'] || 'EA',
+              unit_cost: Number(r['Unit Cost'] || 0) || 0,
+              lead_time: Number(r['Lead Time'] || 0) || 0,
+              status: r['Status'] || 'Active',
+              notes: r['Notes'] || '',
+            };
+            try {
+              const existing = BOM_ITEMS.find(b => b.id === id);
+              if (existing) {
+                const res = await PUT(`/bom/${id}`, payload);
+                const idx = BOM_ITEMS.findIndex(b => b.id === id);
+                if (idx >= 0) BOM_ITEMS[idx] = res.data;
+              } else {
+                const res = await POST('/bom', payload);
+                BOM_ITEMS.push(res.data);
+              }
+              added++;
+            } catch(e) { skipped++; }
+          }
+          renderBOMSection();
+          showToast(`${added} BOM item(s) imported to database.${skipped ? ' ' + skipped + ' skipped.' : ''}`, 'success');
+        } catch(err) { showToast('Import failed: ' + err.message, 'error'); }
+      }
+
+      window.importTransfers = async function importTransfers(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        event.target.value = '';
+        showToast('Importing transfers…', 'info');
+        try {
+          const rows = await readXlsx(file);
+          let added = 0, skipped = 0;
+          for (const r of rows) {
+            const id = (r['Transfer ID'] || r['ID'] || '').toString().trim();
+            const asset_id = (r['Asset ID'] || '').toString().trim();
+            if (!id || !asset_id) { skipped++; continue; }
+            const payload = {
+              id,
+              asset_id,
+              asset_name: r['Asset Name'] || '',
+              current_loc: r['Current Location'] || r['Current Loc'] || '',
+              destination: r['Destination'] || '',
+              dest_rig: r['Destination Rig'] || r['Dest Rig'] || '',
+              dest_company: r['Destination Company'] || r['Dest Company'] || '',
+              priority: r['Priority'] || 'Normal',
+              type: r['Type'] || 'Field to Field',
+              requested_by: r['Requested By'] || '',
+              request_date: r['Request Date'] || null,
+              required_date: r['Required Date'] || null,
+              reason: r['Reason'] || '',
+              instructions: r['Instructions'] || '',
+              status: r['Status'] || 'Pending',
+            };
+            try {
+              const existing = TRANSFERS.find(t => t.id === id);
+              if (existing) {
+                const res = await PUT(`/transfers/${id}`, payload);
+                const idx = TRANSFERS.findIndex(t => t.id === id);
+                if (idx >= 0) TRANSFERS[idx] = res.data;
+              } else {
+                const res = await POST('/transfers', payload);
+                TRANSFERS.push(res.data);
+              }
+              added++;
+            } catch(e) { skipped++; }
+          }
+          applyTransferFilters();
+          showToast(`${added} transfer(s) imported to database.${skipped ? ' ' + skipped + ' skipped.' : ''}`, 'success');
+        } catch(err) { showToast('Import failed: ' + err.message, 'error'); }
+      }
+
+      window.importMaintenance = async function importMaintenance(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        event.target.value = '';
+        showToast('Importing maintenance schedules…', 'info');
+        try {
+          const rows = await readXlsx(file);
+          let added = 0, skipped = 0;
+          for (const r of rows) {
+            const id = (r['Schedule ID'] || r['ID'] || '').toString().trim();
+            const asset_id = (r['Asset ID'] || '').toString().trim();
+            const next_due = (r['Next Due'] || '').toString().trim();
+            if (!id || !asset_id || !next_due) { skipped++; continue; }
+            const payload = {
+              id,
+              asset_id,
+              task: r['Task'] || 'Inspection',
+              type: r['Type'] || 'Inspection',
+              priority: r['Priority'] || 'Normal',
+              freq: Number(r['Frequency'] || r['Freq'] || 90) || 90,
+              last_done: r['Last Done'] || null,
+              next_due,
+              tech: r['Technician'] || r['Tech'] || '',
+              hours: Number(r['Hours'] || 0) || null,
+              cost: Number(r['Cost'] || 0) || null,
+              status: r['Status'] || 'Scheduled',
+              alert_days: Number(r['Alert Days'] || 14) || 14,
+              notes: r['Notes'] || '',
+            };
+            try {
+              const existing = MAINTENANCE.find(m => m.id === id);
+              if (existing) {
+                const res = await PUT(`/maintenance/${id}`, payload);
+                const idx = MAINTENANCE.findIndex(m => m.id === id);
+                if (idx >= 0) MAINTENANCE[idx] = res.data;
+              } else {
+                const res = await POST('/maintenance', payload);
+                MAINTENANCE.push(res.data);
+              }
+              added++;
+            } catch(e) { skipped++; }
+          }
+          applyMaintFilters();
+          showToast(`${added} schedule(s) imported to database.${skipped ? ' ' + skipped + ' skipped.' : ''}`, 'success');
+        } catch(err) { showToast('Import failed: ' + err.message, 'error'); }
+      }
+
+      window.importCertificates = async function importCertificates(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        event.target.value = '';
+        showToast('Importing certificates…', 'info');
+        try {
+          const rows = await readXlsx(file);
+          let added = 0, skipped = 0;
+          for (const r of rows) {
+            const cert_id = (r['Cert ID'] || r['Certificate ID'] || r['ID'] || '').toString().trim();
+            const asset_id = (r['Asset ID'] || '').toString().trim();
+            const inspection_type = (r['Inspection Type'] || '').toString().trim();
+            if (!cert_id || !asset_id || !inspection_type) { skipped++; continue; }
+            const payload = {
+              cert_id,
+              asset_id,
+              inspection_type,
+              last_inspection: r['Last Inspection'] || null,
+              next_inspection: r['Next Inspection'] || null,
+              validity_days: Number(r['Validity Days'] || 365) || 365,
+              alert_days: Number(r['Alert Days'] || 30) || 30,
+              cert_link: r['Cert Link'] || r['Certificate Link'] || '',
+              notes: r['Notes'] || '',
+            };
+            try {
+              const existing = CERTS.find(c => c.certId === cert_id || c.cert_id === cert_id);
+              if (existing) {
+                const res = await PUT(`/certificates/${cert_id}`, payload);
+                const idx = CERTS.findIndex(c => c.certId === cert_id || c.cert_id === cert_id);
+                if (idx >= 0) CERTS[idx] = normC(res.data);
+              } else {
+                const res = await POST('/certificates', payload);
+                CERTS.push(normC(res.data));
+              }
+              added++;
+            } catch(e) { skipped++; }
+          }
+          renderCertificates();
+          showToast(`${added} certificate(s) imported to database.${skipped ? ' ' + skipped + ' skipped.' : ''}`, 'success');
+        } catch(err) { showToast('Import failed: ' + err.message, 'error'); }
+      }
+
+      // ══════════════════════════════════
+      //  MODAL HELPERS
+      // ══════════════════════════════════
+
 
     })(); // end IIFE
   </script>
