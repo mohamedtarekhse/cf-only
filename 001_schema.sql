@@ -166,6 +166,17 @@ CREATE TABLE IF NOT EXISTS transfers (
   reason            TEXT,
   instructions      TEXT,
   status            TEXT DEFAULT 'Pending',
+  -- BOM sub-item (for component-level repair transfers)
+  bom_item_id       TEXT,
+  bom_item_name     TEXT,
+  bom_part_no       TEXT,
+  -- Vendor / Supplier / Workshop
+  vendor_name       TEXT,
+  vendor_type       TEXT,
+  po_number         TEXT,
+  vendor_contact    TEXT,
+  return_date       DATE,
+  -- Approval
   ops_approved_by   TEXT,
   ops_approved_date DATE,
   ops_action        TEXT,
@@ -178,6 +189,16 @@ CREATE TABLE IF NOT EXISTS transfers (
   updated_at        TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Migration: add new columns if upgrading from older schema
+ALTER TABLE transfers ADD COLUMN IF NOT EXISTS bom_item_id    TEXT;
+ALTER TABLE transfers ADD COLUMN IF NOT EXISTS bom_item_name  TEXT;
+ALTER TABLE transfers ADD COLUMN IF NOT EXISTS bom_part_no    TEXT;
+ALTER TABLE transfers ADD COLUMN IF NOT EXISTS vendor_name    TEXT;
+ALTER TABLE transfers ADD COLUMN IF NOT EXISTS vendor_type    TEXT;
+ALTER TABLE transfers ADD COLUMN IF NOT EXISTS po_number      TEXT;
+ALTER TABLE transfers ADD COLUMN IF NOT EXISTS vendor_contact TEXT;
+ALTER TABLE transfers ADD COLUMN IF NOT EXISTS return_date    DATE;
+
 -- ─── USERS ────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS app_users (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -187,14 +208,10 @@ CREATE TABLE IF NOT EXISTS app_users (
   email      TEXT UNIQUE NOT NULL,
   color      TEXT DEFAULT '#0070F2',
   initials   TEXT,
-  password   TEXT,
   active     BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-
--- Add password column if upgrading from older schema
-ALTER TABLE app_users ADD COLUMN IF NOT EXISTS password TEXT;
 
 -- ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS notifications (

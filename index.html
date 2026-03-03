@@ -3517,11 +3517,12 @@ Asset Management System</textarea>
           </div>
           <div class="form-group">
             <label class="form-label">Transfer Type</label>
-            <select class="form-select" id="tr_type">
+            <select class="form-select" id="tr_type" onchange="onTrTypeChange()">
               <option>Field to Field</option>
               <option>Field to Warehouse</option>
               <option>Warehouse to Field</option>
               <option>Rig to Rig</option>
+              <option>For Repair</option>
               <option>For Maintenance</option>
               <option>For Inspection</option>
               <option>Return to Owner</option>
@@ -3553,6 +3554,55 @@ Asset Management System</textarea>
           <label class="form-label">Special Instructions / Handling Notes</label>
           <textarea class="form-textarea" id="tr_instructions" rows="2"
             placeholder="Any special transport requirements, safety notes, or handling instructions..."></textarea>
+        </div>
+
+        <!-- BOM Sub-Item (shown when Transfer Type = For Repair/Maintenance) -->
+        <div class="form-group" id="trBomGroup" style="display:none">
+          <label class="form-label"><i class="fas fa-list-ul" style="color:var(--sap-blue)"></i> BOM Sub-Item / Component <span style="color:var(--sap-text-muted);font-weight:400">(optional — select specific part being sent)</span></label>
+          <select class="form-select" id="tr_bomItem" onchange="onTrBomItemChange()">
+            <option value="">— Whole Asset (no specific component) —</option>
+          </select>
+          <div id="trBomItemDetail" style="display:none;margin-top:6px;padding:8px 12px;background:#F0F4FF;border:1px solid #C2DCFF;border-radius:6px;font-size:12px;color:#0040B0;display:flex;gap:12px;flex-wrap:wrap"></div>
+        </div>
+
+        <!-- Vendor / Supplier / Workshop -->
+        <div style="background:#FFF8E1;border:1px solid #FFE082;border-radius:8px;padding:14px 16px;margin-top:4px">
+          <div style="font-weight:600;font-size:12.5px;color:#7B5800;margin-bottom:10px;display:flex;align-items:center;gap:6px">
+            <i class="fas fa-store"></i> Vendor / Supplier / Workshop Details
+            <span style="font-weight:400;color:#A07000;font-size:11.5px">(required for repair transfers)</span>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Vendor / Supplier / Workshop Name</label>
+              <input class="form-input" id="tr_vendorName" placeholder="e.g. Al-Rashid Workshop, Baker Hughes, NOV...">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Vendor Type</label>
+              <select class="form-select" id="tr_vendorType">
+                <option value="">— Select Type —</option>
+                <option value="Workshop">Workshop</option>
+                <option value="Supplier">Supplier</option>
+                <option value="Vendor">Vendor</option>
+                <option value="OEM">OEM / Manufacturer</option>
+                <option value="Subcontractor">Subcontractor</option>
+                <option value="Internal">Internal</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">PO Number <span style="color:var(--sap-text-muted);font-weight:400">(Purchase Order)</span></label>
+              <input class="form-input" id="tr_poNumber" placeholder="e.g. PO-2024-0042">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Estimated Return Date</label>
+              <input class="form-input" type="date" id="tr_returnDate">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Vendor Contact / Notes</label>
+            <input class="form-input" id="tr_vendorContact" placeholder="Contact name, phone, email, or address...">
+          </div>
         </div>
 
         <!-- Approval Route Info Box -->
@@ -5138,10 +5188,18 @@ Asset Management System</textarea>
         COMPANIES.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
 
       // Clear form
-      ['tr_destination', 'tr_reason', 'tr_instructions'].forEach(id => document.getElementById(id).value = '');
+      ['tr_destination', 'tr_reason', 'tr_instructions',
+       'tr_vendorName', 'tr_vendorContact', 'tr_poNumber'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = '';
+      });
       document.getElementById('tr_priority').value = 'Normal';
       document.getElementById('tr_type').value = 'Field to Field';
       document.getElementById('tr_requiredDate').value = '';
+      const retEl = document.getElementById('tr_returnDate'); if (retEl) retEl.value = '';
+      const vtEl = document.getElementById('tr_vendorType'); if (vtEl) vtEl.value = '';
+      document.getElementById('trBomGroup').style.display = 'none';
+      document.getElementById('tr_bomItem').innerHTML = '<option value="">— Whole Asset (no specific component) —</option>';
+      const bd = document.getElementById('trBomItemDetail'); if (bd) bd.style.display = 'none';
 
       document.getElementById('transferModalTitle').textContent = 'Asset Transfer Request';
 
@@ -5152,6 +5210,7 @@ Asset Management System</textarea>
           document.getElementById('trAssetSelectorGroup').style.display = 'none';
           updateTransferBanner(a);
           document.getElementById('tr_currentLoc').value = a.location || '—';
+          populateTransferBOM(assetId);
         }
       } else {
         document.getElementById('trAssetSelectorGroup').style.display = '';
@@ -5164,12 +5223,52 @@ Asset Management System</textarea>
 
     function onTransferAssetChange() {
       const assetId = document.getElementById('tr_asset').value;
-      if (!assetId) { resetTransferBanner(); document.getElementById('tr_currentLoc').value = ''; return; }
+      if (!assetId) {
+        resetTransferBanner();
+        document.getElementById('tr_currentLoc').value = '';
+        document.getElementById('tr_bomItem').innerHTML = '<option value="">— Whole Asset (no specific component) —</option>';
+        return;
+      }
       const a = ASSETS.find(x => x.assetId === assetId);
       if (a) {
         document.getElementById('tr_currentLoc').value = a.location || '—';
         updateTransferBanner(a);
+        populateTransferBOM(assetId);
       }
+    }
+
+    function populateTransferBOM(assetId) {
+      const sel = document.getElementById('tr_bomItem');
+      const items = BOM_ITEMS.filter(b => b.assetId === assetId || b.asset_id === assetId);
+      sel.innerHTML = '<option value="">— Whole Asset (no specific component) —</option>' +
+        items.map(b => {
+          const label = [b.name, b.partNo ? `P/N: ${b.partNo}` : '', b.manufacturer || ''].filter(Boolean).join(' · ');
+          return `<option value="${b.id}">${label}</option>`;
+        }).join('');
+      // Show/hide BOM group based on transfer type
+      onTrTypeChange();
+    }
+
+    function onTrTypeChange() {
+      const type = document.getElementById('tr_type').value;
+      const isRepair = ['For Maintenance', 'For Inspection', 'For Repair'].includes(type);
+      document.getElementById('trBomGroup').style.display = isRepair ? '' : 'none';
+    }
+
+    function onTrBomItemChange() {
+      const id = document.getElementById('tr_bomItem').value;
+      const detail = document.getElementById('trBomItemDetail');
+      if (!id) { detail.style.display = 'none'; return; }
+      const b = BOM_ITEMS.find(x => x.id === id);
+      if (!b) { detail.style.display = 'none'; return; }
+      detail.style.display = 'flex';
+      detail.innerHTML = [
+        b.partNo   ? `<span><strong>Part No:</strong> ${b.partNo}</span>` : '',
+        b.serial   ? `<span><strong>Serial:</strong> ${b.serial}</span>` : '',
+        b.manufacturer ? `<span><strong>Mfg:</strong> ${b.manufacturer}</span>` : '',
+        b.type     ? `<span><strong>Type:</strong> ${b.type}</span>` : '',
+        b.qty !== undefined ? `<span><strong>Qty:</strong> ${b.qty} ${b.uom||''}</span>` : '',
+      ].filter(Boolean).join('<span style="color:#C2DCFF">|</span>');
     }
 
     function updateTransferBanner(a) {
@@ -5257,6 +5356,7 @@ Asset Management System</textarea>
         </div>
       </td>
       <td>
+        ${t.vendorName ? `<div style="font-size:10.5px;background:#FFF3E0;color:#E65100;border-radius:3px;padding:1px 6px;margin-bottom:2px;display:inline-block"><i class="fas fa-store" style="font-size:9px"></i> ${t.vendorName}${t.poNumber ? ' · PO: '+t.poNumber : ''}</div>` : ''}
         <div style="display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:500;color:var(--sap-blue)">
           <i class="fas fa-location-dot" style="font-size:10px"></i>${t.destination}
         </div>
@@ -5326,6 +5426,7 @@ Asset Management System</textarea>
       // Summary grid
       document.getElementById('approvalSummaryGrid').innerHTML = [
         ['Asset', `<strong>${t.assetName}</strong> <span style="font-family:monospace;font-size:11px;color:var(--sap-text-muted)">${t.assetId}</span>`],
+        ...(t.bomItemName ? [['Component / Part', `<span style="background:#EBF4FF;color:#0040B0;padding:2px 8px;border-radius:4px;font-size:12px"><i class="fas fa-cog"></i> ${t.bomItemName}${t.bomPartNo ? ' &nbsp;<span style=\'font-family:monospace;font-size:11px\'>P/N: '+t.bomPartNo+'</span>' : ''}</span>`]] : []),
         ['Transfer Type', t.type],
         ['Current Location', `<i class="fas fa-map-marker-alt" style="color:var(--sap-text-muted)"></i> ${t.currentLoc}`],
         ['Destination', `<i class="fas fa-location-dot" style="color:var(--sap-blue)"></i> <strong>${t.destination}</strong>`],
@@ -5335,6 +5436,9 @@ Asset Management System</textarea>
         ['Required By', t.requiredDate || '—'],
         ['Reason', t.reason],
         ['Instructions', t.instructions || '—'],
+        ...(t.vendorName ? [['Vendor / Workshop', `<strong>${t.vendorName}</strong>${t.vendorType ? ' <span style="color:var(--sap-text-muted)">— '+t.vendorType+'</span>' : ''}${t.vendorContact ? '<br><span style="font-size:11.5px;color:var(--sap-text-muted)">'+t.vendorContact+'</span>' : ''}`]] : []),
+        ...(t.poNumber ? [['PO Number', `<span style="font-family:monospace;font-weight:600;color:#0040B0">${t.poNumber}</span>`]] : []),
+        ...(t.returnDate ? [['Est. Return Date', t.returnDate]] : []),
       ].map(([l, v]) => `<div class="detail-field"><div class="detail-label">${l}</div><div class="detail-value">${v}</div></div>`).join('');
 
       // Timeline
@@ -7215,13 +7319,23 @@ Instructions:
         return {
           ...t,
           assetId,
-          assetName:   t.asset_name   || t.assetName   || asset?.name    || assetId,
-          currentLoc:  t.current_loc  || t.currentLoc  || asset?.location || '',
-          destRig:     t.dest_rig     || t.destRig     || '',
-          destCompany: t.dest_company || t.destCompany || '',
-          requestedBy: t.requested_by || t.requestedBy || '',
-          requestDate: t.request_date || t.requestDate || '',
-          requiredDate:t.required_date|| t.requiredDate|| '',
+          assetName:    t.asset_name    || t.assetName    || asset?.name     || assetId,
+          currentLoc:   t.current_loc   || t.currentLoc   || asset?.location || '',
+          destRig:      t.dest_rig      || t.destRig      || '',
+          destCompany:  t.dest_company  || t.destCompany  || '',
+          requestedBy:  t.requested_by  || t.requestedBy  || '',
+          requestDate:  t.request_date  || t.requestDate  || '',
+          requiredDate: t.required_date || t.requiredDate  || '',
+          // BOM sub-item
+          bomItemId:    t.bom_item_id   || t.bomItemId    || null,
+          bomItemName:  t.bom_item_name || t.bomItemName  || null,
+          bomPartNo:    t.bom_part_no   || t.bomPartNo    || null,
+          // Vendor / workshop
+          vendorName:   t.vendor_name   || t.vendorName   || null,
+          vendorType:   t.vendor_type   || t.vendorType   || null,
+          poNumber:     t.po_number     || t.poNumber     || null,
+          vendorContact:t.vendor_contact|| t.vendorContact|| null,
+          returnDate:   t.return_date   || t.returnDate   || null,
           opsApproval: { by: t.ops_approved_by, date: t.ops_approved_date, action: t.ops_action, comment: t.ops_comment },
           mgrApproval: { by: t.mgr_approved_by, date: t.mgr_approved_date, action: t.mgr_action, comment: t.mgr_comment }
         };
@@ -7532,9 +7646,20 @@ Instructions:
         const assetId = document.getElementById('tr_asset').value;
         const destination = document.getElementById('tr_destination').value.trim();
         const reason = document.getElementById('tr_reason').value.trim();
+        const type = document.getElementById('tr_type').value;
         if (!assetId) { showToast('Please select an asset.', 'error'); return; }
         if (!destination) { showToast('Please enter a destination.', 'error'); return; }
         if (!reason) { showToast('Please provide a reason.', 'error'); return; }
+
+        // Vendor required for repair/maintenance transfers
+        const isRepair = ['For Repair', 'For Maintenance', 'For Inspection'].includes(type);
+        const vendorName = (document.getElementById('tr_vendorName')?.value || '').trim();
+        if (isRepair && !vendorName) {
+          showToast('Please enter a vendor / workshop name for repair transfers.', 'error'); return;
+        }
+
+        const bomItemId = document.getElementById('tr_bomItem')?.value || null;
+        const bomItem = bomItemId ? BOM_ITEMS.find(b => b.id === bomItemId) : null;
 
         const asset = ASSETS.find(x => x.assetId === assetId);
         const payload = {
@@ -7543,20 +7668,33 @@ Instructions:
           dest_rig: document.getElementById('tr_destRig').value || null,
           dest_company: document.getElementById('tr_destCompany').value || null,
           priority: document.getElementById('tr_priority').value,
-          type: document.getElementById('tr_type').value,
+          type,
           current_loc: asset?.location || '',
           required_date: document.getElementById('tr_requiredDate').value || null,
           reason,
           instructions: document.getElementById('tr_instructions').value,
-          requested_by: 'Ahmad Mohammed',
+          requested_by: window.__currentUserName || 'Unknown',
+          // BOM sub-item fields
+          bom_item_id:   bomItemId || null,
+          bom_item_name: bomItem ? (bomItem.name || '') : null,
+          bom_part_no:   bomItem ? (bomItem.partNo || '') : null,
+          // Vendor / Supplier / Workshop fields
+          vendor_name:    vendorName || null,
+          vendor_type:    document.getElementById('tr_vendorType')?.value || null,
+          po_number:      (document.getElementById('tr_poNumber')?.value || '').trim() || null,
+          vendor_contact: (document.getElementById('tr_vendorContact')?.value || '').trim() || null,
+          return_date:    document.getElementById('tr_returnDate')?.value || null,
         };
+        // Remove null values to keep payload clean
+        Object.keys(payload).forEach(k => payload[k] === null && delete payload[k]);
 
         try {
           const r = await POST('/transfers', payload);
           TRANSFERS.push(normT(r.data));
           closeModal('transferRequestModal');
           rerender('renderTransfers', 'updateTransferKPIs');
-          showToast(`Transfer request ${r.data.id} submitted ✓`, 'success');
+          const label = bomItem ? ` (${bomItem.name})` : '';
+          showToast(`Transfer request ${r.data.id} submitted ✓${vendorName ? ' — Vendor: ' + vendorName : ''}`, 'success');
         } catch (e) { showToast('Submit failed: ' + e.message, 'error'); }
       };
 
