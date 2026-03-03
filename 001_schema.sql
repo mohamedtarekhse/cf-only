@@ -187,10 +187,14 @@ CREATE TABLE IF NOT EXISTS app_users (
   email      TEXT UNIQUE NOT NULL,
   color      TEXT DEFAULT '#0070F2',
   initials   TEXT,
+  password   TEXT,
   active     BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Add password column if upgrading from older schema
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS password TEXT;
 
 -- ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS notifications (

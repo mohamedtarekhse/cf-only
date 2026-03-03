@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Asset Management System – Land Rig & Contracting</title>
 
   <!-- ═══════════════════════════════════════════════════
@@ -169,12 +169,17 @@
     .secondary-bar {
       background: #fff;
       border-bottom: 1px solid var(--sap-border);
-      padding: 0 16px;
+      padding: 0 8px;
       display: flex;
       align-items: center;
-      height: 42px;
+      height: 40px;
       gap: 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
     }
+    .secondary-bar::-webkit-scrollbar { display: none; }
 
     .nav-tab {
       height: 42px;
@@ -225,10 +230,10 @@
     /* ── CONTENT AREA ── */
     .content {
       flex: 1;
-      padding: 16px;
+      padding: 10px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 8px;
       overflow: auto;
     }
 
@@ -241,11 +246,11 @@
     }
 
     .card-header {
-      padding: 10px 16px;
+      padding: 7px 12px;
       border-bottom: 1px solid var(--sap-border);
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       flex-wrap: wrap;
     }
 
@@ -285,16 +290,16 @@
 
     /* ── BUTTONS ── */
     .btn {
-      height: 32px;
-      padding: 0 14px;
+      height: 28px;
+      padding: 0 10px;
       border-radius: var(--radius);
       font-family: inherit;
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 500;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       border: 1px solid transparent;
       transition: all 0.15s;
       white-space: nowrap;
@@ -363,14 +368,17 @@
 
     /* ── SEARCH / FILTER BAR ── */
     .filter-bar {
-      padding: 10px 16px;
+      padding: 5px 10px;
       background: #FAFBFC;
       border-bottom: 1px solid var(--sap-border);
       display: flex;
-      gap: 8px;
+      gap: 6px;
       flex-wrap: wrap;
       align-items: flex-end;
+      overflow-x: auto;
+      scrollbar-width: none;
     }
+    .filter-bar::-webkit-scrollbar { display: none; }
 
     .filter-group {
       display: flex;
@@ -388,17 +396,17 @@
 
     .filter-input,
     .filter-select {
-      height: 32px;
-      padding: 0 10px;
+      height: 28px;
+      padding: 0 8px;
       border: 1px solid var(--sap-border);
       border-radius: var(--radius);
       font-family: inherit;
-      font-size: 13px;
+      font-size: 12.5px;
       color: var(--sap-text);
       background: #fff;
       outline: none;
       transition: border 0.15s;
-      min-width: 140px;
+      min-width: 120px;
     }
 
     .filter-input:focus,
@@ -428,7 +436,12 @@
     /* ── TABLE ── */
     .table-wrap {
       overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: #ccc transparent;
     }
+    .table-wrap::-webkit-scrollbar { height: 4px; }
+    .table-wrap::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
 
     table {
       width: 100%;
@@ -444,13 +457,13 @@
     th {
       background: #F0F2F4;
       border-bottom: 2px solid var(--sap-border);
-      padding: 8px 12px;
+      padding: 5px 10px;
       text-align: left;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 600;
       color: var(--sap-text-muted);
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.4px;
       white-space: nowrap;
       user-select: none;
       cursor: pointer;
@@ -471,9 +484,9 @@
     }
 
     td {
-      padding: 9px 12px;
+      padding: 5px 10px;
       border-bottom: 1px solid #ECEEF0;
-      font-size: 13px;
+      font-size: 12.5px;
       vertical-align: middle;
     }
 
@@ -1058,6 +1071,7 @@
       align-items: center;
       justify-content: center;
       display: none;
+      padding: 8px;
     }
 
     .modal-overlay.open {
@@ -1341,7 +1355,7 @@
       background: #fff;
       border: 1px solid var(--sap-border);
       border-radius: var(--radius);
-      padding: 14px 16px;
+      padding: 10px 14px;
       display: flex;
       flex-direction: column;
       gap: 4px;
@@ -1361,7 +1375,7 @@
     }
 
     .kpi-value {
-      font-size: 28px;
+      font-size: 22px;
       font-weight: 700;
       color: var(--sap-text);
       font-family: 'IBM Plex Mono', monospace;
@@ -1768,22 +1782,187 @@
     }
 
     /* Responsive */
-    @media (max-width: 700px) {
-      .kpi-row {
-        grid-template-columns: 1fr 1fr;
+
+    /* ═══════════════════════════════════════════════════════
+       COMPACT ROW HEIGHT — smallest possible everywhere
+    ═══════════════════════════════════════════════════════ */
+    th { padding: 5px 8px; font-size: 11px; }
+    td { padding: 4px 8px; font-size: 12px; line-height: 1.35; }
+    .shell-bar { height: 40px; }
+    .secondary-bar { height: 36px; }
+    .nav-tab { height: 36px; padding: 0 12px; font-size: 12.5px; }
+    .card-header { padding: 7px 12px; gap: 6px; }
+    .card-title { font-size: 13.5px; }
+    .filter-bar { padding: 6px 10px; gap: 6px; }
+    .filter-input, .filter-select { height: 28px; font-size: 12px; }
+    .btn { padding: 4px 10px; font-size: 12px; height: 28px; }
+    .btn-icon { width: 26px; height: 26px; font-size: 12px; }
+    .kpi-card { padding: 10px 14px; }
+    .kpi-value { font-size: 22px; }
+    .content { padding: 10px; gap: 8px; }
+    .status-badge { padding: 1px 7px; font-size: 11px; }
+    .tag { padding: 1px 6px; font-size: 11px; }
+
+    /* ═══════════════════════════════════════════════════════
+       TABLET  (≤ 1024px)
+    ═══════════════════════════════════════════════════════ */
+    @media (max-width: 1024px) {
+      .shell-logo span:not(.sap) { display: none; }
+      .shell-app-title { font-size: 12.5px; }
+      .nav-tab { padding: 0 10px; font-size: 12px; gap: 4px; }
+      .nav-tab i { font-size: 12px; }
+      .kpi-row { gap: 8px; }
+      .kpi-card { padding: 8px 12px; }
+      .kpi-value { font-size: 20px; }
+      .content { padding: 10px; gap: 8px; }
+      .filter-bar { flex-wrap: wrap; gap: 6px; }
+      .search-wrap .filter-input { min-width: 160px; }
+      .filter-input, .filter-select { min-width: 110px; }
+      .detail-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       MOBILE  (≤ 768px)
+    ═══════════════════════════════════════════════════════ */
+    @media (max-width: 768px) {
+      /* Shell */
+      .shell-bar { padding: 0 10px; gap: 8px; height: 40px; }
+      .shell-divider { display: none; }
+      .shell-app-title { display: none; }
+      .shell-logo { font-size: 13px; margin-right: 0; }
+      .shell-btn { width: 32px; height: 32px; font-size: 14px; }
+      .user-avatar { width: 28px; height: 28px; font-size: 11px; }
+
+      /* Nav tabs — horizontal scroll */
+      .secondary-bar {
+        overflow-x: auto; overflow-y: hidden; height: auto;
+        padding: 0; gap: 0; scrollbar-width: none; flex-wrap: nowrap;
+      }
+      .secondary-bar::-webkit-scrollbar { display: none; }
+      .nav-tab { padding: 0 10px; font-size: 11.5px; height: 34px; flex-shrink: 0; gap: 3px; }
+      .nav-tab i { font-size: 11px; }
+
+      /* Content */
+      .content { padding: 8px; gap: 8px; }
+      .card-header { padding: 6px 10px; flex-wrap: wrap; gap: 5px; }
+      .card-title { font-size: 12.5px; }
+
+      /* Filter bar scrollable on mobile */
+      .filter-bar {
+        overflow-x: auto; flex-wrap: nowrap; padding: 6px 8px; gap: 6px;
+        scrollbar-width: none;
+      }
+      .filter-bar::-webkit-scrollbar { display: none; }
+      .filter-group { flex-shrink: 0; }
+      .filter-label { font-size: 10px; }
+      .filter-input, .filter-select { height: 26px; font-size: 11.5px; min-width: 100px; padding: 0 6px; }
+      .search-wrap .filter-input { min-width: 140px; padding-left: 26px; }
+      .search-icon { font-size: 11px; left: 8px; }
+
+      /* Table */
+      th { padding: 4px 6px; font-size: 10.5px; letter-spacing: 0; }
+      td { padding: 3px 6px; font-size: 11.5px; }
+      .table-wrap { -webkit-overflow-scrolling: touch; }
+
+      /* KPI cards — 2 per row */
+      .kpi-row { grid-template-columns: 1fr 1fr; gap: 6px; }
+      .kpi-card { padding: 8px 10px; border-radius: 6px; }
+      .kpi-icon { font-size: 18px; width: 32px; height: 32px; }
+      .kpi-value { font-size: 18px; }
+      .kpi-label { font-size: 10.5px; }
+      .kpi-sub { font-size: 10px; }
+
+      /* Buttons */
+      .btn { padding: 3px 8px; font-size: 11.5px; height: 26px; }
+      .btn i { font-size: 11px; }
+      .btn-icon { width: 24px; height: 24px; font-size: 11px; }
+
+      /* Status & tags */
+      .status-badge { padding: 1px 6px; font-size: 10.5px; }
+      .tag { padding: 1px 5px; font-size: 10.5px; }
+
+      /* Modals — full width on mobile */
+      .modal { width: 100% !important; max-width: 100vw !important;
+               max-height: 92vh; border-radius: 12px 12px 0 0; }
+      .modal-overlay { align-items: flex-end; }
+      .asset-popup { width: 100% !important; max-width: 100vw !important;
+                     max-height: 90vh; border-radius: 12px 12px 0 0; }
+      .modal-header { padding: 10px 14px; }
+      .modal-header h2 { font-size: 14px; }
+      .modal-footer { padding: 8px 14px; gap: 6px; flex-wrap: wrap; }
+      .modal-footer .btn { flex: 1; justify-content: center; min-width: 80px; }
+      .popup-header { padding: 10px 12px; gap: 8px; }
+      .popup-header-title { font-size: 14px; }
+      .popup-header-sub { font-size: 11px; }
+      .popup-body { padding: 10px !important; }
+      .popup-tabs { gap: 0; overflow-x: auto; scrollbar-width: none; }
+      .popup-tabs::-webkit-scrollbar { display: none; }
+      .popup-tab { padding: 6px 10px; font-size: 11.5px; flex-shrink: 0; }
+      .detail-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .detail-field { gap: 2px; }
+      .detail-label { font-size: 10px; }
+      .detail-value { font-size: 12px; }
+      .form-row { grid-template-columns: 1fr; gap: 8px; }
+      .form-group { gap: 3px; }
+      .form-label { font-size: 11.5px; }
+      .form-input, .form-select, .form-textarea { font-size: 12.5px; padding: 6px 8px; }
+
+      /* User grid */
+      .user-grid { grid-template-columns: 1fr; gap: 8px; }
+      .user-card { padding: 10px; gap: 10px; }
+
+      /* Chat panel */
+      #aiChatPanel {
+        bottom: 0; right: 0; left: 0; width: 100% !important;
+        max-width: 100vw !important; border-radius: 16px 16px 0 0;
+        height: 75vh; max-height: 75vh;
+      }
+      #aiFab { bottom: 16px; right: 16px; width: 48px; height: 48px; font-size: 20px; }
+      .provider-btn { padding: 2px 7px; font-size: 10px; }
+
+      /* BOM tree */
+      .bom-header { display: none; }
+      .bom-row { flex-wrap: wrap; gap: 2px; }
+      .bom-cell { font-size: 11px; }
+      .bom-indent { font-size: 12px; }
+
+      /* Transfers KPI mini cards */
+      .tr-kpi-row { grid-template-columns: repeat(3, 1fr) !important; gap: 5px !important; }
+
+      /* Maintenance */
+      .maint-kpi-row { grid-template-columns: repeat(2, 1fr) !important; }
+
+      /* Panels (notif, user menu) */
+      .notif-panel, .user-menu {
+        right: 4px !important; width: calc(100vw - 8px) !important;
+        max-width: 100vw !important;
       }
 
-      .detail-grid {
-        grid-template-columns: 1fr 1fr;
-      }
+      /* Rig selector */
+      .rig-selector { padding: 8px 10px; gap: 6px; }
 
-      .user-grid {
-        grid-template-columns: 1fr;
-      }
+      /* Section title */
+      .section-title { font-size: 12px; padding: 6px 0; }
+    }
 
-      .form-row {
-        grid-template-columns: 1fr;
-      }
+    /* ═══════════════════════════════════════════════════════
+       SMALL MOBILE  (≤ 480px)
+    ═══════════════════════════════════════════════════════ */
+    @media (max-width: 480px) {
+      .nav-tab span { display: none; }   /* icon only */
+      .nav-tab i { font-size: 14px; }
+      .nav-tab { padding: 0 12px; width: auto; }
+      .kpi-row { grid-template-columns: 1fr 1fr; }
+      .kpi-value { font-size: 16px; }
+      .shell-logo { font-size: 12px; }
+      th { padding: 3px 5px; font-size: 10px; }
+      td { padding: 3px 5px; font-size: 11px; }
+      .card-header { padding: 5px 8px; }
+      .btn { padding: 2px 7px; font-size: 11px; height: 24px; }
+      .btn-text { display: none; } /* hide button text, keep icon */
+      .detail-grid { grid-template-columns: 1fr; }
+      #aiChatPanel { height: 85vh; max-height: 85vh; }
+      .popup-header-icon { width: 32px; height: 32px; font-size: 14px; }
     }
   </style>
 </head>
@@ -1836,8 +2015,6 @@
       if (!json.success) throw new Error(json.error || 'Could not reach server');
 
       const users = json.data || [];
-      // Match by email (case-insensitive). Password check = any non-empty string
-      // for demo. Replace with real hashed password check if needed.
       const user = users.find(u => (u.email || '').toLowerCase() === email);
 
       if (!user) {
@@ -1848,6 +2025,17 @@
         showLoginError('This account has been deactivated. Contact your administrator.');
         return;
       }
+
+      // ── Password check ──────────────────────────────────────────
+      // If the user has a password set in the database, verify it.
+      // Plain-text comparison (upgrade to bcrypt on server-side when ready).
+      if (user.password) {
+        if (password !== user.password) {
+          showLoginError('Incorrect password. Please try again.');
+          return;
+        }
+      }
+      // If user.password is null/empty in DB → no password set, allow any (legacy)
 
       // ── Success ──
       window.__currentUser = user;
@@ -1861,22 +2049,21 @@
       if (nameEl) nameEl.textContent = user.name;
       if (roleEl) roleEl.textContent = user.role;
       if (avatarEl) {
-        avatarEl.textContent = user.initials || user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+        const initials = user.initials
+          ? user.initials.toUpperCase().slice(0,2)
+          : user.name.split(' ').filter(Boolean).map(n=>n[0]).join('').slice(0,2).toUpperCase();
+        avatarEl.textContent = initials;
         avatarEl.style.background = user.color || '#0070F2';
       }
 
       // Hide login screen
       document.getElementById('loginScreen').style.display = 'none';
 
-      // Session persistence — sessionStorage always, localStorage if Remember Me
-      try { sessionStorage.setItem('ams_user', JSON.stringify(user)); } catch (e) { }
-      try {
-        if (document.getElementById('rememberMe')?.checked) {
-          localStorage.setItem('ams_user', JSON.stringify(user));
-        } else {
-          localStorage.removeItem('ams_user');
-        }
-      } catch (e) { }
+      // Save session — strip password before storing for basic security
+      const { password: _pw, ...sessionUser } = user;
+      try { localStorage.setItem('ams_user', JSON.stringify(sessionUser)); } catch (e) { }
+      try { sessionStorage.setItem('ams_user', JSON.stringify(sessionUser)); } catch (e) { }
+      window.__sessionRestored = true;
 
       // Toast in the main app
       if (typeof showToast === 'function') {
@@ -1912,6 +2099,9 @@
 
     try { sessionStorage.removeItem('ams_user'); } catch (e) { }
     try { localStorage.removeItem('ams_user'); } catch (e) { }
+    // Reset bootstrap flags so next login triggers full bootstrap
+    window.__bootstrapped = false;
+    window.__bootstrapDone = false;
 
     // Clear password field for security
     const pwEl = document.getElementById('loginPassword');
@@ -1930,42 +2120,37 @@
   // ── Auto-restore session on page load ────────────────────────────────────────
   (function restoreSession() {
     try {
-      // localStorage = "Remember Me" (survives browser close)
-      // sessionStorage = normal session (tab only)
-      const saved = localStorage.getItem('ams_user') || sessionStorage.getItem('ams_user');
-      if (!saved) return;
-
-      const user = JSON.parse(saved);
+      const raw = localStorage.getItem('ams_user') || sessionStorage.getItem('ams_user');
+      if (!raw) return;
+      const user = JSON.parse(raw);
       if (!user || !user.email) return;
 
-      window.__currentUser = user;
+      // Restore user globals
+      window.__currentUser     = user;
       window.__currentUserRole = user.role;
       window.__currentUserName = user.name;
+      window.__sessionRestored = true;   // flag for IIFE to pick up
 
-      // Pre-fill email field and tick Remember Me if restored from localStorage
-      try {
-        const emailEl = document.getElementById('loginEmail');
-        if (emailEl) emailEl.value = user.email;
-        if (localStorage.getItem('ams_user')) {
-          const cb = document.getElementById('rememberMe');
-          if (cb) cb.checked = true;
-        }
-      } catch(e) {}
-
-      // Update shell user display
+      // Update shell bar
       const nameEl   = document.getElementById('shellUserName');
       const roleEl   = document.getElementById('shellUserRole');
       const avatarEl = document.getElementById('shellUserAvatar');
       if (nameEl)   nameEl.textContent = user.name;
       if (roleEl)   roleEl.textContent = user.role;
       if (avatarEl) {
-        avatarEl.textContent = user.initials || user.name.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase();
+        const ini = user.initials
+          ? user.initials.toUpperCase().slice(0,2)
+          : user.name.split(' ').filter(Boolean).map(n=>n[0]).join('').slice(0,2).toUpperCase();
+        avatarEl.textContent = ini;
         avatarEl.style.background = user.color || '#0070F2';
       }
 
-      document.getElementById('loginScreen').style.display = 'none';
+      // Hide login screen immediately
+      const ls = document.getElementById('loginScreen');
+      if (ls) ls.style.display = 'none';
+
     } catch (e) {
-      // No valid session — login screen stays visible
+      try { localStorage.removeItem('ams_user'); sessionStorage.removeItem('ams_user'); } catch(_) {}
     }
   })();
 
@@ -3961,6 +4146,7 @@ Asset Management System</textarea>
       initMaintenance();
       // Apply role-based UI restrictions after all data is loaded
       if (typeof applyRoleUI === 'function') applyRoleUI();
+      window.__bootstrapDone = true;
     };
 
     // ══════════════════════════════════
@@ -4463,7 +4649,7 @@ Asset Management System</textarea>
     function renderUsers() {
       document.getElementById('userGrid').innerHTML = USERS.map(u => `
     <div class="user-card">
-      <div class="user-avatar-lg" style="background:${u.color};color:#fff">${u.initials}</div>
+      <div class="user-avatar-lg" style="background:${u.color||'#0070F2'};color:#fff">${u.initials ? u.initials.toUpperCase().slice(0,2) : u.name.split(' ').filter(Boolean).map(n=>n[0]).join('').slice(0,2).toUpperCase()}</div>
       <div>
         <div style="font-weight:600;font-size:14px">${u.name}</div>
         <div style="font-size:12px;color:var(--sap-text-muted)">${u.role} · ${u.dept}</div>
@@ -7498,22 +7684,19 @@ Instructions:
       const _origDoLogin = window.doLogin;
       window.doLogin = async function() {
         await _origDoLogin.apply(this, arguments);
-        // If login succeeded (login screen hidden), run bootstrap
         const ls = document.getElementById('loginScreen');
-        if (ls && ls.style.display === 'none') {
+        if (ls && ls.style.display === 'none' && !window.__bootstrapDone) {
+          window.__bootstrapDone = true;
           bootstrap();
         }
       };
 
-      // Also try bootstrapping if already logged in (session restore)
-      document.addEventListener('DOMContentLoaded', function() {
-        setTimeout(function() {
-          const ls = document.getElementById('loginScreen');
-          if (ls && ls.style.display === 'none') {
-            bootstrap();
-          }
-        }, 300);
-      });
+      // If session was restored before this IIFE ran, boot immediately.
+      // DOMContentLoaded has already fired by the time scripts at page bottom run.
+      if (window.__sessionRestored && !window.__bootstrapDone) {
+        window.__bootstrapDone = true;
+        bootstrap();
+      }
 
 
       // ══════════════════════════════════════════════════════════════
@@ -7720,8 +7903,11 @@ Instructions:
               email,
               color: r['Color'] || '#0070F2',
               initials: r['Initials'] || '',
+              password: r['Password'] || r['password'] || null,
               active: r['Active'] !== undefined ? Boolean(r['Active']) : true,
             };
+            // Remove null password so existing passwords aren't overwritten on update
+            if (payload.password === null) delete payload.password;
             try {
               const existing = USERS.find(u => u.email === email);
               if (existing) {

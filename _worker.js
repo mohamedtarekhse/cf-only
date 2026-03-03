@@ -239,7 +239,7 @@ async function router(path, method, url, request, SB, KEY) {
 
   // USERS
   if (res==='users') {
-    if(method==='GET')    return ok(await sbGet(SB,KEY,'app_users',{order:'name.asc'}));
+    if(method==='GET')    return ok(await sbGet(SB,KEY,'app_users',{select:'id,name,role,dept,email,color,initials,password,active',order:'name.asc'}));
     if(method==='POST')   return ok(await sbPost(SB,KEY,'app_users',body));
     if(method==='PUT')  { const {id:_,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'app_users',{id:`eq.${id}`},u)); }
     if(method==='DELETE'){const r=await sbDelete(SB,KEY,'app_users',{id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
