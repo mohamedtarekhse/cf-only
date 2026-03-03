@@ -2176,7 +2176,7 @@
         <div class="card" style="flex:1;display:flex;flex-direction:column">
           <div class="card-header">
             <span class="card-title">Asset List <span class="record-count" id="assetCount"></span></span>
-            <button class="btn btn-primary" onclick="openAddAssetModal()"><i class="fas fa-plus"></i> New Asset</button>
+            <button id="btnNewAsset" class="btn btn-primary" onclick="openAddAssetModal()"><i class="fas fa-plus"></i> New Asset</button>
             <button class="btn btn-secondary" onclick="exportAssets()"><i class="fas fa-file-excel"></i> Export</button>
             <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()"><i
                 class="fas fa-upload"></i> Import</button>
@@ -2286,7 +2286,7 @@
         <div class="card">
           <div class="card-header">
             <span class="card-title">Contracts</span>
-            <button class="btn btn-primary"><i class="fas fa-plus"></i> New Contract</button>
+            <button id="btnNewContract" class="btn btn-primary"><i class="fas fa-plus"></i> New Contract</button>
             <button class="btn btn-secondary" onclick="exportContracts()"><i class="fas fa-file-excel"></i>
               Export</button>
             <button class="btn btn-secondary" onclick="document.getElementById('importFileContracts').click()"><i class="fas fa-upload"></i> Import</button>
@@ -2337,7 +2337,7 @@
         <div class="card">
           <div class="card-header">
             <span class="card-title">Land Rigs</span>
-            <button class="btn btn-primary"><i class="fas fa-plus"></i> New Rig</button>
+            <button id="btnNewRig" class="btn btn-primary"><i class="fas fa-plus"></i> New Rig</button>
             <button class="btn btn-secondary" onclick="document.getElementById('importFileRigs').click()"><i class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileRigs" accept=".xlsx,.xls,.csv" style="display:none" onchange="importRigs(event)">
           </div>
@@ -2367,7 +2367,7 @@
     <div class="section" id="section-companies">
       <div class="content">
         <div class="card">
-          <div class="card-header"><span class="card-title">Contracting Companies</span><button
+          <div class="card-header"><span class="card-title">Contracting Companies</span><button id="btnAddCompany"
               class="btn btn-primary"><i class="fas fa-plus"></i> Add Company</button>
             <button class="btn btn-secondary" onclick="document.getElementById('importFileCompanies').click()"><i class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileCompanies" accept=".xlsx,.xls,.csv" style="display:none" onchange="importCompanies(event)">
@@ -2397,7 +2397,7 @@
     <div class="section" id="section-users">
       <div class="content">
         <div class="card">
-          <div class="card-header"><span class="card-title">System Users</span><button class="btn btn-primary"><i
+          <div class="card-header"><span class="card-title">System Users</span><button id="btnAddUser" class="btn btn-primary"><i
                 class="fas fa-plus"></i> Add User</button>
             <button class="btn btn-secondary" onclick="document.getElementById('importFileUsers').click()"><i class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileUsers" accept=".xlsx,.xls,.csv" style="display:none" onchange="importUsers(event)">
@@ -2413,7 +2413,7 @@
         <div class="card">
           <div class="card-header">
             <span class="card-title">Bill of Materials <span class="record-count" id="bomCount"></span></span>
-            <button class="btn btn-primary" onclick="openBomModal()"><i class="fas fa-plus"></i> Add BOM</button>
+            <button id="btnAddBOM" class="btn btn-primary" onclick="openBomModal()"><i class="fas fa-plus"></i> Add BOM</button>
             <button class="btn btn-secondary" onclick="exportBOM()"><i class="fas fa-file-excel"></i> Export
               BOM</button>
             <button class="btn btn-secondary" onclick="document.getElementById('importFileBom').click()"><i class="fas fa-upload"></i> Import</button>
@@ -2496,7 +2496,7 @@
           <div class="card-header">
             <span class="card-title"><i class="fas fa-exchange-alt" style="color:var(--sap-blue)"></i> Asset Transfer
               Requests <span class="record-count" id="trCount"></span></span>
-            <button class="btn btn-primary" onclick="openTransferModal(null)"><i class="fas fa-plus"></i> New Transfer
+            <button id="btnNewTransfer" class="btn btn-primary" onclick="openTransferModal(null)"><i class="fas fa-plus"></i> New Transfer
               Request</button>
             <button class="btn btn-secondary" onclick="exportTransfers()"><i class="fas fa-file-excel"></i>
               Export</button>
@@ -2639,7 +2639,7 @@
           <div class="card-header">
             <span class="card-title"><i class="fas fa-tools" style="color:var(--sap-blue)"></i> Preventive Maintenance
               Schedule <span class="record-count" id="mCount"></span></span>
-            <button class="btn btn-primary" onclick="openMaintModal()"><i class="fas fa-plus"></i> New Schedule</button>
+            <button id="btnNewSchedule" class="btn btn-primary" onclick="openMaintModal()"><i class="fas fa-plus"></i> New Schedule</button>
             <button class="btn btn-secondary" onclick="exportMaintenance()"><i class="fas fa-file-excel"></i>
               Export</button>
             <button class="btn btn-secondary" onclick="openMaintLogModal(null,'bulk')"><i class="fas fa-history"></i>
@@ -2777,7 +2777,7 @@
           <div class="card-header">
             <span class="card-title"><i class="fas fa-certificate" style="color:var(--sap-blue)"></i> Certificate
               Registry <span class="record-count" id="certCount"></span></span>
-            <button class="btn btn-primary" onclick="openAddCertModal()"><i class="fas fa-plus"></i> New
+            <button id="btnNewCert" class="btn btn-primary" onclick="openAddCertModal()"><i class="fas fa-plus"></i> New
               Certificate</button>
             <button class="btn btn-secondary" onclick="exportCertificates()"><i class="fas fa-file-excel"></i>
               Export</button>
@@ -3243,7 +3243,7 @@ Asset Management System</textarea>
         <button class="btn btn-warning" onclick="openTransferModal(currentAsset?.assetId)"
           style="background:#E9730C;color:#fff;border-color:#E9730C"><i class="fas fa-exchange-alt"></i> Transfer
           Asset</button>
-        <button class="btn btn-primary" onclick="editCurrentAsset()"><i class="fas fa-edit"></i> Edit</button>
+        <button id="assetDetailEditBtn" class="btn btn-primary" onclick="editCurrentAsset()"><i class="fas fa-edit"></i> Edit</button>
       </div>
     </div>
   </div>
@@ -3959,12 +3959,15 @@ Asset Management System</textarea>
       updateCertKPIs();
       initTransfers();
       initMaintenance();
+      // Apply role-based UI restrictions after all data is loaded
+      if (typeof applyRoleUI === 'function') applyRoleUI();
     };
 
     // ══════════════════════════════════
     //  NAV
     // ══════════════════════════════════
     function switchTab(id, el) {
+      if (typeof applyRoleUI === 'function') applyRoleUI();
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
       document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
       document.getElementById('section-' + id).classList.add('active');
@@ -6313,7 +6316,68 @@ Asset Management System</textarea>
     //  AI ASSISTANT CHATBOT MODULE  (Anthropic Claude + Google Gemini)
     // ══════════════════════════════════════════════════════════════════
 
-    let chatHistory  = [];
+    // ══════════════════════════════════════════════════════════════════
+    //  ROLE HELPERS
+    //  Admin  → full access (approve transfers + import everything)
+    //  Editor → can add/edit records, cannot import or approve transfers
+    //  Viewer → read-only, no add/edit/import/approve
+    // ══════════════════════════════════════════════════════════════════
+    function getRole() {
+      return (window.__currentUserRole || 'Viewer').trim();
+    }
+    function isAdmin()   { return getRole() === 'Admin'; }
+    function isEditor()  { return getRole() === 'Editor'; }
+    function isViewer()  { return getRole() === 'Viewer'; }
+    function canEdit()   { return isAdmin() || isEditor(); }
+    function canImport() { return isAdmin(); }
+    function canApprove(){ return isAdmin(); }
+
+    function applyRoleUI() {
+      // ── Import buttons: Admin only ──
+      const importBtnMap = {
+        'importFile':           'btnImportAssets',
+        'importFileContracts':  'btnImportContracts',
+        'importFileMaint':      'btnImportMaint',
+        'importFileCerts':      'btnImportCerts',
+        'importFileRigs':       'btnImportRigs',
+        'importFileCompanies':  'btnImportCompanies',
+        'importFileUsers':      'btnImportUsers',
+        'importFileBom':        'btnImportBom',
+        'importFileTransfers':  'btnImportTransfers',
+      };
+      Object.keys(importBtnMap).forEach(inputId => {
+        const inp = document.getElementById(inputId);
+        if (!inp) return;
+        const btn = inp.previousElementSibling;
+        if (btn && btn.tagName === 'BUTTON') btn.style.display = canImport() ? '' : 'none';
+      });
+
+      // ── Add/New buttons: Editor + Admin only ──
+      [
+        'btnNewAsset','btnNewContract','btnNewRig','btnAddCompany',
+        'btnAddUser','btnAddBOM','btnNewTransfer','btnNewSchedule','btnNewCert'
+      ].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = canEdit() ? '' : 'none';
+      });
+
+      // ── Edit / Delete / Transfer icon buttons in tables: Editor + Admin only ──
+      document.querySelectorAll('.btn-icon').forEach(b => {
+        b.style.display = canEdit() ? '' : 'none';
+      });
+
+      // ── Asset detail popup Edit button ──
+      const editBtn = document.getElementById('assetDetailEditBtn');
+      if (editBtn) editBtn.style.display = canEdit() ? '' : 'none';
+
+      // ── Transfer approve/reject: Admin only ──
+      ['btnApprove','btnReject','btnHold'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = canApprove() ? '' : 'none';
+      });
+    }
+
+        let chatHistory  = [];
     let chatOpen     = false;
     let chatTyping   = false;
     let chatProvider = localStorage.getItem('ams_chat_provider') || 'anthropic'; // 'anthropic' | 'gemini'
@@ -6960,11 +7024,18 @@ Instructions:
         return { ...m, lastDone: m.last_done, nextDue: m.next_due, alertDays: m.alert_days, logs: [] };
       }
       function normT(t) {
+        const assetId = t.asset_id || t.assetId || '';
+        const asset   = (typeof ASSETS !== 'undefined') ? ASSETS.find(a => a.assetId === assetId) : null;
         return {
           ...t,
-          assetId: t.asset_id, assetName: t.asset_name, currentLoc: t.current_loc,
-          destRig: t.dest_rig, destCompany: t.dest_company,
-          requestedBy: t.requested_by, requestDate: t.request_date, requiredDate: t.required_date,
+          assetId,
+          assetName:   t.asset_name   || t.assetName   || asset?.name    || assetId,
+          currentLoc:  t.current_loc  || t.currentLoc  || asset?.location || '',
+          destRig:     t.dest_rig     || t.destRig     || '',
+          destCompany: t.dest_company || t.destCompany || '',
+          requestedBy: t.requested_by || t.requestedBy || '',
+          requestDate: t.request_date || t.requestDate || '',
+          requiredDate:t.required_date|| t.requiredDate|| '',
           opsApproval: { by: t.ops_approved_by, date: t.ops_approved_date, action: t.ops_action, comment: t.ops_comment },
           mgrApproval: { by: t.mgr_approved_by, date: t.mgr_approved_date, action: t.mgr_action, comment: t.mgr_comment }
         };
@@ -7307,6 +7378,7 @@ Instructions:
       //  OVERRIDE: processApproval()  — ops / mgr decision
       // ══════════════════════════════════════════════════════════════════════════
       window.processApproval = async function (decision) {
+        if (!canApprove()) { showToast('Only Admins can approve or reject transfers.', 'error'); return; }
         const comment = document.getElementById('approvalComment').value.trim();
         if (!comment) { showToast('Please enter your decision comments.', 'error'); return; }
 
@@ -7466,6 +7538,7 @@ Instructions:
       }
 
       window.importAssets = async function importAssets(event) {
+        if (!canImport()) { showToast('Only Admins can import data.', 'error'); return; }
         const file = event.target.files[0];
         if (!file) return;
         event.target.value = '';
@@ -7514,6 +7587,7 @@ Instructions:
       }
 
       window.importContracts = async function importContracts(event) {
+        if (!canImport()) { showToast('Only Admins can import data.', 'error'); return; }
         const file = event.target.files[0];
         if (!file) return;
         event.target.value = '';
@@ -7760,6 +7834,7 @@ Instructions:
       }
 
       window.importMaintenance = async function importMaintenance(event) {
+        if (!canImport()) { showToast('Only Admins can import data.', 'error'); return; }
         const file = event.target.files[0];
         if (!file) return;
         event.target.value = '';
@@ -7807,6 +7882,7 @@ Instructions:
       }
 
       window.importCertificates = async function importCertificates(event) {
+        if (!canImport()) { showToast('Only Admins can import data.', 'error'); return; }
         const file = event.target.files[0];
         if (!file) return;
         event.target.value = '';
