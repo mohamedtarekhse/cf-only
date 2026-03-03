@@ -6535,22 +6535,28 @@ Instructions:
         { role: 'system', content: buildSystemPrompt() },
         ...chatHistory.slice(-12)
       ];
-      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      // Auto-detect OpenRouter keys (sk-or-v1-…) vs direct OpenAI keys (sk-…)
+      const isOpenRouter = key.startsWith('sk-or-');
+      const endpoint = isOpenRouter
+        ? 'https://openrouter.ai/api/v1/chat/completions'
+        : 'https://api.openai.com/v1/chat/completions';
+      const model = isOpenRouter ? 'openai/gpt-4o-mini' : 'gpt-4o-mini';
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + key,
+      };
+      if (isOpenRouter) {
+        headers['HTTP-Referer'] = window.location.origin || 'https://asset-management.pages.dev';
+        headers['X-Title'] = 'Asset Management System';
+      }
+      const res = await fetch(endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + key
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          max_tokens: 1024,
-          temperature: 0.3,
-          messages
-        })
+        headers,
+        body: JSON.stringify({ model, max_tokens: 1024, temperature: 0.3, messages })
       });
       if (!res.ok) {
         const err = await res.json().catch(()=>({error:{message:'HTTP '+res.status}}));
-        throw new Error(err.error?.message || 'OpenAI API error ' + res.status);
+        throw new Error(err.error?.message || 'API error ' + res.status);
       }
       const data = await res.json();
       return data.choices?.[0]?.message?.content || 'No response received.';
