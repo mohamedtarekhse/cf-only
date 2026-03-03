@@ -7385,6 +7385,28 @@ Instructions:
         } catch (e) { console.error('markAllRead failed:', e); }
       };
 
-      // ══════════════════════════════════════════════════════════════════════════
-      //  BOOT
-      // ═════════════════════════════════════════════════════�
+      // Auto-boot after login succeeds
+      const _origDoLogin = window.doLogin;
+      window.doLogin = async function() {
+        await _origDoLogin.apply(this, arguments);
+        // If login succeeded (login screen hidden), run bootstrap
+        const ls = document.getElementById('loginScreen');
+        if (ls && ls.style.display === 'none') {
+          bootstrap();
+        }
+      };
+
+      // Also try bootstrapping if already logged in (session restore)
+      document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(function() {
+          const ls = document.getElementById('loginScreen');
+          if (ls && ls.style.display === 'none') {
+            bootstrap();
+          }
+        }, 300);
+      });
+
+    })(); // end IIFE
+  </script>
+</body>
+</html>
