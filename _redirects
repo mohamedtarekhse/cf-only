@@ -1,0 +1,3 @@
+# Cloudflare Pages _redirects
+# Worker handles /api/* — everything else serves index.html
+/*    /index.html   200
