@@ -6319,12 +6319,15 @@ Asset Management System</textarea>
     // ── Key management ───────────────────────────────────────────────
     const ANTHROPIC_KEY_STORE = 'ams_anthropic_key';
     const GEMINI_KEY_STORE    = 'ams_gemini_key';
+    const OPENAI_KEY_STORE    = 'ams_openai_key';
 
     function getChatKey(provider) {
-      try { return localStorage.getItem(provider === 'gemini' ? GEMINI_KEY_STORE : ANTHROPIC_KEY_STORE) || ''; } catch(e){ return ''; }
+      const store = provider==='gemini' ? GEMINI_KEY_STORE : provider==='openai' ? OPENAI_KEY_STORE : ANTHROPIC_KEY_STORE;
+      try { return localStorage.getItem(store) || ''; } catch(e){ return ''; }
     }
     function setChatKey(provider, val) {
-      try { localStorage.setItem(provider === 'gemini' ? GEMINI_KEY_STORE : ANTHROPIC_KEY_STORE, val); } catch(e){}
+      const store = provider==='gemini' ? GEMINI_KEY_STORE : provider==='openai' ? OPENAI_KEY_STORE : ANTHROPIC_KEY_STORE;
+      try { localStorage.setItem(store, val); } catch(e){}
     }
 
     // ── Provider switcher ────────────────────────────────────────────
@@ -6334,7 +6337,7 @@ Asset Management System</textarea>
       // Update toggle buttons
       document.querySelectorAll('.provider-btn').forEach(b => b.classList.toggle('active', b.dataset.prov === prov));
       // Update header subtitle
-      const labels = { anthropic: 'Claude · Sonnet 4.5', gemini: 'Gemini · 2.0 Flash' };
+      const labels = { anthropic: 'Claude · Haiku 4.5', gemini: 'Gemini · 2.0 Flash', openai: 'GPT-4o Mini' };
       document.getElementById('chatProviderLabel').textContent = labels[prov] || prov;
       // Show/hide key bar based on whether key exists for this provider
       refreshKeyBar();
@@ -6346,7 +6349,7 @@ Asset Management System</textarea>
       const input = document.getElementById('chatApiKeyInput');
       if (!key) {
         bar.style.display = 'flex';
-        const hints = { anthropic: 'Enter Anthropic API key  (sk-ant-…)', gemini: 'Enter Google AI API key  (AIza…)' };
+        const hints = { anthropic: 'Enter Anthropic API key  (sk-ant-…)', gemini: 'Enter Google AI API key  (AIza…)', openai: 'Enter OpenAI API key  (sk-…)' };
         input.placeholder = hints[chatProvider] || 'Enter API key…';
         input.value = '';
       } else {
@@ -6359,13 +6362,13 @@ Asset Management System</textarea>
       if (!val) return;
       setChatKey(chatProvider, val);
       document.getElementById('chatApiKeyBar').style.display = 'none';
-      const provName = chatProvider === 'gemini' ? 'Gemini' : 'Claude';
+      const provName = chatProvider === 'gemini' ? 'Gemini' : chatProvider === 'openai' ? 'OpenAI' : 'Claude';
       appendChatMsg('assistant', `✅ **${provName} API key saved.** You can now chat with the AI assistant!`);
     }
 
     function forgetApiKeys() {
       if (!confirm('Remove saved API keys for all providers?')) return;
-      try { localStorage.removeItem(ANTHROPIC_KEY_STORE); localStorage.removeItem(GEMINI_KEY_STORE); } catch(e){}
+      try { localStorage.removeItem(ANTHROPIC_KEY_STORE); localStorage.removeItem(GEMINI_KEY_STORE); localStorage.removeItem(OPENAI_KEY_STORE); } catch(e){}
       refreshKeyBar();
       appendChatMsg('assistant', '🔑 API keys removed. Please enter a new key to continue.');
     }
@@ -6380,7 +6383,8 @@ Asset Management System</textarea>
       if (chatOpen && chatHistory.length === 0) {
         switchChatProvider(chatProvider); // sync UI
         if (!getChatKey(chatProvider)) refreshKeyBar();
-        appendChatMsg('assistant', `👋 Hello! I\'m your AI Assistant powered by **${chatProvider === 'gemini' ? 'Google Gemini' : 'Anthropic Claude'}**.\n\nI have full access to your live database: **${ASSETS.length} assets**, **${CERTIFICATES.length} certificates**, **${MAINT_SCHEDULES.length} maintenance schedules**, **${CONTRACTS.length} contracts**, **${RIGS.length} rigs**.\n\nSwitch providers anytime using the **Claude / Gemini** buttons in the header. Ask me anything!`);
+        const provNames = {anthropic:'Anthropic Claude', gemini:'Google Gemini', openai:'OpenAI GPT-4o Mini'};
+        appendChatMsg('assistant', `👋 Hello! I\'m your AI Assistant powered by **${provNames[chatProvider]||chatProvider}**.\n\nI have full access to your live database: **${ASSETS.length} assets**, **${CERTIFICATES.length} certificates**, **${MAINT_SCHEDULES.length} maintenance schedules**, **${CONTRACTS.length} contracts**, **${RIGS.length} rigs**.\n\nSwitch providers anytime using the buttons in the header. Ask me anything!`);
       }
     }
 
@@ -6445,7 +6449,7 @@ Instructions:
       const key = getChatKey(chatProvider);
       if (!key) {
         setChatTyping(false);
-        const provName = chatProvider === 'gemini' ? 'Gemini' : 'Anthropic';
+        const provName = chatProvider === 'gemini' ? 'Gemini' : chatProvider === 'openai' ? 'OpenAI' : 'Anthropic';
         appendChatMsg('assistant', `⚠️ Please enter your **${provName} API key** in the yellow bar above to use the AI assistant.`);
         document.getElementById('chatApiKeyBar').style.display = 'flex';
         return;
@@ -6455,6 +6459,8 @@ Instructions:
         let reply = '';
         if (chatProvider === 'gemini') {
           reply = await callGemini(key, msg);
+        } else if (chatProvider === 'openai') {
+          reply = await callOpenAI(key);
         } else {
           reply = await callAnthropic(key);
         }
@@ -6523,6 +6529,34 @@ Instructions:
       return data.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('') || 'No response received.';
     }
 
+    // ── OpenAI GPT ────────────────────────────────────────────────────
+    async function callOpenAI(key) {
+      const messages = [
+        { role: 'system', content: buildSystemPrompt() },
+        ...chatHistory.slice(-12)
+      ];
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + key
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          max_tokens: 1024,
+          temperature: 0.3,
+          messages
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(()=>({error:{message:'HTTP '+res.status}}));
+        throw new Error(err.error?.message || 'OpenAI API error ' + res.status);
+      }
+      const data = await res.json();
+      return data.choices?.[0]?.message?.content || 'No response received.';
+    }
+
+
     // ── Render & helpers ──────────────────────────────────────────────
     function appendChatMsg(role, text) {
       const body = document.getElementById('chatBody');
@@ -6531,6 +6565,8 @@ Instructions:
       const provIcon = role === 'assistant'
         ? (chatProvider === 'gemini'
             ? '<div class="chat-avatar-icon gemini-icon"><i class="fas fa-gem"></i></div>'
+            : chatProvider === 'openai'
+            ? '<div class="chat-avatar-icon openai-icon"><i class="fas fa-brain"></i></div>'
             : '<div class="chat-avatar-icon"><i class="fas fa-robot"></i></div>')
         : '';
       div.innerHTML = `
@@ -6716,6 +6752,9 @@ Instructions:
     .chat-avatar-icon.gemini-icon {
       background:linear-gradient(135deg,#4285F4,#34A853,#EA4335,#FBBC05);
     }
+    .chat-avatar-icon.openai-icon {
+      background:linear-gradient(135deg,#10a37f,#1a7f64);
+    }
     .chat-bubble-content {
       padding:9px 12px; border-radius:12px; font-size:13px; line-height:1.5;
       max-width:100%; word-break:break-word;
@@ -6799,6 +6838,9 @@ Instructions:
         </button>
         <button class="provider-btn" data-prov="gemini" onclick="switchChatProvider('gemini')">
           <i class="fas fa-gem" style="font-size:10px"></i> Gemini
+        </button>
+        <button class="provider-btn" data-prov="openai" onclick="switchChatProvider('openai')">
+          <i class="fas fa-brain" style="font-size:10px"></i> GPT
         </button>
       </div>
       <div class="chat-header-actions">
