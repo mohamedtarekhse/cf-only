@@ -1591,6 +1591,12 @@
     }
 
     /* ── BOM ── */
+    .bom-row { position: relative; }
+    .bom-select-cb:checked + * { color: var(--sap-blue); }
+    .bom-row:has(.bom-select-cb:checked) {
+      background: #EBF4FF !important;
+      border-left: 3px solid var(--sap-blue);
+    }
     .bom-tree {
       display: flex;
       flex-direction: column;
@@ -4996,7 +5002,12 @@ Asset Management System</textarea>
           ? `<i class="fas fa-boxes" style="color:#A05000;font-size:11px"></i>`
           : `<i class="fas fa-cog" style="color:var(--sap-text-muted);font-size:11px"></i>`;
 
-      return `<div class="bom-row level-${Math.min(level, 3)}" data-bom-id="${item.id}" data-parent="${item.parentId || ''}">
+      return `<div class="bom-row level-${Math.min(level, 3)}" data-bom-id="${item.id}" data-asset-id="${item.assetId}" data-parent="${item.parentId || ''}">
+    <div class="bom-cell" style="width:30px;padding:0 6px;flex-shrink:0">
+      <input type="checkbox" class="bom-select-cb" data-bom-id="${item.id}" data-asset-id="${item.assetId}"
+        style="width:14px;height:14px;accent-color:var(--sap-blue);cursor:pointer;margin:0"
+        onchange="onBomCheckboxChange(this)" title="Select for transfer">
+    </div>
     <div class="bom-indent level-${Math.min(level, 3)}">
       ${toggleBtn}
       ${itemIcon}
@@ -5013,7 +5024,9 @@ Asset Management System</textarea>
     <div class="bom-cell w120 mono">${item.unitCost ? '$' + Number(item.unitCost).toLocaleString() : '<span style="color:#ccc">—</span>'}</div>
     <div class="bom-cell w120 mono" style="font-weight:600">${totalCost ? '$' + Number(totalCost).toLocaleString() : '<span style="color:#ccc">—</span>'}</div>
     <div class="bom-cell w90"><span class="status-badge ${statusColors[item.status] || 's-inactive'}" style="font-size:11px">${item.status}</span></div>
-    <div class="bom-cell" style="width:${compact ? '80' : '100'}px;display:flex;gap:2px">
+    <div class="bom-cell" style="width:${compact ? '80' : '120'}px;display:flex;gap:2px">
+      <button class="btn btn-ghost btn-icon" title="Transfer this part" onclick="openBomTransferModal('${item.assetId}',['${item.id}'])"
+        style="height:26px;width:26px;font-size:11px;color:#E9730C"><i class="fas fa-exchange-alt"></i></button>
       ${!isBulk && !hasChildren ? `<button class="btn btn-ghost btn-icon" title="Add child component" onclick="openBomModal('${item.assetId}'); document.getElementById('bom_parentId').value='${item.id}';" style="height:26px;width:26px;font-size:11px"><i class="fas fa-plus"></i></button>` : ''}
       <button class="btn btn-ghost btn-icon" title="Edit" onclick="openBomModal(null,'${item.id}')" style="height:26px;width:26px;font-size:11px"><i class="fas fa-edit"></i></button>
       <button class="btn btn-ghost btn-icon" title="Delete" style="color:var(--sap-error);height:26px;width:26px;font-size:11px" onclick="deleteBomItem('${item.id}')"><i class="fas fa-trash"></i></button>
@@ -5033,6 +5046,188 @@ Asset Management System</textarea>
         }
       });
       return rows;
+    }
+
+
+    // ══════════════════════════════════════════════════════════════════
+    //  BOM TRANSFER FUNCTIONS
+    // ══════════════════════════════════════════════════════════════════
+
+    // Track selected BOM items per asset { assetId: Set<bomId> }
+    const _bomSelection = {};
+
+    function onBomCheckboxChange(cb) {
+      const bomId   = cb.dataset.bomId;
+      const assetId = cb.dataset.assetId;
+      if (!_bomSelection[assetId]) _bomSelection[assetId] = new Set();
+      if (cb.checked) _bomSelection[assetId].add(bomId);
+      else             _bomSelection[assetId].delete(bomId);
+      _updateBomTransferBtn(assetId);
+    }
+
+    function _updateBomTransferBtn(assetId) {
+      const count   = _bomSelection[assetId]?.size || 0;
+      const btn     = document.getElementById(`trSelected_${assetId}`);
+      const counter = document.getElementById(`trSelCount_${assetId}`);
+      if (btn)     btn.style.display  = count > 0 ? '' : 'none';
+      if (counter) counter.textContent = count;
+    }
+
+    function selectAllBomForAsset(assetId, btn) {
+      const cbs = document.querySelectorAll(`.bom-select-cb[data-asset-id="${assetId}"]`);
+      if (!_bomSelection[assetId]) _bomSelection[assetId] = new Set();
+      const allChecked = [...cbs].every(c => c.checked);
+      cbs.forEach(c => {
+        c.checked = !allChecked;
+        if (!allChecked) _bomSelection[assetId].add(c.dataset.bomId);
+        else             _bomSelection[assetId].delete(c.dataset.bomId);
+      });
+      _updateBomTransferBtn(assetId);
+    }
+
+    function transferSelectedBomItems(assetId) {
+      const ids = [...(_bomSelection[assetId] || [])];
+      if (!ids.length) { showToast('No parts selected.', 'warning'); return; }
+      openBomTransferModal(assetId, ids);
+    }
+
+    // Open the BOM transfer modal with pre-selected items
+    function openBomTransferModal(assetId, bomIds) {
+      const items = bomIds.map(id => BOM_ITEMS.find(b => b.id === id)).filter(Boolean);
+      if (!items.length) { showToast('Selected parts not found.', 'error'); return; }
+
+      // Populate selected parts list
+      const listEl  = document.getElementById('bomTrSelectedList');
+      const emptyEl = document.getElementById('bomTrSelectedEmpty');
+      listEl.innerHTML = items.map(b => `
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 8px;background:#fff;border:1px solid #C2DCFF;border-radius:5px">
+          <i class="fas fa-${b.type==='Bulk'?'boxes':'cog'}" style="color:${b.type==='Bulk'?'#A05000':'var(--sap-blue)'};font-size:12px;flex-shrink:0"></i>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:12.5px">${b.name}</div>
+            <div style="font-size:11px;color:var(--sap-text-muted)">
+              ${b.partNo ? `P/N: ${b.partNo} &nbsp;` : ''}
+              ${b.serial ? `Serial: ${b.serial} &nbsp;` : ''}
+              ${b.qty ? `Qty: ${b.qty} ${b.uom||'EA'}` : ''}
+            </div>
+          </div>
+          <span class="tag" style="background:#EBF4FF;color:#0040B0;font-size:11px">${b.type}</span>
+        </div>`).join('');
+      emptyEl.style.display = 'none';
+      listEl.style.display  = '';
+
+      // Store selection for submit
+      window._bomTransferAssetId = assetId;
+      window._bomTransferItems   = items;
+
+      // Reset form
+      ['bomTr_destination','bomTr_reason','bomTr_instructions',
+       'bomTr_vendorName','bomTr_poNumber','bomTr_vendorContact'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = '';
+      });
+      ['bomTr_requiredDate','bomTr_returnDate'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = '';
+      });
+      document.getElementById('bomTr_type').value     = 'For Repair';
+      document.getElementById('bomTr_priority').value = 'Normal';
+      document.getElementById('bomTr_vendorType').value = '';
+      document.getElementById('bomTrCount').textContent = `${items.length} part${items.length>1?'s':''} selected`;
+      onBomTrTypeChange();
+
+      openModal('bomTransferModal');
+    }
+
+    function onBomTrTypeChange() {
+      const type = document.getElementById('bomTr_type').value;
+      const isRepair = ['For Repair','For Maintenance','For Inspection'].includes(type);
+      const sec = document.getElementById('bomTrVendorSection');
+      if (sec) sec.style.display = isRepair ? '' : 'none';
+      const req = document.getElementById('bomTrVendorRequired');
+      if (req) req.style.display = isRepair ? '' : 'none';
+    }
+
+    async function submitBomTransfer() {
+      const assetId = window._bomTransferAssetId;
+      const items   = window._bomTransferItems || [];
+      const type    = document.getElementById('bomTr_type').value;
+      const destination = document.getElementById('bomTr_destination').value.trim();
+      const reason      = document.getElementById('bomTr_reason').value.trim();
+      const priority    = document.getElementById('bomTr_priority').value;
+      const vendorName  = (document.getElementById('bomTr_vendorName')?.value || '').trim();
+      const isRepair    = ['For Repair','For Maintenance','For Inspection'].includes(type);
+
+      if (!destination) { showToast('Please enter a destination location.', 'error'); return; }
+      if (!reason)       { showToast('Please provide a reason.', 'error'); return; }
+      if (isRepair && !vendorName) {
+        showToast('Please enter a vendor / workshop name.', 'error'); return;
+      }
+
+      const asset = ASSETS.find(a => a.assetId === assetId);
+      const partsLabel = items.map(b => b.name).join(', ');
+
+      // Build one transfer per BOM item (or batch — one transfer with concatenated BOM names)
+      // We create one transfer per item for full traceability
+      const basePayload = {
+        asset_id:       assetId,
+        destination,
+        type,
+        priority,
+        current_loc:    asset?.location || '',
+        required_date:  document.getElementById('bomTr_requiredDate')?.value || null,
+        reason,
+        instructions:   document.getElementById('bomTr_instructions')?.value || '',
+        requested_by:   window.__currentUserName || 'Unknown',
+        vendor_name:    vendorName || null,
+        vendor_type:    document.getElementById('bomTr_vendorType')?.value || null,
+        po_number:      document.getElementById('bomTr_poNumber')?.value.trim() || null,
+        vendor_contact: document.getElementById('bomTr_vendorContact')?.value.trim() || null,
+        return_date:    document.getElementById('bomTr_returnDate')?.value || null,
+        status:         'Pending',
+      };
+      // Remove null values
+      Object.keys(basePayload).forEach(k => basePayload[k] === null && delete basePayload[k]);
+
+      // If using the API (IIFE override), submit async; otherwise use local store
+      const submitFn = window._bomSubmitTransfer || _bomSubmitLocal;
+      try {
+        const results = await submitFn(items, basePayload);
+        closeModal('bomTransferModal');
+        // Clear selections
+        if (_bomSelection[assetId]) _bomSelection[assetId].clear();
+        _updateBomTransferBtn(assetId);
+        // Uncheck all checkboxes for this asset
+        document.querySelectorAll(`.bom-select-cb[data-asset-id="${assetId}"]`).forEach(c => c.checked = false);
+        rerender?.('renderTransfers','updateTransferKPIs') || (typeof renderTransfers === 'function' && renderTransfers());
+        showToast(`${results.length} transfer request${results.length>1?'s':''} submitted ✓${vendorName?' — '+vendorName:''}`, 'success');
+        addNotification?.('info','exchange-alt','BOM Parts Transfer Submitted',
+          `${results.length} part${results.length>1?'s':''} from ${asset?.name||assetId} → ${destination}`, 'Just now');
+        // Navigate to transfers tab
+        const tab = document.querySelector(".nav-tab[onclick*=\"'transfers'\"]");
+        if (tab) switchTab('transfers', tab);
+      } catch(e) {
+        showToast('Transfer submit failed: ' + e.message, 'error');
+      }
+    }
+
+    function _bomSubmitLocal(items, basePayload) {
+      // Fallback: local-only (no API)
+      return items.map(item => {
+        const t = {
+          ...basePayload,
+          id:           'TR-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2,4).toUpperCase(),
+          assetId:      basePayload.asset_id,
+          assetName:    ASSETS.find(a=>a.assetId===basePayload.asset_id)?.name || basePayload.asset_id,
+          currentLoc:   basePayload.current_loc || '',
+          destRig:      null, destCompany: null,
+          requestDate:  new Date().toISOString().slice(0,10),
+          bom_item_id:  item.id,
+          bom_item_name:item.name,
+          bom_part_no:  item.partNo || null,
+          opsApproval:  {by:null,date:null,action:null,comment:null},
+          mgrApproval:  {by:null,date:null,action:null,comment:null},
+        };
+        if (typeof TRANSFERS !== 'undefined') TRANSFERS.push(typeof normT==='function'?normT(t):t);
+        return t;
+      });
     }
 
     // ── Toggle collapse/expand ────────────────────────────────────
@@ -5078,6 +5273,8 @@ Asset Management System</textarea>
         <span style="font-size:12px;opacity:0.8"><i class="fas fa-boxes"></i> ${bulkCount} Bulk</span>
         <span style="font-size:12px;font-weight:700;font-family:'IBM Plex Mono',monospace">Total: $${Number(totalCost).toLocaleString()}</span>
         <button class="btn" style="height:26px;font-size:11.5px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3)" onclick="openBomModal('${aid}')"><i class="fas fa-plus"></i> Add</button>
+        <button class="btn" id="trSelected_${aid}" style="height:26px;font-size:11.5px;background:rgba(233,115,12,0.85);color:#fff;border:1px solid rgba(233,115,12,0.5);display:none" onclick="transferSelectedBomItems('${aid}')"><i class="fas fa-exchange-alt"></i> Transfer Selected (<span id="trSelCount_${aid}">0</span>)</button>
+        <button class="btn" style="height:26px;font-size:11.5px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.2)" onclick="selectAllBomForAsset('${aid}', this)"><i class="fas fa-check-square"></i> Select All</button>
       </div>
       ${flattenTree(tree)}
     </div>`;
@@ -7251,7 +7448,129 @@ Instructions:
 
   </div>
 
-    <!-- ═══════════════════════════════════════════════════════════════════════
+  
+  <!-- ══════════════════════════════════════════
+     BOM PARTS TRANSFER MODAL
+═══════════════════════════════════════════ -->
+  <div class="modal-overlay" id="bomTransferModal">
+    <div class="modal" style="width:720px;max-width:97vw">
+      <div class="modal-header" style="background:linear-gradient(135deg,#354A5E,#4A6580);color:#fff;border-radius:8px 8px 0 0">
+        <i class="fas fa-exchange-alt" style="font-size:18px"></i>
+        <h2 style="color:#fff">BOM Parts Transfer / Send for Repair</h2>
+        <button class="shell-btn" onclick="closeModal('bomTransferModal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body" style="padding:0">
+
+        <!-- Selected Parts Summary -->
+        <div style="background:#F0F4FF;border-bottom:1px solid #C2DCFF;padding:12px 16px">
+          <div style="font-weight:600;font-size:12.5px;color:#0040B0;margin-bottom:8px"><i class="fas fa-list-ul"></i> Selected Parts</div>
+          <div id="bomTrSelectedList" style="display:flex;flex-direction:column;gap:4px;max-height:160px;overflow-y:auto"></div>
+          <div id="bomTrSelectedEmpty" style="color:var(--sap-text-muted);font-size:12.5px;font-style:italic;display:none">No parts selected.</div>
+        </div>
+
+        <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+
+          <!-- Transfer Type & Priority -->
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Transfer Type <span style="color:var(--sap-error)">*</span></label>
+              <select class="form-select" id="bomTr_type" onchange="onBomTrTypeChange()">
+                <option value="For Repair">🔧 For Repair</option>
+                <option value="For Maintenance">⚙️ For Maintenance</option>
+                <option value="For Inspection">🔍 For Inspection</option>
+                <option value="Field to Warehouse">Field to Warehouse</option>
+                <option value="Field to Field">Field to Field</option>
+                <option value="Warehouse to Field">Warehouse to Field</option>
+                <option value="Return to Owner">Return to Owner</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Priority <span style="color:var(--sap-error)">*</span></label>
+              <select class="form-select" id="bomTr_priority">
+                <option value="Normal">Normal</option>
+                <option value="High">High</option>
+                <option value="Critical">⚠ Critical</option>
+                <option value="Low">Low</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Destination -->
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Destination Location <span style="color:var(--sap-error)">*</span></label>
+              <input class="form-input" id="bomTr_destination" placeholder="e.g. Workshop A, Warehouse B, Field Site...">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Required By Date</label>
+              <input class="form-input" type="date" id="bomTr_requiredDate">
+            </div>
+          </div>
+
+          <!-- Vendor / Workshop Section (shown for repair types) -->
+          <div id="bomTrVendorSection" style="background:#FFF8E1;border:1px solid #FFE082;border-radius:8px;padding:12px 14px">
+            <div style="font-weight:600;font-size:12px;color:#7B5800;margin-bottom:8px"><i class="fas fa-store"></i> Vendor / Workshop Details</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Vendor / Workshop Name <span style="color:var(--sap-error)" id="bomTrVendorRequired">*</span></label>
+                <input class="form-input" id="bomTr_vendorName" placeholder="e.g. Al-Rashid Workshop, Baker Hughes...">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Vendor Type</label>
+                <select class="form-select" id="bomTr_vendorType">
+                  <option value="">— Select —</option>
+                  <option value="Workshop">Workshop</option>
+                  <option value="Supplier">Supplier</option>
+                  <option value="OEM">OEM / Manufacturer</option>
+                  <option value="Subcontractor">Subcontractor</option>
+                  <option value="Internal">Internal</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">PO Number</label>
+                <input class="form-input" id="bomTr_poNumber" placeholder="e.g. PO-2024-0042">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Est. Return Date</label>
+                <input class="form-input" type="date" id="bomTr_returnDate">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Vendor Contact</label>
+              <input class="form-input" id="bomTr_vendorContact" placeholder="Contact name, phone, email...">
+            </div>
+          </div>
+
+          <!-- Reason -->
+          <div class="form-group">
+            <label class="form-label">Reason / Description <span style="color:var(--sap-error)">*</span></label>
+            <textarea class="form-textarea" id="bomTr_reason" rows="2"
+              placeholder="Explain why these parts are being transferred or sent for repair..."></textarea>
+          </div>
+
+          <!-- Instructions -->
+          <div class="form-group">
+            <label class="form-label">Special Instructions</label>
+            <textarea class="form-textarea" id="bomTr_instructions" rows="2"
+              placeholder="Handling notes, packing requirements, safety instructions..."></textarea>
+          </div>
+
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('bomTransferModal')">Cancel</button>
+        <div style="flex:1"></div>
+        <div id="bomTrCount" style="font-size:12.5px;color:var(--sap-text-muted);align-self:center"></div>
+        <button class="btn btn-primary" onclick="submitBomTransfer()">
+          <i class="fas fa-paper-plane"></i> Submit Transfer Request
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
      LIVE DATABASE LAYER
      Connects every save / edit / delete action to the Railway + Supabase backend.
      All changes are persisted — data survives page refresh.
@@ -7637,6 +7956,27 @@ Instructions:
           rerender('renderMaintenance', 'updateMaintKPIs');
           showToast('Schedule deleted.', 'warning');
         } catch (e) { showToast('Delete failed: ' + e.message, 'error'); }
+      };
+
+      // ══════════════════════════════════════════════════════════════════════════
+      //  BOM TRANSFER API SUBMIT (multi-part, one request per item)
+      // ══════════════════════════════════════════════════════════════════════════
+      window._bomSubmitTransfer = async function(items, basePayload) {
+        const results = [];
+        for (const item of items) {
+          const payload = {
+            ...basePayload,
+            bom_item_id:   item.id,
+            bom_item_name: item.name,
+            bom_part_no:   item.partNo || null,
+          };
+          Object.keys(payload).forEach(k => payload[k] === null && delete payload[k]);
+          const r = await POST('/transfers', payload);
+          const nt = normT(r.data);
+          TRANSFERS.push(nt);
+          results.push(nt);
+        }
+        return results;
       };
 
       // ══════════════════════════════════════════════════════════════════════════
