@@ -6970,13 +6970,21 @@ Instructions:
         };
       }
       function normC(c) {
+        const assetId = c.asset_id || c.assetId || '';
+        const asset   = (typeof ASSETS !== 'undefined') ? ASSETS.find(a => a.assetId === assetId) : null;
         return {
           ...c,
-          certId: c.cert_id, assetId: c.asset_id, name: c.asset_name || c.name || '',
-          serial: c.asset_serial || c.serial || '—', rigName: c.rig_name,
-          inspectionType: c.inspection_type,
-          lastInspection: c.last_inspection, nextInspection: c.next_inspection,
-          validityDays: c.validity_days, alertDays: c.alert_days, certLink: c.cert_link
+          certId:         c.cert_id || c.certId,
+          assetId,
+          name:           c.asset_name || c.name || asset?.name || '',
+          serial:         c.asset_serial || c.serial || asset?.serial || '—',
+          rigName:        c.rig_name || c.rigName || asset?.rigName || '',
+          inspectionType: c.inspection_type || c.inspectionType || '',
+          lastInspection: c.last_inspection || c.lastInspection || '',
+          nextInspection: c.next_inspection || c.nextInspection || '',
+          validityDays:   c.validity_days   || c.validityDays   || 365,
+          alertDays:      c.alert_days      || c.alertDays      || 30,
+          certLink:       c.cert_link       || c.certLink       || ''
         };
       }
       function normB(b) {
@@ -7360,15 +7368,26 @@ Instructions:
         // Remove undefined keys
         Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
 
+        // Enrich cert with asset data (API POST/PUT doesn't JOIN assets table)
+        function enrichCert(cert) {
+          const asset = ASSETS.find(a => a.assetId === cert.assetId);
+          if (asset) {
+            cert.name    = cert.name    || asset.name    || '';
+            cert.serial  = (!cert.serial || cert.serial === '—') ? (asset.serial || '—') : cert.serial;
+            cert.rigName = cert.rigName || asset.rigName || '';
+          }
+          return cert;
+        }
+
         try {
           if (editingCertId) {
             const r = await PUT(`/certificates/${editingCertId}`, payload);
             const idx = CERTIFICATES.findIndex(c => c.certId === editingCertId);
-            if (idx >= 0) CERTIFICATES[idx] = normC(r.data);
+            if (idx >= 0) CERTIFICATES[idx] = enrichCert(normC(r.data));
             showToast('Certificate updated ✓', 'success');
           } else {
             const r = await POST('/certificates', payload);
-            CERTIFICATES.push(normC(r.data));
+            CERTIFICATES.push(enrichCert(normC(r.data)));
             showToast('Certificate saved ✓', 'success');
           }
           closeModal('addCertModal');
@@ -7823,7 +7842,10 @@ Instructions:
                 if (idx >= 0) CERTIFICATES[idx] = normC(res.data);
               } else {
                 const res = await POST('/certificates', payload);
-                CERTIFICATES.push(normC(res.data));
+                const nc = normC(res.data);
+                const ia = ASSETS.find(a => a.assetId === nc.assetId);
+                if (ia) { nc.name = nc.name || ia.name || ''; nc.serial = (!nc.serial || nc.serial==='—') ? (ia.serial||'—') : nc.serial; nc.rigName = nc.rigName || ia.rigName || ''; }
+                CERTIFICATES.push(nc);
               }
               added++;
             } catch(e) { skipped++; errors.push(e.message); }
