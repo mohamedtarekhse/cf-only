@@ -6194,6 +6194,7 @@ Asset Management System</textarea>
 
     function openAddCertModal() {
       editingCertId = null;
+      populateCertAssetSelect();
       document.getElementById('addCertTitle').textContent = 'New Certificate';
       document.getElementById('cert_asset').value = '';
       document.getElementById('cert_assetId').value = '';
@@ -6213,6 +6214,7 @@ Asset Management System</textarea>
       const c = CERTIFICATES.find(x => x.certId === certId);
       if (!c) return;
       editingCertId = certId;
+      populateCertAssetSelect();
       document.getElementById('addCertTitle').textContent = 'Edit Certificate';
       // find and set asset select
       const sel = document.getElementById('cert_asset');
