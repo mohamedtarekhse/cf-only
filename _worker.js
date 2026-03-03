@@ -1,323 +1,277 @@
 /**
  * _worker.js — Cloudflare Pages Worker
- * Full backend: handles every /api/* route by calling Supabase REST directly.
- * No Railway. No Express. No API key check — this runs server-side only.
+ * Calls Supabase REST API with explicit fetch() — no custom query builder.
  *
- * Set these in Cloudflare Pages → Settings → Environment Variables:
+ * Cloudflare Pages → Settings → Environment Variables:
  *   SUPABASE_URL              = https://tetbgjfltggmejqwntez.supabase.co
  *   SUPABASE_SERVICE_ROLE_KEY = sb_publishable_uSHDoMEafLUF1FzAQCVn0Q_JBKTd1Br
  */
 
 export default {
   async fetch(request, env) {
-    const url    = new URL(request.url);
-    const path   = url.pathname;
+    const url = new URL(request.url);
+    const path = url.pathname;
     const method = request.method;
 
-    if (method === 'OPTIONS') return cors(null, 204);
-
-    if (path === '/health') {
-      return json({ status: 'ok', service: 'Asset Management (Cloudflare Worker)', ts: new Date().toISOString() });
-    }
+    if (method === 'OPTIONS') return respond(null, 204);
+    if (path === '/health') return respond({ status:'ok', service:'Asset Management (Cloudflare Worker)', ts:new Date().toISOString() });
 
     if (path.startsWith('/api')) {
-      if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
-        return json({ success: false, error: 'Supabase secrets not set. Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Cloudflare Pages → Settings → Environment Variables, then redeploy.' }, 500);
-      }
-      const sb = supabase(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+      if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY)
+        return respond({ success:false, error:'Supabase secrets not configured in Cloudflare Pages environment variables.' }, 500);
       try {
-        return await router(path, method, url, request, sb);
-      } catch (err) {
-        console.error('Worker error:', err);
-        return json({ success: false, error: err.message || 'Internal error' }, 500);
+        return await router(path, method, url, request, env.SUPABASE_URL.replace(/\/$/,''), env.SUPABASE_SERVICE_ROLE_KEY);
+      } catch(err) {
+        console.error(err);
+        return respond({ success:false, error: err.message||'Internal error' }, 500);
       }
     }
 
     return env.ASSETS.fetch(request);
-  },
+  }
 };
 
-async function router(path, method, url, request, sb) {
-  const q        = url.searchParams;
-  const seg      = path.replace(/^\/api\/?/, '').split('/');
-  const resource = seg[0];
-  const id       = seg[1];
-  const action   = seg[2];
-  const body     = ['POST','PUT','PATCH'].includes(method) ? await request.json().catch(()=>({})) : {};
+// ── Direct Supabase REST calls ────────────────────────────────────────────────
+
+function authHeaders(key, extra={}) {
+  return { 'apikey':key, 'Authorization':`Bearer ${key}`, 'Content-Type':'application/json', ...extra };
+}
+
+async function sbGet(base, key, table, { select='*', filters={}, order=null, limit=null, single=false }={}) {
+  const u = new URL(`${base}/rest/v1/${table}`);
+  u.searchParams.set('select', select);
+  for (const [k,v] of Object.entries(filters)) u.searchParams.append(k, v);
+  if (order) u.searchParams.set('order', order);
+  if (limit) u.searchParams.set('limit', String(limit));
+  const h = authHeaders(key);
+  if (single) h['Accept'] = 'application/vnd.pgjson';
+  const r = await fetch(u.toString(), { headers:h });
+  return parseRes(r, single);
+}
+
+async function sbPost(base, key, table, body) {
+  const u = new URL(`${base}/rest/v1/${table}`);
+  u.searchParams.set('select', '*');
+  const r = await fetch(u.toString(), { method:'POST', headers:authHeaders(key,{'Prefer':'return=representation'}), body:JSON.stringify(body) });
+  return parseRes(r, true);
+}
+
+async function sbPatch(base, key, table, filters, body) {
+  const u = new URL(`${base}/rest/v1/${table}`);
+  u.searchParams.set('select', '*');
+  for (const [k,v] of Object.entries(filters)) u.searchParams.append(k, v);
+  const r = await fetch(u.toString(), { method:'PATCH', headers:authHeaders(key,{'Prefer':'return=representation'}), body:JSON.stringify(body) });
+  return parseRes(r, true);
+}
+
+async function sbDelete(base, key, table, filters) {
+  const u = new URL(`${base}/rest/v1/${table}`);
+  for (const [k,v] of Object.entries(filters)) u.searchParams.append(k, v);
+  const r = await fetch(u.toString(), { method:'DELETE', headers:authHeaders(key,{'Prefer':'return=minimal'}) });
+  if (r.ok || r.status===204) return { error:null };
+  const t = await r.text(); let m; try{m=JSON.parse(t)?.message}catch(_){m=t}
+  return { error:{ message:`${r.status}: ${m}` } };
+}
+
+async function sbCount(base, key, table) {
+  const u = new URL(`${base}/rest/v1/${table}`);
+  u.searchParams.set('select','*'); u.searchParams.set('limit','0');
+  const r = await fetch(u.toString(), { headers:authHeaders(key,{'Prefer':'count=exact'}) });
+  return parseInt((r.headers.get('content-range')||'0/0').split('/')[1])||0;
+}
+
+async function parseRes(r, single) {
+  const text = await r.text();
+  let data; try{data=JSON.parse(text)}catch(_){data=null}
+  if (!r.ok) return { data:null, error:{ message: data?.message||data?.error||`HTTP ${r.status}: ${text.slice(0,300)}` }};
+  if (single) return { data: Array.isArray(data)?(data[0]??null):data, error:null };
+  return { data: data??[], error:null };
+}
+
+// ── Router ────────────────────────────────────────────────────────────────────
+
+async function router(path, method, url, request, SB, KEY) {
+  const q    = url.searchParams;
+  const seg  = path.replace(/^\/api\/?/,'').split('/');
+  const res  = seg[0];
+  const id   = seg[1];
+  const act  = seg[2];
+  const body = ['POST','PUT','PATCH'].includes(method) ? await request.json().catch(()=>({})) : {};
 
   // ASSETS
-  if (resource === 'assets') {
-    if (method === 'GET' && !id) {
-      let r = sb.from('assets').select('*').order('name').limit(+(q.get('limit')||500));
-      if (q.get('search'))   r = r.ilike('name', `%${q.get('search')}%`);
-      if (q.get('status'))   r = r.eq('status',   q.get('status'));
-      if (q.get('category')) r = r.eq('category', q.get('category'));
-      if (q.get('company'))  r = r.eq('company',  q.get('company'));
-      if (q.get('rig_name')) r = r.eq('rig_name', q.get('rig_name'));
-      return ok(await r.run());
+  if (res==='assets') {
+    if (method==='GET'&&!id) {
+      const f={};
+      if(q.get('status'))   f.status  =`eq.${q.get('status')}`;
+      if(q.get('category')) f.category=`eq.${q.get('category')}`;
+      if(q.get('company'))  f.company =`eq.${q.get('company')}`;
+      if(q.get('rig_name')) f.rig_name=`eq.${q.get('rig_name')}`;
+      if(q.get('search'))   f.name    =`ilike.%${q.get('search')}%`;
+      return ok(await sbGet(SB,KEY,'assets',{filters:f,order:'name.asc',limit:+(q.get('limit')||500)}));
     }
-    if (method === 'GET')    return ok(await sb.from('assets').select('*').eq('asset_id',id).single().run());
-    if (method === 'POST')   return ok(await sb.from('assets').insert(body).select().single().run());
-    if (method === 'PUT')  { const {asset_id,created_at,updated_at,...u}=body; return ok(await sb.from('assets').update(u).eq('asset_id',id).select().single().run()); }
-    if (method === 'PATCH')  return ok(await sb.from('assets').update(body).eq('asset_id',id).select().single().run());
-    if (method === 'DELETE') { const {error:de}=await sb.from('assets').delete().eq('asset_id',id).run(); if(de) return err500(de); return ok({deleted:id}); }
+    if(method==='GET')    return ok(await sbGet(SB,KEY,'assets',{filters:{asset_id:`eq.${id}`},single:true}));
+    if(method==='POST')   return ok(await sbPost(SB,KEY,'assets',body));
+    if(method==='PUT')  { const {asset_id,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'assets',{asset_id:`eq.${id}`},u)); }
+    if(method==='PATCH')  return ok(await sbPatch(SB,KEY,'assets',{asset_id:`eq.${id}`},body));
+    if(method==='DELETE'){const r=await sbDelete(SB,KEY,'assets',{asset_id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
   }
 
   // RIGS
-  if (resource === 'rigs') {
-    if (method === 'GET' && !id) return ok(await sb.from('rigs').select('*').order('name').run());
-    if (method === 'GET')    return ok(await sb.from('rigs').select('*').eq('id',id).single().run());
-    if (method === 'POST')   return ok(await sb.from('rigs').insert(body).select().single().run());
-    if (method === 'PUT')  { const {id:_,created_at,updated_at,...u}=body; return ok(await sb.from('rigs').update(u).eq('id',id).select().single().run()); }
-    if (method === 'DELETE') { const {error:de}=await sb.from('rigs').delete().eq('id',id).run(); if(de) return err500(de); return ok({deleted:id}); }
+  if (res==='rigs') {
+    if(method==='GET'&&!id) return ok(await sbGet(SB,KEY,'rigs',{order:'name.asc'}));
+    if(method==='GET')    return ok(await sbGet(SB,KEY,'rigs',{filters:{id:`eq.${id}`},single:true}));
+    if(method==='POST')   return ok(await sbPost(SB,KEY,'rigs',body));
+    if(method==='PUT')  { const {id:_,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'rigs',{id:`eq.${id}`},u)); }
+    if(method==='DELETE'){const r=await sbDelete(SB,KEY,'rigs',{id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
   }
 
   // COMPANIES
-  if (resource === 'companies') {
-    if (method === 'GET')    return ok(await sb.from('companies').select('*').order('name').run());
-    if (method === 'POST')   return ok(await sb.from('companies').insert(body).select().single().run());
-    if (method === 'PUT')  { const {id:_,created_at,updated_at,...u}=body; return ok(await sb.from('companies').update(u).eq('id',id).select().single().run()); }
-    if (method === 'DELETE') { const {error:de}=await sb.from('companies').delete().eq('id',id).run(); if(de) return err500(de); return ok({deleted:id}); }
+  if (res==='companies') {
+    if(method==='GET')    return ok(await sbGet(SB,KEY,'companies',{order:'name.asc'}));
+    if(method==='POST')   return ok(await sbPost(SB,KEY,'companies',body));
+    if(method==='PUT')  { const {id:_,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'companies',{id:`eq.${id}`},u)); }
+    if(method==='DELETE'){const r=await sbDelete(SB,KEY,'companies',{id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
   }
 
   // CONTRACTS
-  if (resource === 'contracts') {
-    if (method === 'GET') {
-      const {data,error} = await sb.from('contracts').select('*, contract_assets(asset_id)').order('id').limit(+(q.get('limit')||200)).run();
-      if (error) return err500(error);
-      return ok((data||[]).map(c=>({...c, asset_count:(c.contract_assets||[]).length, contract_assets:undefined})));
+  if (res==='contracts') {
+    if(method==='GET'){
+      const {data,error}=await sbGet(SB,KEY,'contracts',{select:'*, contract_assets(asset_id)',order:'id.asc',limit:+(q.get('limit')||200)});
+      if(error) return err500(error);
+      return ok((data||[]).map(c=>({...c,asset_count:(c.contract_assets||[]).length,contract_assets:undefined})));
     }
-    if (method === 'POST') return ok(await sb.from('contracts').insert(body).select().single().run());
-    if (method === 'PUT') { const {id:_,created_at,updated_at,...u}=body; return ok(await sb.from('contracts').update(u).eq('id',id).select().single().run()); }
+    if(method==='POST') return ok(await sbPost(SB,KEY,'contracts',body));
+    if(method==='PUT'){ const {id:_,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'contracts',{id:`eq.${id}`},u)); }
   }
 
   // BOM
-  if (resource === 'bom') {
-    if (method === 'GET' && !id) {
-      let r = sb.from('bom_items').select('*').order('id').limit(+(q.get('limit')||1000));
-      if (q.get('asset_id')) r = r.eq('asset_id', q.get('asset_id'));
-      if (q.get('type'))     r = r.eq('type',     q.get('type'));
-      return ok(await r.run());
+  if (res==='bom') {
+    if(method==='GET'&&!id){
+      const f={};
+      if(q.get('asset_id')) f.asset_id=`eq.${q.get('asset_id')}`;
+      if(q.get('type'))     f.type    =`eq.${q.get('type')}`;
+      return ok(await sbGet(SB,KEY,'bom_items',{filters:f,order:'id.asc',limit:+(q.get('limit')||1000)}));
     }
-    if (method === 'GET')    return ok(await sb.from('bom_items').select('*').eq('id',id).single().run());
-    if (method === 'POST') { if (!body.id) body.id='BOM-'+Date.now().toString().slice(-8); return ok(await sb.from('bom_items').insert(body).select().single().run()); }
-    if (method === 'PUT')  { const {id:_,created_at,updated_at,...u}=body; return ok(await sb.from('bom_items').update(u).eq('id',id).select().single().run()); }
-    if (method === 'DELETE') { const {error:de}=await sb.from('bom_items').delete().eq('id',id).run(); if(de) return err500(de); return ok({deleted:id}); }
+    if(method==='GET')    return ok(await sbGet(SB,KEY,'bom_items',{filters:{id:`eq.${id}`},single:true}));
+    if(method==='POST') { if(!body.id) body.id='BOM-'+Date.now().toString().slice(-8); return ok(await sbPost(SB,KEY,'bom_items',body)); }
+    if(method==='PUT')  { const {id:_,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'bom_items',{id:`eq.${id}`},u)); }
+    if(method==='DELETE'){const r=await sbDelete(SB,KEY,'bom_items',{id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
   }
 
   // CERTIFICATES
-  if (resource === 'certificates') {
-    if (method === 'GET' && !id) {
-      const {data,error} = await sb.from('certificates').select('*, assets(name,serial,rig_name,category)').order('cert_id').limit(+(q.get('limit')||500)).run();
-      if (error) return err500(error);
-      return ok((data||[]).map(c=>({...c, asset_name:c.assets?.name, asset_serial:c.assets?.serial, rig_name:c.assets?.rig_name, category:c.assets?.category, assets:undefined})));
+  if (res==='certificates') {
+    if(method==='GET'&&!id){
+      const {data,error}=await sbGet(SB,KEY,'certificates',{select:'*, assets(name,serial,rig_name,category)',order:'cert_id.asc',limit:+(q.get('limit')||500)});
+      if(error) return err500(error);
+      return ok((data||[]).map(c=>({...c,asset_name:c.assets?.name,asset_serial:c.assets?.serial,rig_name:c.assets?.rig_name,category:c.assets?.category,assets:undefined})));
     }
-    if (method === 'GET')    return ok(await sb.from('certificates').select('*').eq('cert_id',id).single().run());
-    if (method === 'POST') {
-      if (!body.cert_id) { const {count}=await sb.from('certificates').count().run(); body.cert_id='CERT-'+String((count||0)+1).padStart(3,'0'); }
-      return ok(await sb.from('certificates').insert(body).select().single().run());
-    }
-    if (method === 'PUT')  { const {cert_id,created_at,updated_at,...u}=body; return ok(await sb.from('certificates').update(u).eq('cert_id',id).select().single().run()); }
-    if (method === 'DELETE') { const {error:de}=await sb.from('certificates').delete().eq('cert_id',id).run(); if(de) return err500(de); return ok({deleted:id}); }
+    if(method==='GET')    return ok(await sbGet(SB,KEY,'certificates',{filters:{cert_id:`eq.${id}`},single:true}));
+    if(method==='POST') { if(!body.cert_id) body.cert_id='CERT-'+String((await sbCount(SB,KEY,'certificates'))+1).padStart(3,'0'); return ok(await sbPost(SB,KEY,'certificates',body)); }
+    if(method==='PUT')  { const {cert_id,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'certificates',{cert_id:`eq.${id}`},u)); }
+    if(method==='DELETE'){const r=await sbDelete(SB,KEY,'certificates',{cert_id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
   }
 
   // MAINTENANCE
-  if (resource === 'maintenance') {
-    if (method === 'POST' && id && action === 'complete') {
-      const {completion_date,performed_by,hours,cost,parts_used,notes,next_due_override} = body;
-      if (!completion_date||!performed_by) return json({success:false,error:'completion_date and performed_by required'},400);
-      const {data:s,error:se} = await sb.from('maintenance_schedules').select('*').eq('id',id).single().run();
-      if (se) return json({success:false,error:'Schedule not found'},404);
-      const nextDue = next_due_override||(()=>{ const d=new Date(completion_date); d.setDate(d.getDate()+(s.freq||90)); return d.toISOString().slice(0,10); })();
-      await sb.from('maintenance_logs').insert({schedule_id:id,completion_date,performed_by,hours,cost,parts_used,notes}).run();
-      const {data:upd,error:ue} = await sb.from('maintenance_schedules').update({status:'Scheduled',last_done:completion_date,next_due:nextDue}).eq('id',id).select().single().run();
-      if (ue) return err500(ue);
+  if (res==='maintenance') {
+    if(method==='POST'&&id&&act==='complete'){
+      const {completion_date,performed_by,hours,cost,parts_used,notes,next_due_override}=body;
+      if(!completion_date||!performed_by) return respond({success:false,error:'completion_date and performed_by required'},400);
+      const {data:sc,error:se}=await sbGet(SB,KEY,'maintenance_schedules',{filters:{id:`eq.${id}`},single:true});
+      if(se||!sc) return respond({success:false,error:'Schedule not found'},404);
+      const nextDue=next_due_override||(()=>{const d=new Date(completion_date);d.setDate(d.getDate()+(sc.freq||90));return d.toISOString().slice(0,10)})();
+      await sbPost(SB,KEY,'maintenance_logs',{schedule_id:id,completion_date,performed_by,hours,cost,parts_used,notes});
+      const {data:upd,error:ue}=await sbPatch(SB,KEY,'maintenance_schedules',{id:`eq.${id}`},{status:'Scheduled',last_done:completion_date,next_due:nextDue});
+      if(ue) return err500(ue);
       return ok({schedule:{...upd,live_status:liveStatus(upd)}});
     }
-    if (method === 'GET' && !id) {
-      const {data,error} = await sb.from('maintenance_schedules').select('*, assets(name,rig_name,company)').order('next_due').limit(+(q.get('limit')||500)).run();
-      if (error) return err500(error);
-      let rows = (data||[]).map(m=>({...m, asset_name:m.assets?.name, rig_name:m.assets?.rig_name, company:m.assets?.company, assets:undefined, live_status:liveStatus(m)}));
-      if (q.get('asset_id')) rows=rows.filter(r=>r.asset_id===q.get('asset_id'));
-      if (q.get('priority')) rows=rows.filter(r=>r.priority===q.get('priority'));
-      if (q.get('status'))   rows=rows.filter(r=>r.live_status===q.get('status')||r.status===q.get('status'));
+    if(method==='GET'&&!id){
+      const {data,error}=await sbGet(SB,KEY,'maintenance_schedules',{select:'*, assets(name,rig_name,company)',order:'next_due.asc',limit:+(q.get('limit')||500)});
+      if(error) return err500(error);
+      let rows=(data||[]).map(m=>({...m,asset_name:m.assets?.name,rig_name:m.assets?.rig_name,company:m.assets?.company,assets:undefined,live_status:liveStatus(m)}));
+      if(q.get('asset_id')) rows=rows.filter(r=>r.asset_id===q.get('asset_id'));
+      if(q.get('priority')) rows=rows.filter(r=>r.priority===q.get('priority'));
+      if(q.get('status'))   rows=rows.filter(r=>r.live_status===q.get('status')||r.status===q.get('status'));
       return ok(rows);
     }
-    if (method === 'GET')    return ok(await sb.from('maintenance_schedules').select('*').eq('id',id).single().run());
-    if (method === 'POST') {
-      if (!body.id) { const {count}=await sb.from('maintenance_schedules').count().run(); body.id='PM-'+String((count||0)+1).padStart(3,'0'); }
-      if (['Overdue','Due Soon'].includes(body.status)) body.status='Scheduled';
-      return ok(await sb.from('maintenance_schedules').insert(body).select().single().run());
+    if(method==='GET')    return ok(await sbGet(SB,KEY,'maintenance_schedules',{filters:{id:`eq.${id}`},single:true}));
+    if(method==='POST') {
+      if(!body.id) body.id='PM-'+String((await sbCount(SB,KEY,'maintenance_schedules'))+1).padStart(3,'0');
+      if(['Overdue','Due Soon'].includes(body.status)) body.status='Scheduled';
+      return ok(await sbPost(SB,KEY,'maintenance_schedules',body));
     }
-    if (method === 'PUT') {
-      const {id:_,created_at,updated_at,live_status,asset_name,rig_name,company,assets,...u}=body;
-      if (['Overdue','Due Soon'].includes(u.status)) u.status='Scheduled';
-      return ok(await sb.from('maintenance_schedules').update(u).eq('id',id).select().single().run());
-    }
-    if (method === 'DELETE') { const {error:de}=await sb.from('maintenance_schedules').delete().eq('id',id).run(); if(de) return err500(de); return ok({deleted:id}); }
+    if(method==='PUT'){ const {id:_,created_at,updated_at,live_status,asset_name,rig_name,company,assets,...u}=body; if(['Overdue','Due Soon'].includes(u.status)) u.status='Scheduled'; return ok(await sbPatch(SB,KEY,'maintenance_schedules',{id:`eq.${id}`},u)); }
+    if(method==='DELETE'){const r=await sbDelete(SB,KEY,'maintenance_schedules',{id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
   }
 
   // TRANSFERS
-  if (resource === 'transfers') {
-    if (method === 'POST' && id && action === 'approve') {
-      const {role,action:decision,comment,approved_by} = body;
-      if (!role||!decision||!comment) return json({success:false,error:'role, action and comment required'},400);
-      const today = new Date().toISOString().slice(0,10);
-      let upd={};
-      if (role==='ops') {
-        upd={ops_approved_by:approved_by,ops_approved_date:today,ops_action:decision,ops_comment:comment,
+  if (res==='transfers') {
+    if(method==='POST'&&id&&act==='approve'){
+      const {role,action:decision,comment,approved_by}=body;
+      if(!role||!decision||!comment) return respond({success:false,error:'role, action and comment required'},400);
+      const today=new Date().toISOString().slice(0,10);
+      let patch={};
+      if(role==='ops'){
+        patch={ops_approved_by:approved_by,ops_approved_date:today,ops_action:decision,ops_comment:comment,
           status:decision==='approve'?'Ops Approved':decision==='reject'?'Rejected':'On Hold'};
-      } else if (role==='mgr') {
-        upd={mgr_approved_by:approved_by,mgr_approved_date:today,mgr_action:decision,mgr_comment:comment,
+      } else if(role==='mgr'){
+        patch={mgr_approved_by:approved_by,mgr_approved_date:today,mgr_action:decision,mgr_comment:comment,
           status:decision==='approve'?'Completed':decision==='reject'?'Rejected':'On Hold'};
-        if (decision==='approve') {
-          const {data:tr}=await sb.from('transfers').select('*').eq('id',id).single().run();
-          if (tr) { const au={location:tr.destination}; if(tr.dest_rig) au.rig_name=tr.dest_rig; if(tr.dest_company) au.company=tr.dest_company; await sb.from('assets').update(au).eq('asset_id',tr.asset_id).run(); }
+        if(decision==='approve'){
+          const {data:tr}=await sbGet(SB,KEY,'transfers',{filters:{id:`eq.${id}`},single:true});
+          if(tr){ const au={location:tr.destination}; if(tr.dest_rig) au.rig_name=tr.dest_rig; if(tr.dest_company) au.company=tr.dest_company; await sbPatch(SB,KEY,'assets',{asset_id:`eq.${tr.asset_id}`},au); }
         }
-      } else return json({success:false,error:'role must be ops or mgr'},400);
-      return ok(await sb.from('transfers').update(upd).eq('id',id).select().single().run());
+      } else return respond({success:false,error:'role must be ops or mgr'},400);
+      return ok(await sbPatch(SB,KEY,'transfers',{id:`eq.${id}`},patch));
     }
-    if (method === 'GET') {
-      let r = sb.from('transfers').select('*').order('created_at',false).limit(+(q.get('limit')||200));
-      if (q.get('status'))   r=r.eq('status',   q.get('status'));
-      if (q.get('priority')) r=r.eq('priority', q.get('priority'));
-      return ok(await r.run());
+    if(method==='GET'){
+      const f={};
+      if(q.get('status'))   f.status  =`eq.${q.get('status')}`;
+      if(q.get('priority')) f.priority=`eq.${q.get('priority')}`;
+      return ok(await sbGet(SB,KEY,'transfers',{filters:f,order:'created_at.desc',limit:+(q.get('limit')||200)}));
     }
-    if (method === 'POST') {
-      if (!body.id) { const {count}=await sb.from('transfers').count().run(); body.id='TR-'+String((count||0)+1).padStart(3,'0'); }
-      if (!body.request_date) body.request_date=new Date().toISOString().slice(0,10);
-      if (!body.asset_name&&body.asset_id) { const {data:a}=await sb.from('assets').select('name,location').eq('asset_id',body.asset_id).single().run(); if(a){body.asset_name=a.name;if(!body.current_loc)body.current_loc=a.location;} }
-      return ok(await sb.from('transfers').insert(body).select().single().run());
+    if(method==='POST'){
+      if(!body.id) body.id='TR-'+String((await sbCount(SB,KEY,'transfers'))+1).padStart(3,'0');
+      if(!body.request_date) body.request_date=new Date().toISOString().slice(0,10);
+      if(!body.asset_name&&body.asset_id){ const {data:a}=await sbGet(SB,KEY,'assets',{select:'name,location',filters:{asset_id:`eq.${body.asset_id}`},single:true}); if(a){body.asset_name=a.name;if(!body.current_loc)body.current_loc=a.location;} }
+      return ok(await sbPost(SB,KEY,'transfers',body));
     }
   }
 
   // USERS
-  if (resource === 'users') {
-    if (method === 'GET')    return ok(await sb.from('app_users').select('*').order('name').run());
-    if (method === 'POST')   return ok(await sb.from('app_users').insert(body).select().single().run());
-    if (method === 'PUT')  { const {id:_,created_at,updated_at,...u}=body; return ok(await sb.from('app_users').update(u).eq('id',id).select().single().run()); }
-    if (method === 'DELETE') { const {error:de}=await sb.from('app_users').delete().eq('id',id).run(); if(de) return err500(de); return ok({deleted:id}); }
+  if (res==='users') {
+    if(method==='GET')    return ok(await sbGet(SB,KEY,'app_users',{order:'name.asc'}));
+    if(method==='POST')   return ok(await sbPost(SB,KEY,'app_users',body));
+    if(method==='PUT')  { const {id:_,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'app_users',{id:`eq.${id}`},u)); }
+    if(method==='DELETE'){const r=await sbDelete(SB,KEY,'app_users',{id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
   }
 
   // NOTIFICATIONS
-  if (resource === 'notifications') {
-    if (method==='PATCH'&&id==='mark-all-read') return ok(await sb.from('notifications').update({is_read:true}).eq('is_read',false).select().run());
-    if (method==='PATCH'&&id) return ok(await sb.from('notifications').update({is_read:true}).eq('id',id).select().single().run());
-    if (method==='GET')    return ok(await sb.from('notifications').select('*').order('created_at',false).limit(50).run());
-    if (method==='POST')   return ok(await sb.from('notifications').insert(body).select().single().run());
+  if (res==='notifications') {
+    if(method==='PATCH'&&id==='mark-all-read') return ok(await sbPatch(SB,KEY,'notifications',{is_read:`eq.false`},{is_read:true}));
+    if(method==='PATCH'&&id) return ok(await sbPatch(SB,KEY,'notifications',{id:`eq.${id}`},{is_read:true}));
+    if(method==='GET')   return ok(await sbGet(SB,KEY,'notifications',{order:'created_at.desc',limit:50}));
+    if(method==='POST')  return ok(await sbPost(SB,KEY,'notifications',body));
   }
 
-  return json({success:false, error:`Route not found: ${method} ${path}`}, 404);
-}
-
-// ── Supabase REST client (pure fetch, no npm) ─────────────────────────────────
-function supabase(supabaseUrl, serviceKey) {
-  const base = supabaseUrl.replace(/\/$/, '') + '/rest/v1';
-  const authH = {
-    'apikey':        serviceKey,
-    'Authorization': `Bearer ${serviceKey}`,
-    'Content-Type':  'application/json',
-  };
-
-  function q(table) {
-    const s = {
-      method: 'GET', filters: [], select: '*',
-      orderCol: null, orderAsc: true,
-      lim: null, body: null, isSingle: false, isCount: false,
-    };
-
-    const qb = {
-      select:  (v)         => { s.select = v;                           return qb; },
-      eq:      (col, val)  => { s.filters.push([col, `eq.${val}`]);     return qb; },
-      ilike:   (col, val)  => { s.filters.push([col, `ilike.${val}`]);  return qb; },
-      order:   (col, asc=true) => { s.orderCol = col; s.orderAsc = asc; return qb; },
-      limit:   (n)         => { s.lim = n;                              return qb; },
-      single:  ()          => { s.isSingle = true;                      return qb; },
-      count:   ()          => { s.isCount  = true;                      return qb; },
-      insert:  (d)         => { s.method = 'POST';   s.body = d;        return qb; },
-      update:  (d)         => { s.method = 'PATCH';  s.body = d;        return qb; },
-      delete:  ()          => { s.method = 'DELETE';                    return qb; },
-
-      run: async () => {
-        const u = new URL(`${base}/${table}`);
-
-        // Add filters (column=eq.value) — required for UPDATE and DELETE to target correct row
-        s.filters.forEach(([col, val]) => u.searchParams.append(col, val));
-
-        // select= only makes sense for GET and write ops that return data (not DELETE count)
-        if (s.method !== 'DELETE') {
-          u.searchParams.set('select', s.select);
-        }
-
-        if (s.orderCol) u.searchParams.set('order', `${s.orderCol}.${s.orderAsc ? 'asc' : 'desc'}`);
-        if (s.isCount)  u.searchParams.set('limit', '0');
-        else if (s.lim) u.searchParams.set('limit', String(s.lim));
-
-        // Build headers
-        const hh = { ...authH };
-
-        if (s.method === 'DELETE') {
-          // No Prefer header for DELETE — just delete, don't ask for returned rows
-          hh['Prefer'] = 'return=minimal';
-        } else if (s.isCount) {
-          hh['Prefer'] = 'count=exact';
-        } else {
-          // POST/PATCH: return the affected rows so we can update UI
-          hh['Prefer'] = 'return=representation';
-        }
-
-        if (s.isSingle && s.method === 'GET') {
-          hh['Accept'] = 'application/vnd.pgjson';
-        }
-
-        const resp = await fetch(u.toString(), {
-          method:  s.method,
-          headers: hh,
-          body:    s.body ? JSON.stringify(s.body) : undefined,
-        });
-
-        // DELETE with return=minimal gives 204 No Content — that's success
-        if (s.method === 'DELETE') {
-          if (resp.ok) return { data: null, error: null };
-          const txt = await resp.text();
-          let msg;
-          try { msg = JSON.parse(txt)?.message; } catch(_) { msg = txt; }
-          return { data: null, error: { message: msg || `DELETE failed: HTTP ${resp.status}` } };
-        }
-
-        if (s.isCount) {
-          const range = resp.headers.get('content-range') || '0/0';
-          return { count: parseInt(range.split('/')[1]) || 0, error: null };
-        }
-
-        const text = await resp.text();
-        let data;
-        try { data = JSON.parse(text); } catch(_) { data = null; }
-
-        if (!resp.ok) {
-          return { data: null, error: { message: data?.message || data?.error || `HTTP ${resp.status}: ${text.slice(0, 200)}` } };
-        }
-
-        if (s.isSingle) return { data: Array.isArray(data) ? (data[0] ?? null) : data, error: null };
-        return { data: data ?? [], error: null };
-      },
-    };
-    return qb;
-  }
-
-  return { from: (table) => q(table) };
+  return respond({ success:false, error:`Route not found: ${method} ${path}` }, 404);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function liveStatus(m) {
-  if (['Completed','Cancelled','In Progress'].includes(m.status)) return m.status;
+  if(['Completed','Cancelled','In Progress'].includes(m.status)) return m.status;
   const today=new Date(); today.setHours(0,0,0,0);
   const due=new Date(m.next_due);
-  if (due<today) return 'Overdue';
-  if (due-today<=(m.alert_days||14)*86400000) return 'Due Soon';
+  if(due<today) return 'Overdue';
+  if(due-today<=(m.alert_days||14)*86400000) return 'Due Soon';
   return 'Scheduled';
 }
-function ok(r)        { if (r?.error) return err500(r.error); return json({success:true, data:r?.data??r}); }
-function err500(e)    { return json({success:false, error:e?.message||String(e)}, 500); }
-function json(b,s=200){ return cors(JSON.stringify(b),s); }
-function cors(b,s=200){ return new Response(b,{status:s,headers:{'Content-Type':'application/json','Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,PUT,PATCH,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type,x-api-key,x-user-role,x-user-name'}}); }
+function ok(r)     { if(r?.error) return err500(r.error); return respond({success:true, data:r?.data??r}); }
+function err500(e) { return respond({success:false, error:e?.message||String(e)}, 500); }
+function respond(body, status=200) {
+  return new Response(JSON.stringify(body), { status, headers:{
+    'Content-Type':'application/json',
+    'Access-Control-Allow-Origin':'*',
+    'Access-Control-Allow-Methods':'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+    'Access-Control-Allow-Headers':'Content-Type,x-api-key,x-user-role,x-user-name',
+  }});
+}
