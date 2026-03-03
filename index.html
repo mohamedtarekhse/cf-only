@@ -7343,7 +7343,11 @@ Instructions:
           ? parseInt(document.getElementById('cert_customDays').value) || 365
           : parseInt(document.getElementById('cert_validity').value);
 
+        // Generate a unique cert_id to avoid duplicate primary key collisions
+        const newCertId = editingCertId || ('CERT-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2,5).toUpperCase());
+
         const payload = {
+          cert_id: editingCertId ? undefined : newCertId,
           asset_id: assetId,
           inspection_type: type,
           last_inspection: document.getElementById('cert_lastDate').value || null,
@@ -7353,6 +7357,8 @@ Instructions:
           cert_link: document.getElementById('cert_link').value,
           notes: document.getElementById('cert_notes').value,
         };
+        // Remove undefined keys
+        Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
 
         try {
           if (editingCertId) {
@@ -7788,12 +7794,15 @@ Instructions:
         showToast('Importing certificates…', 'info');
         try {
           const rows = await readXlsx(file);
-          let added = 0, skipped = 0;
+          let added = 0, skipped = 0, errors = [];
           for (const r of rows) {
-            const cert_id = (r['Cert ID'] || r['Certificate ID'] || r['ID'] || '').toString().trim();
             const asset_id = (r['Asset ID'] || '').toString().trim();
             const inspection_type = (r['Inspection Type'] || '').toString().trim();
-            if (!cert_id || !asset_id || !inspection_type) { skipped++; continue; }
+            // asset_id and inspection_type are the only truly required fields
+            if (!asset_id || !inspection_type) { skipped++; continue; }
+            // cert_id: use from sheet if provided, otherwise auto-generate unique one
+            const cert_id = (r['Cert ID'] || r['Certificate ID'] || r['ID'] || '').toString().trim()
+              || ('CERT-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2,5).toUpperCase());
             const payload = {
               cert_id,
               asset_id,
@@ -7806,20 +7815,23 @@ Instructions:
               notes: r['Notes'] || '',
             };
             try {
-              const existing = CERTS.find(c => c.certId === cert_id || c.cert_id === cert_id);
+              // Check against CERTIFICATES (correct variable name)
+              const existing = CERTIFICATES.find(c => c.certId === cert_id);
               if (existing) {
                 const res = await PUT(`/certificates/${cert_id}`, payload);
-                const idx = CERTS.findIndex(c => c.certId === cert_id || c.cert_id === cert_id);
-                if (idx >= 0) CERTS[idx] = normC(res.data);
+                const idx = CERTIFICATES.findIndex(c => c.certId === cert_id);
+                if (idx >= 0) CERTIFICATES[idx] = normC(res.data);
               } else {
                 const res = await POST('/certificates', payload);
-                CERTS.push(normC(res.data));
+                CERTIFICATES.push(normC(res.data));
               }
               added++;
-            } catch(e) { skipped++; }
+            } catch(e) { skipped++; errors.push(e.message); }
           }
           renderCertificates();
-          showToast(`${added} certificate(s) imported to database.${skipped ? ' ' + skipped + ' skipped.' : ''}`, 'success');
+          if (typeof updateCertKPIs === 'function') updateCertKPIs();
+          const errNote = errors.length ? ` (${errors[0]})` : '';
+          showToast(`${added} certificate(s) imported.${skipped ? ' ' + skipped + ' skipped' + errNote + '.' : ''}`, added > 0 ? 'success' : 'warning');
         } catch(err) { showToast('Import failed: ' + err.message, 'error'); }
       }
 
