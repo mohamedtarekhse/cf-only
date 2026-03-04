@@ -1970,66 +1970,6 @@
       #aiChatPanel { height: 85vh; max-height: 85vh; }
       .popup-header-icon { width: 32px; height: 32px; font-size: 14px; }
     }
-
-    /* ── TRANSFER SIDE PANEL ───────────────────────────── */
-    .tsp-overlay {
-      position: fixed; inset: 0; z-index: 1100;
-      background: transparent; pointer-events: none;
-      transition: background .25s;
-    }
-    .tsp-overlay.open { background: rgba(0,0,0,.38); pointer-events: all; }
-    .tsp-panel {
-      position: fixed; top: 0; right: 0; bottom: 0;
-      width: 580px; max-width: 97vw;
-      background: #fff;
-      box-shadow: -4px 0 30px rgba(0,0,0,.15);
-      display: flex; flex-direction: column;
-      transform: translateX(102%);
-      transition: transform .3s cubic-bezier(.4,0,.2,1);
-      z-index: 1101;
-    }
-    .tsp-overlay.open .tsp-panel { transform: translateX(0); }
-    .tsp-header {
-      background: linear-gradient(135deg,#354A5E,#4A6580);
-      color:#fff; padding:14px 16px;
-      display:flex; align-items:flex-start; gap:12px; flex-shrink:0;
-    }
-    .tsp-tabs {
-      display:flex; border-bottom:2px solid var(--sap-border);
-      background:#FAFBFC; flex-shrink:0; overflow-x:auto;
-    }
-    .tsp-tab {
-      padding:10px 16px; font-size:12.5px; font-weight:600;
-      color:var(--sap-text-muted); cursor:pointer; border:none;
-      background:transparent; border-bottom:2px solid transparent;
-      margin-bottom:-2px; transition:all .15s; white-space:nowrap;
-      display:flex; align-items:center; gap:5px;
-    }
-    .tsp-tab.active { color:var(--sap-blue); border-bottom-color:var(--sap-blue); }
-    .tsp-tab:hover:not(.active) { color:var(--sap-text); background:#F0F2F4; }
-    .tsp-body { flex:1; overflow-y:auto; }
-    .tsp-pane { display:none; padding:16px; flex-direction:column; gap:14px; }
-    .tsp-pane.active { display:flex; }
-    .tsp-footer {
-      border-top:1px solid var(--sap-border); padding:10px 16px;
-      display:flex; gap:8px; align-items:center; flex-shrink:0; background:#FAFBFC;
-    }
-    .tsp-stitle {
-      font-size:11px; font-weight:700; text-transform:uppercase;
-      letter-spacing:.5px; color:var(--sap-text-muted);
-      display:flex; align-items:center; gap:6px; margin-bottom:8px;
-    }
-    .tsp-stitle::after { content:''; flex:1; height:1px; background:var(--sap-border); }
-    .tsp-grid { display:grid; grid-template-columns:1fr 1fr; border:1px solid var(--sap-border); border-radius:6px; overflow:hidden; }
-    .tsp-cell { padding:9px 12px; border-bottom:1px solid #ECEEF0; }
-    .tsp-cell:nth-child(odd) { border-right:1px solid #ECEEF0; }
-    .tsp-cell .lbl { font-size:10.5px; color:var(--sap-text-muted); text-transform:uppercase; letter-spacing:.3px; margin-bottom:3px; }
-    .tsp-cell .val { font-size:13px; font-weight:500; word-break:break-word; }
-    .tsp-ef { width:100%; border:1px solid #C8D2DC; border-radius:4px; padding:4px 8px; font-size:13px; background:#fff; }
-    .tsp-ef:focus { outline:none; border-color:var(--sap-blue); box-shadow:0 0 0 2px rgba(0,112,242,.15); }
-    .tsp-appr-grid { display:grid; grid-template-columns:1fr 1fr; border:1px solid var(--sap-border); border-radius:6px; overflow:hidden; }
-    .tsp-appr-half { padding:12px; }
-    .tsp-appr-half:first-child { border-right:1px solid var(--sap-border); }
   </style>
 </head>
 <script>
@@ -2461,6 +2401,12 @@
               </select>
             </div>
             <div class="filter-group">
+              <label class="filter-label">Company</label>
+              <select class="filter-select" id="filterCompany" onchange="applyFilters()">
+                <option value="">All</option>
+              </select>
+            </div>
+            <div class="filter-group">
               <label class="filter-label">Rig</label>
               <select class="filter-select" id="filterRig" onchange="applyFilters()">
                 <option value="">All Rigs</option>
@@ -2493,6 +2439,7 @@
                   <th onclick="sortTable('assetId')">Asset ID <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortTable('name')">Asset Name <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortTable('category')">Category <i class="fas fa-sort sort-icon"></i></th>
+                  <th onclick="sortTable('company')">Company <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortTable('rigName')">Rig <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortTable('location')">Location <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortTable('status')">Status <i class="fas fa-sort sort-icon"></i></th>
@@ -2556,6 +2503,7 @@
               <thead>
                 <tr>
                   <th>Contract ID</th>
+                  <th>Company</th>
                   <th>Rig</th>
                   <th>Asset Count</th>
                   <th>Start Date</th>
@@ -2589,6 +2537,7 @@
                   <th>Rig ID</th>
                   <th>Rig Name</th>
                   <th>Type</th>
+                  <th>Company</th>
                   <th>Location</th>
                   <th>Depth Capacity</th>
                   <th>Status</th>
@@ -2603,7 +2552,35 @@
       </div>
     </div>
 
-
+    <!-- ======= COMPANIES ======= -->
+    <div class="section" id="section-companies">
+      <div class="content">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Contracting Companies</span><button id="btnAddCompany"
+              class="btn btn-primary"><i class="fas fa-plus"></i> Add Company</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('importFileCompanies').click()"><i class="fas fa-upload"></i> Import</button>
+            <input type="file" id="importFileCompanies" accept=".xlsx,.xls,.csv" style="display:none" onchange="importCompanies(event)">
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Company ID</th>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Country</th>
+                  <th>Contact</th>
+                  <th>Email</th>
+                  <th>Active Contracts</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="companyTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- ======= USERS ======= -->
     <div class="section" id="section-users">
@@ -3324,6 +3301,9 @@ Asset Management System</textarea>
           </div>
         </div>
         <div class="form-row">
+          <div class="form-group"><label class="form-label">Company</label>
+            <select class="form-select" id="f_company"></select>
+          </div>
           <div class="form-group"><label class="form-label">Rig</label>
             <select class="form-select" id="f_rig"></select>
           </div>
@@ -3736,160 +3716,20 @@ Asset Management System</textarea>
   </div>
 
   <!-- ══════════════════════════════════════════
-     TRANSFER DETAIL / EDIT SIDE PANEL
+     TRANSFER DETAIL VIEW MODAL (read-only)
 ═══════════════════════════════════════════ -->
-  <div class="tsp-overlay" id="tspOverlay" onclick="closeTsp(event)">
-    <div class="tsp-panel" id="tspPanel">
-
-      <!-- Header -->
-      <div class="tsp-header">
-        <div style="width:44px;height:44px;background:rgba(255,255,255,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">
-          <i class="fas fa-exchange-alt"></i>
-        </div>
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="tspTitle">—</div>
-          <div style="font-size:11.5px;opacity:.75;margin-top:2px" id="tspSub">—</div>
-        </div>
-        <div id="tspBadge" style="flex-shrink:0;margin-left:8px"></div>
-        <button onclick="closeTsp()" style="background:none;border:none;color:rgba(255,255,255,.8);font-size:18px;cursor:pointer;padding:4px;margin-left:6px;flex-shrink:0"><i class="fas fa-times"></i></button>
+  <div class="modal-overlay" id="transferDetailModal">
+    <div class="modal" style="width:640px;max-width:95vw">
+      <div class="modal-header">
+        <i class="fas fa-file-alt" style="color:var(--sap-blue);font-size:18px"></i>
+        <h2>Transfer Request Details</h2>
+        <button class="shell-btn" style="color:var(--sap-text-muted)" onclick="closeModal('transferDetailModal')"><i
+            class="fas fa-times"></i></button>
       </div>
-
-      <!-- Tabs -->
-      <div class="tsp-tabs">
-        <button class="tsp-tab active" onclick="tspTab('details',this)"><i class="fas fa-info-circle"></i> Details</button>
-        <button class="tsp-tab" onclick="tspTab('edit',this)"><i class="fas fa-pen"></i> Edit</button>
-        <button class="tsp-tab" onclick="tspTab('approval',this)"><i class="fas fa-user-check"></i> Approvals</button>
+      <div class="modal-body" id="transferDetailBody"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('transferDetailModal')">Close</button>
       </div>
-
-      <!-- Body -->
-      <div class="tsp-body">
-
-        <!-- DETAILS PANE -->
-        <div class="tsp-pane active" id="tsp-details">
-
-          <div>
-            <div class="tsp-stitle"><i class="fas fa-info-circle"></i> Request Info</div>
-            <div class="tsp-grid" id="tspInfoGrid"></div>
-          </div>
-
-          <div>
-            <div class="tsp-stitle"><i class="fas fa-route"></i> Route</div>
-            <div class="tsp-grid" id="tspRouteGrid"></div>
-          </div>
-
-          <div id="tspVendorSection" style="display:none">
-            <div class="tsp-stitle"><i class="fas fa-store"></i> Vendor / Workshop</div>
-            <div style="background:#FFF8E1;border:1px solid #FFE082;border-radius:6px;padding:12px 14px" id="tspVendorGrid"></div>
-          </div>
-
-          <div>
-            <div class="tsp-stitle"><i class="fas fa-comment-alt"></i> Reason & Notes</div>
-            <div style="background:#F8F9FA;border:1px solid var(--sap-border);border-radius:6px;padding:12px 14px" id="tspReasonBox"></div>
-          </div>
-
-        </div>
-
-        <!-- EDIT PANE -->
-        <div class="tsp-pane" id="tsp-edit">
-          <div style="background:#EBF4FF;border:1px solid #C2DCFF;border-radius:6px;padding:10px 14px;font-size:12.5px;color:#0040B0">
-            <i class="fas fa-info-circle"></i> You can edit the fields below. Click <strong>Save Changes</strong> when done.
-          </div>
-
-          <div>
-            <div class="tsp-stitle"><i class="fas fa-sliders-h"></i> Transfer Details</div>
-            <div style="display:flex;flex-direction:column;gap:10px">
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label">Priority</label>
-                  <select class="form-select tsp-ef" id="tsp_priority">
-                    <option>Critical</option><option>High</option><option selected>Normal</option><option>Low</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Transfer Type</label>
-                  <select class="form-select tsp-ef" id="tsp_type" onchange="tspTypeChange()">
-                    <option>Field to Field</option><option>Field to Warehouse</option>
-                    <option>Warehouse to Field</option><option>Rig to Rig</option>
-                    <option>For Repair</option><option>For Maintenance</option>
-                    <option>For Inspection</option><option>Return to Owner</option>
-                  </select>
-                </div>
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label">Destination <span style="color:var(--sap-error)">*</span></label>
-                  <input class="form-input tsp-ef" id="tsp_destination" placeholder="Destination location">
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Destination Rig</label>
-                  <select class="form-select tsp-ef" id="tsp_destRig"></select>
-                </div>
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label">Required By Date</label>
-                  <input class="form-input tsp-ef" id="tsp_requiredDate" type="date">
-                </div>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Reason for Transfer <span style="color:var(--sap-error)">*</span></label>
-                <textarea class="form-textarea tsp-ef" id="tsp_reason" rows="3"></textarea>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Special Instructions</label>
-                <textarea class="form-textarea tsp-ef" id="tsp_instructions" rows="2"></textarea>
-              </div>
-            </div>
-          </div>
-
-          <div id="tspEditVendor">
-            <div class="tsp-stitle"><i class="fas fa-store"></i> Vendor / Workshop</div>
-            <div style="background:#FFF8E1;border:1px solid #FFE082;border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:10px">
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label">Vendor Name</label>
-                  <input class="form-input tsp-ef" id="tsp_vendorName" placeholder="e.g. Al-Rashid Workshop">
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Vendor Type</label>
-                  <select class="form-select tsp-ef" id="tsp_vendorType">
-                    <option value="">— Select —</option>
-                    <option>Workshop</option><option>Supplier</option><option>Vendor</option>
-                    <option>OEM</option><option>Subcontractor</option><option>Internal</option>
-                  </select>
-                </div>
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label">PO Number</label>
-                  <input class="form-input tsp-ef" id="tsp_poNumber" placeholder="PO-2024-0042">
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Return Date</label>
-                  <input class="form-input tsp-ef" id="tsp_returnDate" type="date">
-                </div>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Vendor Contact / Notes</label>
-                <input class="form-input tsp-ef" id="tsp_vendorContact" placeholder="Contact name, phone, email…">
-              </div>
-            </div>
-          </div>
-
-        </div>
-
-        <!-- APPROVALS PANE -->
-        <div class="tsp-pane" id="tsp-approval">
-          <div id="tspApprovalContent"></div>
-        </div>
-
-      </div>
-
-      <!-- Footer -->
-      <div class="tsp-footer" id="tspFooter">
-        <button class="btn btn-secondary" onclick="closeTsp()">Close</button>
-      </div>
-
     </div>
   </div>
 
@@ -4382,16 +4222,18 @@ Asset Management System</textarea>
       const q = document.getElementById('searchInput').value.toLowerCase();
       const status = document.getElementById('filterStatus').value;
       const cat = document.getElementById('filterCategory').value;
+      const comp = document.getElementById('filterCompany').value;
       const rig = document.getElementById('filterRig')?.value || '';
       filteredAssets = ASSETS.filter(a => {
-        const searchFields = [a.assetId, a.name, a.location, a.serial || '', a.category,
+        const searchFields = [a.assetId, a.name, a.location, a.serial || '', a.company, a.category,
         a.status, a.rigName || '', a.inspectionType || '', a.lastInspection || '',
         a.notes || '', String(a.value || ''), a.acquisitionDate || ''];
         const matchQ = !q || searchFields.some(f => f.toLowerCase().includes(q));
         const matchS = !status || a.status === status;
         const matchC = !cat || a.category === cat;
+        const matchCo = !comp || a.company === comp;
         const matchR = !rig || a.rigName === rig;
-        return matchQ && matchS && matchC && matchR;
+        return matchQ && matchS && matchC && matchCo && matchR;
       });
       currentPage = 1;
       renderAssets();
@@ -4401,6 +4243,7 @@ Asset Management System</textarea>
       document.getElementById('searchInput').value = '';
       document.getElementById('filterStatus').value = '';
       document.getElementById('filterCategory').value = '';
+      document.getElementById('filterCompany').value = '';
       const fr = document.getElementById('filterRig'); if (fr) fr.value = '';
       activeAssetRig = '';
       applyFilters();
@@ -4410,7 +4253,7 @@ Asset Management System</textarea>
       const q = document.getElementById('contractSearch').value.toLowerCase();
       const status = document.getElementById('contractStatus').value;
       const filtered = CONTRACTS.filter(c => {
-        const mq = !q || c.id.toLowerCase().includes(q) || (c.rig||'').toLowerCase().includes(q);
+        const mq = !q || c.id.toLowerCase().includes(q) || c.company.toLowerCase().includes(q);
         const ms = !status || c.status === status;
         return mq && ms;
       });
@@ -4450,6 +4293,7 @@ Asset Management System</textarea>
         <td><span class="tag blue">${a.assetId}</span></td>
         <td style="font-weight:500">${a.name}</td>
         <td>${a.category}</td>
+        <td>${a.company}</td>
         <td>${a.rigName}</td>
         <td>${a.location}</td>
         <td>${statusBadge(a.status)}</td>
@@ -4533,15 +4377,15 @@ Asset Management System</textarea>
       if (!a) return;
       currentAsset = a;
       document.getElementById('popupTitle').textContent = a.name;
-      document.getElementById('popupSub').textContent = `${a.assetId} · ${a.category}`;
+      document.getElementById('popupSub').textContent = `${a.assetId} · ${a.category} · ${a.company}`;
       document.getElementById('popupStatus').innerHTML = statusBadge(a.status);
 
-      const contract = CONTRACTS.find(c => c.rig === a.rigName);
+      const contract = CONTRACTS.find(c => c.company === a.company && c.rig === a.rigName);
       const rig = RIGS.find(r => r.name === a.rigName);
 
       document.getElementById('popupGeneralGrid').innerHTML = fields([
         ['Asset ID', a.assetId, true], ['Asset Name', a.name], ['Category', a.category],
-        ['Status', statusBadge(a.status)], ['Location', a.location],
+        ['Status', statusBadge(a.status)], ['Company', a.company], ['Location', a.location],
         ['Value (USD)', '$' + Number(a.value).toLocaleString(), true], ['Acquisition Date', a.acquisitionDate], ['Notes', a.notes || '—'],
       ]);
       document.getElementById('popupTechGrid').innerHTML = fields([
@@ -4553,7 +4397,7 @@ Asset Management System</textarea>
         document.getElementById('popupContractInfo').innerHTML = `
       <div class="detail-grid">
         ${fields([
-          ['Contract ID', contract.id, true], ['Rig', contract.rig],
+          ['Contract ID', contract.id, true], ['Company', contract.company], ['Rig', contract.rig],
           ['Start Date', contract.start], ['End Date', contract.end], ['Contract Value', '$' + Number(contract.value).toLocaleString(), true],
           ['Status', statusBadge(contract.status)], ['Asset Count', contract.assetCount],
         ])}
@@ -4568,7 +4412,7 @@ Asset Management System</textarea>
       <div class="detail-grid">
         ${fields([
           ['Rig ID', rig.id, true], ['Rig Name', rig.name], ['Type', rig.type],
-          ['Location', rig.location], ['Depth Capacity', rig.depth],
+          ['Company', rig.company], ['Location', rig.location], ['Depth Capacity', rig.depth],
           ['Status', statusBadge(rig.status)],
         ])}
       </div>`;
@@ -4626,6 +4470,7 @@ Asset Management System</textarea>
         document.getElementById('f_name').value = a.name;
         document.getElementById('f_category').value = a.category;
         document.getElementById('f_status').value = a.status;
+        document.getElementById('f_company').value = a.company;
         document.getElementById('f_rig').value = a.rigName;
         document.getElementById('f_location').value = a.location;
         document.getElementById('f_value').value = a.value;
@@ -4654,6 +4499,7 @@ Asset Management System</textarea>
         assetId, name,
         category: document.getElementById('f_category').value,
         status: document.getElementById('f_status').value,
+        company: document.getElementById('f_company').value,
         rigName: document.getElementById('f_rig').value,
         location: document.getElementById('f_location').value,
         value: Number(document.getElementById('f_value').value) || 0,
@@ -4688,10 +4534,15 @@ Asset Management System</textarea>
     //  POPULATE SELECTS
     // ══════════════════════════════════
     function populateCompanyFilters() {
+      const sel = document.getElementById('filterCompany');
+      COMPANIES.forEach(c => { const o = new Option(c.name, c.name); sel.appendChild(o); });
+      // Populate rig filter dropdown (Maintenance tab)
       const mrSel = document.getElementById('mFilterRig');
       if (mrSel) RIGS.forEach(r => mrSel.appendChild(new Option(r.name, r.name)));
     }
     function populateFormSelects() {
+      const compSel = document.getElementById('f_company');
+      COMPANIES.forEach(c => compSel.appendChild(new Option(c.name, c.name)));
       const rigSel = document.getElementById('f_rig');
       RIGS.forEach(r => rigSel.appendChild(new Option(r.name, r.name)));
     }
@@ -4704,6 +4555,7 @@ Asset Management System</textarea>
       document.getElementById('contractTbody').innerHTML = list.map(c => `
     <tr>
       <td><span class="tag blue">${c.id}</span></td>
+      <td>${c.company}</td>
       <td>${c.rig}</td>
       <td>${c.assetCount}</td>
       <td>${c.start}</td>
@@ -4723,6 +4575,7 @@ Asset Management System</textarea>
       <td><span class="tag">${r.id}</span></td>
       <td style="font-weight:500">${r.name}</td>
       <td>${r.type}</td>
+      <td>${r.company}</td>
       <td>${r.location}</td>
       <td>${r.depth}</td>
       <td>${statusBadge(r.status)}</td>
@@ -4758,13 +4611,14 @@ Asset Management System</textarea>
       const r = currentRig;
 
       document.getElementById('rigPopupTitle').textContent = r.name || r.id;
-      document.getElementById('rigPopupSub').textContent = r.type || 'Rig';
+      document.getElementById('rigPopupSub').textContent = (r.type || 'Rig') + ' · ' + (r.company || '—');
       document.getElementById('rigPopupStatus').innerHTML = statusBadge(r.status);
 
       const fields = [
         { label: 'Rig ID',    value: r.id },
         { label: 'Rig Name',  value: r.name },
         { label: 'Type',      value: r.type || '—' },
+        { label: 'Company',   value: r.company || '—' },
         { label: 'Location',  value: r.location || '—' },
         { label: 'Max Depth', value: r.depth || '—' },
         { label: 'Horsepower',value: r.hp ? r.hp.toLocaleString() + ' HP' : '—' },
@@ -4803,13 +4657,14 @@ Asset Management System</textarea>
       const c = currentContract;
 
       document.getElementById('contractPopupTitle').textContent = c.id;
-      document.getElementById('contractPopupSub').textContent = c.rig || '—';
+      document.getElementById('contractPopupSub').textContent = (c.company || '—') + ' · ' + (c.rig || '—');
       document.getElementById('contractPopupStatus').innerHTML = statusBadge(c.status);
 
       const startFmt = c.start ? new Date(c.start).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) : '—';
       const endFmt   = c.end   ? new Date(c.end).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) : '—';
       const fields = [
         { label: 'Contract ID',  value: c.id },
+        { label: 'Company',      value: c.company || '—' },
         { label: 'Rig',          value: c.rig || '—' },
         { label: 'Contract Value', value: '$' + Number(c.value||0).toLocaleString(undefined,{minimumFractionDigits:2}) },
         { label: 'Start Date',   value: startFmt },
@@ -4822,7 +4677,7 @@ Asset Management System</textarea>
       ).join('');
 
       // Show assets linked to this contract (by rig name match or contract_assets table if available)
-      const contractAssets = ASSETS.filter(a => a.rigName === c.rig);
+      const contractAssets = ASSETS.filter(a => a.rigName === c.rig || a.company === c.company);
       document.getElementById('contractAssetCount').textContent = '(' + contractAssets.length + ')';
       document.getElementById('contractAssetsTbody').innerHTML = contractAssets.length
         ? contractAssets.map(a => `<tr>
@@ -4919,7 +4774,7 @@ Asset Management System</textarea>
     function exportAssets() {
       const ws = XLSX.utils.json_to_sheet(ASSETS.map(a => ({
         'Asset ID': a.assetId, 'Name': a.name, 'Category': a.category,
-        'Rig': a.rigName, 'Location': a.location,
+        'Company': a.company, 'Rig': a.rigName, 'Location': a.location,
         'Status': a.status, 'Value (USD)': a.value,
         'Acquisition Date': a.acquisitionDate, 'Serial': a.serial,
         'Last Inspection': a.lastInspection || '', 'Inspection Type': a.inspectionType || '',
@@ -4933,7 +4788,7 @@ Asset Management System</textarea>
 
     function exportContracts() {
       const ws = XLSX.utils.json_to_sheet(CONTRACTS.map(c => ({
-        'Contract ID': c.id, 'Rig': c.rig, 'Assets': c.assetCount,
+        'Contract ID': c.id, 'Company': c.company, 'Rig': c.rig, 'Assets': c.assetCount,
         'Start': c.start, 'End': c.end, 'Value': c.value, 'Status': c.status
       })));
       const wb = XLSX.utils.book_new();
@@ -5524,7 +5379,8 @@ Asset Management System</textarea>
         RIGS.map(r => `<option value="${r.name}">${r.name}</option>`).join('');
 
       const compSel = document.getElementById('tr_destCompany');
-      compSel.innerHTML = '<option value="">— Same / Not Applicable —</option>';
+      compSel.innerHTML = '<option value="">— Same / Not Applicable —</option>' +
+        COMPANIES.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
 
       // Clear form
       ['tr_destination', 'tr_reason', 'tr_instructions',
@@ -5612,7 +5468,7 @@ Asset Management System</textarea>
 
     function updateTransferBanner(a) {
       document.getElementById('trBannerName').textContent = a.name;
-      document.getElementById('trBannerSub').textContent = `${a.assetId} · ${a.category} · ${a.location || '—'}`;
+      document.getElementById('trBannerSub').textContent = `${a.assetId} · ${a.category} · ${a.company || '—'} · ${a.location || '—'}`;
       document.getElementById('trBannerStatus').innerHTML = statusBadge(a.status);
     }
 
@@ -5682,19 +5538,12 @@ Asset Management System</textarea>
 
       const priorityClass = { Critical: 'priority-critical', High: 'priority-high', Normal: 'priority-normal', Low: 'priority-low' };
 
-      document.getElementById('transferTbody').innerHTML = list.map(t => {
-      const _a = ASSETS.find(a => a.assetId === t.assetId);
-      const _rig = _a?.rigName || '—';
-      return `
-    <tr style="cursor:pointer" onclick="openTransferDetail('${t.id}')">
-      <td onclick="event.stopPropagation()"><span class="tag blue" style="font-family:'IBM Plex Mono',monospace;font-size:11px">${t.id}</span></td>
+      document.getElementById('transferTbody').innerHTML = list.map(t => `
+    <tr>
+      <td><span class="tag blue" style="font-family:'IBM Plex Mono',monospace;font-size:11px">${t.id}</span></td>
       <td>
         <div style="font-weight:600;font-size:13px">${t.assetName}</div>
         <div style="font-size:11px;color:var(--sap-text-muted);font-family:'IBM Plex Mono',monospace">${t.assetId}</div>
-      </td>
-      <td style="font-size:12.5px;white-space:nowrap">
-        ${_rig !== '—' ? `<span style="display:inline-flex;align-items:center;gap:4px"><i class="fas fa-oil-well" style="color:var(--sap-text-muted);font-size:10px"></i>${_rig}</span>` : '<span style="color:#ccc">—</span>'}
-        ${t.destRig && t.destRig !== _rig ? `<div style="font-size:10.5px;color:var(--sap-blue);margin-top:2px"><i class="fas fa-arrow-right" style="font-size:9px"></i> ${t.destRig}</div>` : ''}
       </td>
       <td>
         <div style="display:flex;align-items:center;gap:5px;font-size:12.5px">
@@ -5714,14 +5563,13 @@ Asset Management System</textarea>
       <td>${transferStatusBadge(t.status)}</td>
       <td>${approvalCell(t.opsApproval)}</td>
       <td>${approvalCell(t.mgrApproval)}</td>
-      <td style="white-space:nowrap" onclick="event.stopPropagation()">
+      <td style="white-space:nowrap">
         <button class="btn btn-ghost btn-icon" title="View Details" onclick="openTransferDetail('${t.id}')"><i class="fas fa-eye"></i></button>
-        ${canEdit() ? `<button class="btn btn-ghost btn-icon" title="Edit" style="color:var(--sap-blue)" onclick="openTransferDetail('${t.id}');setTimeout(()=>tspTab('edit',document.querySelectorAll('.tsp-tab')[1]),80)"><i class="fas fa-pen"></i></button>` : ''}
         ${t.status === 'Pending' && canApproveDrilling() ? `<button class="btn btn-ghost btn-icon" title="Drilling Manager Review" style="color:#E65100" onclick="openApprovalModal('${t.id}','drilling')"><i class="fas fa-hard-hat"></i></button>` : ''}
         ${t.status === 'Ops Approved' && canApproveAsset() ? `<button class="btn btn-ghost btn-icon" title="Asset Manager Final Approval" style="color:#6D28D9" onclick="openApprovalModal('${t.id}','asset')"><i class="fas fa-user-tie"></i></button>` : ''}
         ${(t.status === 'Pending' || t.status === 'Ops Approved') ? `<button class="btn btn-ghost btn-icon" title="Cancel Request" style="color:var(--sap-error)" onclick="cancelTransfer('${t.id}')"><i class="fas fa-ban"></i></button>` : ''}
       </td>
-    </tr>`; }).join('') || '<tr><td colspan="13" style="text-align:center;padding:40px;color:var(--sap-text-muted)"><i class="fas fa-exchange-alt" style="font-size:28px;opacity:.3;display:block;margin-bottom:8px"></i>No transfer requests found</td></tr>';
+    </tr>`).join('') || '<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--sap-text-muted)"><i class="fas fa-exchange-alt" style="font-size:28px;opacity:.3;display:block;margin-bottom:8px"></i>No transfer requests found</td></tr>';
 
       updateTransferKPIs();
     }
@@ -5912,202 +5760,66 @@ Asset Management System</textarea>
       showToast(`Transfer request ${id} cancelled.`, 'warning');
     }
 
-    // ── TRANSFER SIDE PANEL ──────────────────────────────────
-    let _tspId = null;
-    let _tspEditMode = false;
-
-    function tspTab(name, el) {
-      document.querySelectorAll('.tsp-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tsp-pane').forEach(p => p.classList.remove('active'));
-      el.classList.add('active');
-      document.getElementById('tsp-' + name).classList.add('active');
-      if (name === 'edit') _buildTspEditForm();
-      if (name === 'approval') _buildTspApprovals();
-    }
-
+    // ── VIEW TRANSFER DETAIL ───────────────────────────────────
     function openTransferDetail(id) {
       const t = TRANSFERS.find(x => x.id === id);
       if (!t) return;
-      _tspId = id;
       const asset = ASSETS.find(a => a.assetId === t.assetId);
 
-      // Header
-      document.getElementById('tspTitle').textContent = t.assetName;
-      document.getElementById('tspSub').textContent = t.id + ' · ' + t.type + ' · ' + t.requestDate;
-      document.getElementById('tspBadge').innerHTML = transferStatusBadge(t.status);
-
-      // Reset to details tab
-      document.querySelectorAll('.tsp-tab').forEach((tab,i) => tab.classList.toggle('active', i===0));
-      document.querySelectorAll('.tsp-pane').forEach((p,i) => p.classList.toggle('active', i===0));
-
-      // Info grid
-      const pMap = { Critical:'#B00', High:'#E9730C', Normal:'var(--sap-text)', Low:'#888' };
-      const cell = (lbl, val) => `<div class="tsp-cell"><div class="lbl">${lbl}</div><div class="val">${val||'—'}</div></div>`;
-      document.getElementById('tspInfoGrid').innerHTML =
-        cell('Request ID', `<span style="font-family:'IBM Plex Mono',monospace;font-size:12px;background:#EBF4FF;color:#0040B0;padding:2px 7px;border-radius:4px">${t.id}</span>`) +
-        cell('Status', transferStatusBadge(t.status)) +
-        cell('Priority', `<span style="font-weight:600;color:${pMap[t.priority]||'var(--sap-text)'}">${t.priority==='Critical'?'⚠ ':''}${t.priority}</span>`) +
-        cell('Transfer Type', t.type) +
-        cell('Requested By', t.requestedBy) +
-        cell('Request Date', t.requestDate) +
-        cell('Required By', t.requiredDate||'—') +
-        cell('Asset ID', `<span style="font-family:'IBM Plex Mono',monospace;font-size:12px">${t.assetId}</span>`) +
-        cell('Asset Category', asset?.category||'—') +
-        cell('Asset Serial', asset?.serial||'—');
-
-      // Route grid
-      document.getElementById('tspRouteGrid').innerHTML =
-        cell('<i class="fas fa-map-marker-alt"></i> Current Location', t.currentLoc) +
-        cell('<i class="fas fa-location-dot" style="color:var(--sap-blue)"></i> Destination', `<span style="color:var(--sap-blue);font-weight:600">${t.destination}</span>`) +
-        cell('Destination Rig', t.destRig||'—') +
-        cell('Asset Rig', asset?.rigName||'—');
-
-      // Vendor section
-      const vs = document.getElementById('tspVendorSection');
-      if (t.vendorName) {
-        vs.style.display = '';
-        document.getElementById('tspVendorGrid').innerHTML = `
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px">
-            <div><div style="font-size:10.5px;color:#7B5800;text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px">Vendor Name</div><div style="font-size:13px;font-weight:600;color:#7B5800">${t.vendorName}</div></div>
-            <div><div style="font-size:10.5px;color:#7B5800;text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px">Vendor Type</div><div style="font-size:13px;color:#7B5800">${t.vendorType||'—'}</div></div>
-            <div><div style="font-size:10.5px;color:#7B5800;text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px">PO Number</div><div style="font-size:13px;font-family:'IBM Plex Mono',monospace;color:#7B5800">${t.poNumber||'—'}</div></div>
-            <div><div style="font-size:10.5px;color:#7B5800;text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px">Return Date</div><div style="font-size:13px;color:#7B5800">${t.returnDate||'—'}</div></div>
-            ${t.vendorContact ? `<div style="grid-column:span 2"><div style="font-size:10.5px;color:#7B5800;text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px">Contact</div><div style="font-size:12.5px;color:#7B5800">${t.vendorContact}</div></div>` : ''}
-          </div>`;
-      } else { vs.style.display = 'none'; }
-
-      // Reason box
-      document.getElementById('tspReasonBox').innerHTML =
-        `<div style="font-size:10.5px;color:var(--sap-text-muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:5px;font-weight:700">Reason for Transfer</div>
-         <div style="font-size:13px;line-height:1.6">${t.reason||'—'}</div>` +
-        (t.instructions ? `<div style="font-size:10.5px;color:var(--sap-text-muted);text-transform:uppercase;letter-spacing:.3px;margin:10px 0 5px;font-weight:700">Special Instructions</div><div style="font-size:13px;line-height:1.6;color:var(--sap-text-muted)">${t.instructions}</div>` : '');
-
-      // Footer buttons
-      _buildTspFooter(t);
-
-      // Open panel
-      document.getElementById('tspOverlay').classList.add('open');
-      document.body.style.overflow = 'hidden';
-    }
-
-    function _buildTspFooter(t) {
-      const transfer = t || TRANSFERS.find(x => x.id === _tspId);
-      if (!transfer) return;
-      let html = `<button class="btn btn-secondary" onclick="closeTsp()">Close</button>`;
-      if (canEdit()) {
-        html += `<button class="btn btn-primary" onclick="tspTab('edit',document.querySelectorAll('.tsp-tab')[1])"><i class="fas fa-pen"></i> Edit</button>`;
-      }
-      if (transfer.status === 'Pending' && canApproveDrilling()) {
-        html += `<button class="btn btn-warning" onclick="closeTsp();openApprovalModal('${transfer.id}','drilling')" style="margin-left:auto"><i class="fas fa-hard-hat"></i> Drilling Review</button>`;
-      }
-      if (transfer.status === 'Ops Approved' && canApproveAsset()) {
-        html += `<button class="btn btn-success" onclick="closeTsp();openApprovalModal('${transfer.id}','asset')" style="background:var(--sap-success);color:#fff;border-color:var(--sap-success);margin-left:auto"><i class="fas fa-user-tie"></i> Final Approve</button>`;
-      }
-      if (transfer.status === 'Pending' || transfer.status === 'Ops Approved') {
-        html += `<button class="btn btn-danger" onclick="closeTsp();cancelTransfer('${transfer.id}')" style="background:var(--sap-error);color:#fff;border-color:var(--sap-error)"><i class="fas fa-ban"></i> Cancel</button>`;
-      }
-      document.getElementById('tspFooter').innerHTML = html;
-    }
-
-    function _buildTspEditForm() {
-      const t = TRANSFERS.find(x => x.id === _tspId);
-      if (!t) return;
-      // Populate rig dropdown
-      const rigSel = document.getElementById('tsp_destRig');
-      rigSel.innerHTML = '<option value="">— None —</option>' +
-        RIGS.map(r => `<option value="${r.name}"${r.name===t.destRig?' selected':''}>${r.name}</option>`).join('');
-      // Fill fields
-      document.getElementById('tsp_priority').value = t.priority || 'Normal';
-      document.getElementById('tsp_type').value = t.type || 'Field to Field';
-      document.getElementById('tsp_destination').value = t.destination || '';
-      document.getElementById('tsp_requiredDate').value = t.requiredDate || '';
-      document.getElementById('tsp_reason').value = t.reason || '';
-      document.getElementById('tsp_instructions').value = t.instructions || '';
-      document.getElementById('tsp_vendorName').value = t.vendorName || '';
-      document.getElementById('tsp_vendorType').value = t.vendorType || '';
-      document.getElementById('tsp_poNumber').value = t.poNumber || '';
-      document.getElementById('tsp_returnDate').value = t.returnDate || '';
-      document.getElementById('tsp_vendorContact').value = t.vendorContact || '';
-      tspTypeChange();
-      // Footer
-      document.getElementById('tspFooter').innerHTML =
-        `<button class="btn btn-secondary" onclick="tspTab('details',document.querySelectorAll('.tsp-tab')[0])">Cancel</button>
-         <button class="btn btn-primary" onclick="saveTspEdit()"><i class="fas fa-save"></i> Save Changes</button>`;
-    }
-
-    function tspTypeChange() {
-      const type = document.getElementById('tsp_type')?.value || '';
-      const isRepair = ['For Maintenance','For Inspection','For Repair'].includes(type);
-      const vEl = document.getElementById('tspEditVendor');
-      if (vEl) vEl.style.display = isRepair ? '' : 'none';
-    }
-
-    function _buildTspApprovals() {
-      const t = TRANSFERS.find(x => x.id === _tspId);
-      if (!t) return;
-      const half = (appr, role, color, icon) => {
-        if (!appr || !appr.action) return `
-          <div class="tsp-appr-half">
-            <div style="font-size:11.5px;font-weight:600;color:${color};margin-bottom:8px"><i class="fas fa-${icon}"></i> ${role}</div>
-            <div style="font-size:13px;color:#ccc"><i class="fas fa-clock"></i> Awaiting Review</div>
-          </div>`;
-        const col = appr.action==='approve' ? 'var(--sap-success)' : appr.action==='hold' ? 'var(--sap-warning)' : 'var(--sap-error)';
-        const ico = appr.action==='approve' ? 'check-circle' : appr.action==='hold' ? 'pause-circle' : 'times-circle';
-        const lbl = appr.action==='approve' ? 'Approved' : appr.action==='hold' ? 'On Hold' : 'Rejected';
-        return `
-          <div class="tsp-appr-half">
-            <div style="font-size:11.5px;font-weight:600;color:${color};margin-bottom:8px"><i class="fas fa-${icon}"></i> ${role}</div>
-            <div style="font-size:13px;font-weight:600;color:${col}"><i class="fas fa-${ico}"></i> ${lbl}</div>
-            <div style="font-size:12px;color:var(--sap-text-muted);margin-top:3px">By <b>${appr.by||'—'}</b>${appr.date?' on '+appr.date:''}</div>
-            ${appr.comment ? `<div style="font-size:12px;font-style:italic;margin-top:6px;padding:6px 10px;background:#F5F6F7;border-radius:4px;color:var(--sap-text-muted)">"${appr.comment}"</div>` : ''}
-          </div>`;
-      };
-      document.getElementById('tspApprovalContent').innerHTML = `
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--sap-text-muted);margin-bottom:8px;display:flex;align-items:center;gap:6px;padding:16px 16px 0">
-          <i class="fas fa-user-check"></i> Approval Status
-          <span style="flex:1;height:1px;background:var(--sap-border);display:block"></span>
+      document.getElementById('transferDetailBody').innerHTML = `
+    <div style="background:linear-gradient(135deg,#354A5E,#4A6580);color:#fff;border-radius:6px;padding:16px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:48px;height:48px;background:rgba(255,255,255,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0"><i class="fas fa-exchange-alt"></i></div>
+        <div>
+          <div style="font-weight:700;font-size:16px">${t.assetName}</div>
+          <div style="font-size:12px;opacity:.75">${t.id} · ${t.type} · ${t.requestDate}</div>
         </div>
-        <div style="padding:0 16px 16px">
-          <div class="tsp-appr-grid">
-            ${half(t.opsApproval,'Operations Manager','#E65100','hard-hat')}
-            ${half(t.mgrApproval,'Asset Manager','#6D28D9','user-tie')}
-          </div>
-        </div>`;
-      _buildTspFooter(t);
-    }
+        <div style="margin-left:auto">${transferStatusBadge(t.status)}</div>
+      </div>
+    </div>
 
-    function saveTspEdit() {
-      const destination = document.getElementById('tsp_destination').value.trim();
-      const reason = document.getElementById('tsp_reason').value.trim();
-      if (!destination) { showToast('Destination is required.', 'error'); return; }
-      if (!reason) { showToast('Reason is required.', 'error'); return; }
-      const idx = TRANSFERS.findIndex(x => x.id === _tspId);
-      if (idx < 0) return;
-      const t = TRANSFERS[idx];
-      t.destination    = destination;
-      t.destRig        = document.getElementById('tsp_destRig').value || null;
-      t.priority       = document.getElementById('tsp_priority').value;
-      t.type           = document.getElementById('tsp_type').value;
-      t.requiredDate   = document.getElementById('tsp_requiredDate').value || null;
-      t.reason         = reason;
-      t.instructions   = document.getElementById('tsp_instructions').value;
-      t.vendorName     = document.getElementById('tsp_vendorName').value.trim() || null;
-      t.vendorType     = document.getElementById('tsp_vendorType').value || null;
-      t.poNumber       = document.getElementById('tsp_poNumber').value.trim() || null;
-      t.returnDate     = document.getElementById('tsp_returnDate').value || null;
-      t.vendorContact  = document.getElementById('tsp_vendorContact').value.trim() || null;
-      TRANSFERS[idx] = t;
-      renderTransfers();
-      showToast(`Transfer ${t.id} updated successfully.`, 'success');
-      // Refresh the details pane
-      openTransferDetail(t.id);
-    }
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--sap-border);border-radius:6px;overflow:hidden;margin-bottom:14px">
+      ${[
+          ['Request ID', t.id], ['Priority', t.priority], ['Transfer Type', t.type],
+          ['Requested By', t.requestedBy], ['Request Date', t.requestDate], ['Required By', t.requiredDate || '—'],
+          ['Current Location', t.currentLoc], ['Destination', t.destination],
+          ['Dest. Rig', t.destRig || '—'], ['Dest. Company', t.destCompany || '—'],
+        ].map(([l, v], i) => `
+        <div style="padding:9px 12px;border-bottom:1px solid #ECEEF0;${i % 2 === 0 ? 'border-right:1px solid #ECEEF0' : ''}">
+          <div style="font-size:11px;color:var(--sap-text-muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px">${l}</div>
+          <div style="font-size:13px;font-weight:500">${v}</div>
+        </div>`).join('')}
+    </div>
 
-    function closeTsp(e) {
-      if (e && e.target !== document.getElementById('tspOverlay')) return;
-      document.getElementById('tspOverlay').classList.remove('open');
-      document.body.style.overflow = '';
-      _tspId = null;
+    <div style="padding:12px;background:#F8F9FA;border:1px solid var(--sap-border);border-radius:6px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--sap-text-muted);margin-bottom:6px">Reason for Transfer</div>
+      <div style="font-size:13px;line-height:1.6">${t.reason}</div>
+      ${t.instructions ? `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--sap-text-muted);margin:10px 0 4px">Special Instructions</div><div style="font-size:13px;color:var(--sap-text-muted)">${t.instructions}</div>` : ''}
+    </div>
+
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--sap-text-muted);margin-bottom:8px">Approval Status</div>
+    <div style="border:1px solid var(--sap-border);border-radius:6px;overflow:hidden">
+      <div style="display:grid;grid-template-columns:1fr 1fr">
+        <div style="padding:12px;border-right:1px solid var(--sap-border)">
+          <div style="font-size:11.5px;font-weight:600;color:#E65100;margin-bottom:8px"><i class="fas fa-hard-hat"></i> Operations Manager</div>
+          ${t.opsApproval.action ?
+          `<div style="font-size:13px;font-weight:600;color:${t.opsApproval.action === 'approve' ? 'var(--sap-success)' : 'var(--sap-error)'}">${t.opsApproval.action === 'approve' ? '✓ Approved' : '✗ Rejected'}</div>
+             <div style="font-size:12px;color:var(--sap-text-muted);margin-top:2px">By ${t.opsApproval.by} on ${t.opsApproval.date}</div>
+             <div style="font-size:12px;font-style:italic;margin-top:6px;color:var(--sap-text-muted)">"${t.opsApproval.comment}"</div>` :
+          `<div style="font-size:13px;color:#ccc"><i class="fas fa-clock"></i> Awaiting Review</div>`}
+        </div>
+        <div style="padding:12px">
+          <div style="font-size:11.5px;font-weight:600;color:#6D28D9;margin-bottom:8px"><i class="fas fa-user-tie"></i> Asset Manager</div>
+          ${t.mgrApproval.action ?
+          `<div style="font-size:13px;font-weight:600;color:${t.mgrApproval.action === 'approve' ? 'var(--sap-success)' : 'var(--sap-error)'}">${t.mgrApproval.action === 'approve' ? '✓ Final Approved' : '✗ Rejected'}</div>
+             <div style="font-size:12px;color:var(--sap-text-muted);margin-top:2px">By ${t.mgrApproval.by} on ${t.mgrApproval.date}</div>
+             <div style="font-size:12px;font-style:italic;margin-top:6px;color:var(--sap-text-muted)">"${t.mgrApproval.comment}"</div>` :
+          `<div style="font-size:13px;color:#ccc"><i class="fas fa-clock"></i> Awaiting Review</div>`}
+        </div>
+      </div>
+    </div>`;
+
+      openModal('transferDetailModal');
     }
 
     // ── EXPORT TRANSFERS ───────────────────────────────────────
@@ -7141,7 +6853,7 @@ Asset Management System</textarea>
 
       // ── Add/New buttons: Editor + Admin only ──
       [
-        'btnNewAsset','btnNewContract','btnNewRig',
+        'btnNewAsset','btnNewContract','btnNewRig','btnAddCompany',
         'btnAddUser','btnAddBOM','btnNewTransfer','btnNewSchedule','btnNewCert'
       ].forEach(id => {
         const el = document.getElementById(id);
@@ -7257,10 +6969,10 @@ Asset Management System</textarea>
         return `ID:${m.id}|Asset:${asset?.name||m.assetId}|Task:${m.task}|Type:${m.type}|Priority:${m.priority}|NextDue:${m.nextDue}|Status:${s}|Tech:${m.tech||'N/A'}`;
       }).join('\n');
       const contractsSummary = CONTRACTS.map(c=>
-        `ID:${c.id}|Rig:${c.rig}|Assets:${c.assetCount}|Start:${c.start}|End:${c.end}|Value:$${Number(c.value).toLocaleString()}|Status:${c.status}`
+        `ID:${c.id}|Company:${c.company}|Rig:${c.rig}|Assets:${c.assetCount}|Start:${c.start}|End:${c.end}|Value:$${Number(c.value).toLocaleString()}|Status:${c.status}`
       ).join('\n');
       const rigsSummary = RIGS.map(r=>
-        `ID:${r.id}|Name:${r.name}|Type:${r.type}|Location:${r.location}|Status:${r.status}|Assets:${ASSETS.filter(a=>a.rigName===r.name).length}`
+        `ID:${r.id}|Name:${r.name}|Type:${r.type}|Company:${r.company}|Location:${r.location}|Status:${r.status}|Assets:${ASSETS.filter(a=>a.rigName===r.name).length}`
       ).join('\n');
       return `You are an intelligent AI Assistant embedded inside an Asset Management System for a Land Rig & Contracting company. You have FULL ACCESS to the live database. Answer questions accurately using ONLY the data provided. Be concise, use markdown formatting, and present data in tables when appropriate.
 
@@ -8000,7 +7712,7 @@ Instructions:
           'renderUsers', 'renderTransfers', 'renderMaintenance', 'renderCertificates',
           'renderBOMSection', 'renderNotifications', 'updateKPIs', 'updateReportKPIs',
           'updateCertKPIs', 'updateMaintKPIs', 'updateTransferKPIs', 'checkMaintAlerts',
-          'populateBomSelects', 'populateFormSelects',
+          'populateBomSelects', 'populateFormSelects', 'populateCompanyFilters',
           'renderMaintRigSelector'
         );
       }
@@ -8012,9 +7724,10 @@ Instructions:
         try {
           showToast('Connecting to database…', 'info');
 
-          const [aR, rR, conR, mR, tR, cR, bR, uR, nR] = await Promise.all([
+          const [aR, rR, coR, conR, mR, tR, cR, bR, uR, nR] = await Promise.all([
             GET('/assets', { limit: 500 }),
             GET('/rigs'),
+            GET('/companies'),
             GET('/contracts', { limit: 200 }),
             GET('/maintenance', { limit: 500 }),
             GET('/transfers', { limit: 200 }),
@@ -8027,6 +7740,7 @@ Instructions:
           // Mutate arrays in place — render functions always see live DB data
           refill(ASSETS, (aR.data || []).map(normA));
           refill(RIGS, rR.data || []);
+          refill(COMPANIES, coR.data || []);
           refill(CONTRACTS, (conR.data || []).map(c => ({
             ...c,
             start: c.start_date, end: c.end_date, assetCount: c.asset_count || 0
@@ -8063,6 +7777,7 @@ Instructions:
           name,
           category: document.getElementById('f_category').value,
           status: document.getElementById('f_status').value,
+          company: document.getElementById('f_company').value,
           rig_name: document.getElementById('f_rig').value,
           location: document.getElementById('f_location').value,
           value: Number(document.getElementById('f_value').value) || 0,
@@ -8279,42 +7994,6 @@ Instructions:
       };
 
       // ══════════════════════════════════════════════════════════════════════════
-      // ── OVERRIDE: saveTspEdit (API layer) ───────────────────────────
-      const _origSaveTspEdit = window.saveTspEdit;
-      window.saveTspEdit = async function() {
-        const destination = document.getElementById('tsp_destination').value.trim();
-        const reason = document.getElementById('tsp_reason').value.trim();
-        if (!destination) { showToast('Destination is required.', 'error'); return; }
-        if (!reason) { showToast('Reason is required.', 'error'); return; }
-        const id = _tspId;
-        const payload = {
-          destination,
-          dest_rig:       document.getElementById('tsp_destRig').value || null,
-          priority:       document.getElementById('tsp_priority').value,
-          type:           document.getElementById('tsp_type').value,
-          required_date:  document.getElementById('tsp_requiredDate').value || null,
-          reason,
-          instructions:   document.getElementById('tsp_instructions').value,
-          vendor_name:    document.getElementById('tsp_vendorName').value.trim() || null,
-          vendor_type:    document.getElementById('tsp_vendorType').value || null,
-          po_number:      document.getElementById('tsp_poNumber').value.trim() || null,
-          return_date:    document.getElementById('tsp_returnDate').value || null,
-          vendor_contact: document.getElementById('tsp_vendorContact').value.trim() || null,
-        };
-        Object.keys(payload).forEach(k => { if (payload[k] === null) delete payload[k]; });
-        try {
-          const r = await PATCH(\`/transfers/\${id}\`, payload);
-          const idx = TRANSFERS.findIndex(t => t.id === id);
-          if (idx >= 0) TRANSFERS[idx] = normT(r.data);
-          renderTransfers();
-          showToast(\`Transfer \${id} updated ✓\`, 'success');
-          openTransferDetail(id);
-        } catch(e) {
-          // fallback to local-only save
-          _origSaveTspEdit && _origSaveTspEdit();
-        }
-      };
-
       //  OVERRIDE: submitTransferRequest()
       // ══════════════════════════════════════════════════════════════════════════
       window.submitTransferRequest = async function () {
@@ -8549,6 +8228,7 @@ Instructions:
               asset_id,
               name: r['Name'] || r['Asset Name'] || 'Imported Asset',
               category: r['Category'] || 'Other',
+              company: r['Company'] || '',
               rig_name: r['Rig'] || r['Rig Name'] || '',
               location: r['Location'] || '',
               status: r['Status'] || 'Active',
@@ -8595,6 +8275,7 @@ Instructions:
             if (!id) { skipped++; continue; }
             const payload = {
               id,
+              company: r['Company'] || '',
               rig: r['Rig'] || '',
               value: Number(r['Value'] || r['Value (USD)'] || 0) || 0,
               start_date: r['Start Date'] || null,
@@ -8634,6 +8315,7 @@ Instructions:
               id,
               name: r['Rig Name'] || r['Name'] || id,
               type: r['Type'] || '',
+              company: r['Company'] || '',
               location: r['Location'] || '',
               depth: r['Depth'] || '',
               hp: Number(r['HP'] || 0) || 0,
