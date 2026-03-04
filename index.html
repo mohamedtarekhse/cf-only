@@ -2071,9 +2071,6 @@
       try { sessionStorage.setItem('ams_user', JSON.stringify(sessionUser)); } catch (e) { }
       window.__sessionRestored = true;
 
-      // Apply role-based UI now that role is known
-      if (typeof applyRoleUI === 'function') applyRoleUI();
-
       // Toast in the main app
       if (typeof showToast === 'function') {
         showToast('Welcome back, ' + user.name.split(' ')[0] + ' ✓', 'success');
@@ -2372,7 +2369,7 @@
             <span class="card-title">Asset List <span class="record-count" id="assetCount"></span></span>
             <button id="btnNewAsset" class="btn btn-primary" onclick="openAddAssetModal()"><i class="fas fa-plus"></i> New Asset</button>
             <button class="btn btn-secondary" onclick="exportAssets()"><i class="fas fa-file-excel"></i> Export</button>
-            <button data-admin-import class="btn btn-secondary" onclick="document.getElementById('importFile').click()"><i
+            <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()"><i
                 class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFile" accept=".xlsx,.xls,.csv" style="display:none"
               onchange="importAssets(event)">
@@ -2483,7 +2480,7 @@
             <button id="btnNewContract" class="btn btn-primary"><i class="fas fa-plus"></i> New Contract</button>
             <button class="btn btn-secondary" onclick="exportContracts()"><i class="fas fa-file-excel"></i>
               Export</button>
-            <button data-admin-import class="btn btn-secondary" onclick="document.getElementById('importFileContracts').click()"><i class="fas fa-upload"></i> Import</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('importFileContracts').click()"><i class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileContracts" accept=".xlsx,.xls,.csv" style="display:none" onchange="importContracts(event)">
           </div>
           <div class="filter-bar">
@@ -2532,7 +2529,7 @@
           <div class="card-header">
             <span class="card-title">Land Rigs</span>
             <button id="btnNewRig" class="btn btn-primary"><i class="fas fa-plus"></i> New Rig</button>
-            <button data-admin-import class="btn btn-secondary" onclick="document.getElementById('importFileRigs').click()"><i class="fas fa-upload"></i> Import</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('importFileRigs').click()"><i class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileRigs" accept=".xlsx,.xls,.csv" style="display:none" onchange="importRigs(event)">
           </div>
           <div class="table-wrap">
@@ -2563,7 +2560,7 @@
         <div class="card">
           <div class="card-header"><span class="card-title">Contracting Companies</span><button id="btnAddCompany"
               class="btn btn-primary"><i class="fas fa-plus"></i> Add Company</button>
-            <button data-admin-import class="btn btn-secondary" onclick="document.getElementById('importFileCompanies').click()"><i class="fas fa-upload"></i> Import</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('importFileCompanies').click()"><i class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileCompanies" accept=".xlsx,.xls,.csv" style="display:none" onchange="importCompanies(event)">
           </div>
           <div class="table-wrap">
@@ -2593,7 +2590,7 @@
         <div class="card">
           <div class="card-header"><span class="card-title">System Users</span><button id="btnAddUser" class="btn btn-primary"><i
                 class="fas fa-plus"></i> Add User</button>
-            <button data-admin-import class="btn btn-secondary" onclick="document.getElementById('importFileUsers').click()"><i class="fas fa-upload"></i> Import</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('importFileUsers').click()"><i class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileUsers" accept=".xlsx,.xls,.csv" style="display:none" onchange="importUsers(event)">
           </div>
           <div class="user-grid" style="padding:16px" id="userGrid"></div>
@@ -2610,7 +2607,7 @@
             <button id="btnAddBOM" class="btn btn-primary" onclick="openBomModal()"><i class="fas fa-plus"></i> Add BOM</button>
             <button class="btn btn-secondary" onclick="exportBOM()"><i class="fas fa-file-excel"></i> Export
               BOM</button>
-            <button data-admin-import class="btn btn-secondary" onclick="document.getElementById('importFileBom').click()"><i class="fas fa-upload"></i> Import</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('importFileBom').click()"><i class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileBom" accept=".xlsx,.xls,.csv" style="display:none" onchange="importBOM(event)">
             <div class="filter-group search-wrap" style="margin-left:8px">
               <i class="search-icon fas fa-search"></i>
@@ -2694,7 +2691,7 @@
               Request</button>
             <button class="btn btn-secondary" onclick="exportTransfers()"><i class="fas fa-file-excel"></i>
               Export</button>
-            <button data-admin-import class="btn btn-secondary" onclick="document.getElementById('importFileTransfers').click()"><i class="fas fa-upload"></i> Import</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('importFileTransfers').click()"><i class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileTransfers" accept=".xlsx,.xls,.csv" style="display:none" onchange="importTransfers(event)">
           </div>
 
@@ -2838,7 +2835,7 @@
               Export</button>
             <button class="btn btn-secondary" onclick="openMaintLogModal(null,'bulk')"><i class="fas fa-history"></i>
               Log Completion</button>
-            <button data-admin-import class="btn btn-secondary" onclick="document.getElementById('importFileMaint').click()"><i class="fas fa-upload"></i> Import</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('importFileMaint').click()"><i class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileMaint" accept=".xlsx,.xls,.csv" style="display:none" onchange="importMaintenance(event)">
           </div>
 
@@ -2975,7 +2972,7 @@
               Certificate</button>
             <button class="btn btn-secondary" onclick="exportCertificates()"><i class="fas fa-file-excel"></i>
               Export</button>
-            <button data-admin-import class="btn btn-secondary" onclick="document.getElementById('importFileCerts').click()"><i class="fas fa-upload"></i> Import</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('importFileCerts').click()"><i class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileCerts" accept=".xlsx,.xls,.csv" style="display:none" onchange="importCertificates(event)">
           </div>
 
@@ -3721,20 +3718,181 @@ Asset Management System</textarea>
   </div>
 
   <!-- ══════════════════════════════════════════
-     TRANSFER DETAIL VIEW MODAL (read-only)
+     TRANSFER DETAIL / EDIT POPUP
 ═══════════════════════════════════════════ -->
   <div class="modal-overlay" id="transferDetailModal">
-    <div class="modal" style="width:640px;max-width:95vw">
-      <div class="modal-header">
-        <i class="fas fa-file-alt" style="color:var(--sap-blue);font-size:18px"></i>
-        <h2>Transfer Request Details</h2>
-        <button class="shell-btn" style="color:var(--sap-text-muted)" onclick="closeModal('transferDetailModal')"><i
-            class="fas fa-times"></i></button>
+    <div class="asset-popup" style="width:800px;max-width:97vw">
+
+      <div class="popup-header">
+        <div class="popup-header-icon" style="background:linear-gradient(135deg,#0070F2,#0040B0)">
+          <i class="fas fa-exchange-alt"></i>
+        </div>
+        <div class="popup-header-info">
+          <div class="popup-header-title" id="tdTitle">—</div>
+          <div class="popup-header-sub" id="tdSub">—</div>
+        </div>
+        <div id="tdBadge" style="margin-left:auto;flex-shrink:0"></div>
+        <button class="shell-btn" style="margin-left:10px" onclick="closeModal('transferDetailModal')">
+          <i class="fas fa-times"></i>
+        </button>
       </div>
-      <div class="modal-body" id="transferDetailBody"></div>
-      <div class="modal-footer">
+
+      <div class="popup-tabs">
+        <div class="popup-tab active" onclick="tdTab('details',this)">
+          <i class="fas fa-info-circle" style="font-size:11px"></i> Details
+        </div>
+        <div class="popup-tab" onclick="tdTab('edit',this)">
+          <i class="fas fa-pen" style="font-size:11px"></i> Edit
+        </div>
+        <div class="popup-tab" onclick="tdTab('approvals',this)">
+          <i class="fas fa-user-check" style="font-size:11px"></i> Approvals
+        </div>
+        <div class="popup-tab" onclick="tdTab('history',this)">
+          <i class="fas fa-history" style="font-size:11px"></i> Transfer History
+        </div>
+      </div>
+
+      <div class="popup-body">
+
+        <!-- DETAILS -->
+        <div class="popup-section active" id="tdPane-details">
+          <div class="section-title">Request Information</div>
+          <div class="detail-grid" id="tdInfoGrid"></div>
+          <div class="section-title" style="margin-top:16px">Route</div>
+          <div class="detail-grid" id="tdRouteGrid"></div>
+          <div id="tdVendorBlock" style="display:none;margin-top:16px">
+            <div class="section-title">Vendor / Workshop</div>
+            <div style="background:#FFF8E1;border:1px solid #FFE082;border-radius:6px;padding:12px 14px">
+              <div class="detail-grid" id="tdVendorGrid"></div>
+            </div>
+          </div>
+          <div style="margin-top:16px">
+            <div class="section-title">Reason &amp; Notes</div>
+            <div style="background:#F8F9FA;border:1px solid var(--sap-border);border-radius:6px;padding:12px 14px;font-size:13px;line-height:1.65" id="tdReasonBox"></div>
+          </div>
+        </div>
+
+        <!-- EDIT -->
+        <div class="popup-section" id="tdPane-edit">
+          <div style="background:#EBF4FF;border:1px solid #C2DCFF;border-radius:6px;padding:10px 14px;font-size:12.5px;color:#0040B0;margin-bottom:14px">
+            <i class="fas fa-info-circle"></i> Edit the fields below then click <strong>Save Changes</strong>.
+          </div>
+          <div class="section-title">Transfer Details</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Priority</label>
+              <select class="form-select" id="tde_priority">
+                <option>Critical</option><option>High</option><option>Normal</option><option>Low</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Transfer Type</label>
+              <select class="form-select" id="tde_type" onchange="tdeTypeChange()">
+                <option>Field to Field</option><option>Field to Warehouse</option>
+                <option>Warehouse to Field</option><option>Rig to Rig</option>
+                <option>For Repair</option><option>For Maintenance</option>
+                <option>For Inspection</option><option>Return to Owner</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Destination <span style="color:var(--sap-error)">*</span></label>
+              <input class="form-input" id="tde_destination" placeholder="Destination location">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Destination Rig</label>
+              <select class="form-select" id="tde_destRig"></select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Required By Date</label>
+              <input class="form-input" type="date" id="tde_requiredDate">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Destination Company</label>
+              <select class="form-select" id="tde_destCompany">
+                <option value="">— Same / Not Applicable —</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Reason for Transfer <span style="color:var(--sap-error)">*</span></label>
+            <textarea class="form-textarea" id="tde_reason" rows="3"></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Special Instructions</label>
+            <textarea class="form-textarea" id="tde_instructions" rows="2"></textarea>
+          </div>
+          <div id="tde_vendorSection" style="display:none;margin-top:4px">
+            <div class="section-title">Vendor / Workshop</div>
+            <div style="background:#FFF8E1;border:1px solid #FFE082;border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Vendor Name</label>
+                  <input class="form-input" id="tde_vendorName" placeholder="e.g. Al-Rashid Workshop">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Vendor Type</label>
+                  <select class="form-select" id="tde_vendorType">
+                    <option value="">— Select —</option>
+                    <option>Workshop</option><option>Supplier</option><option>Vendor</option>
+                    <option>OEM</option><option>Subcontractor</option><option>Internal</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">PO Number</label>
+                  <input class="form-input" id="tde_poNumber" placeholder="PO-2024-0042">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Est. Return Date</label>
+                  <input class="form-input" type="date" id="tde_returnDate">
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Vendor Contact</label>
+                <input class="form-input" id="tde_vendorContact" placeholder="Name, phone, email...">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- APPROVALS -->
+        <div class="popup-section" id="tdPane-approvals">
+          <div class="section-title">Approval Status</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--sap-border);border-radius:6px;overflow:hidden" id="tdApprovalGrid"></div>
+        </div>
+
+        <!-- HISTORY -->
+        <div class="popup-section" id="tdPane-history">
+          <div class="section-title">All Transfers for This Asset</div>
+          <div class="table-wrap" style="max-height:380px;overflow-y:auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>Request ID</th>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Destination</th>
+                  <th>Priority</th>
+                  <th>Requested By</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="tdHistoryTbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /popup-body -->
+
+      <div class="modal-footer" id="tdFooter">
         <button class="btn btn-secondary" onclick="closeModal('transferDetailModal')">Close</button>
       </div>
+
     </div>
   </div>
 
@@ -5544,8 +5702,8 @@ Asset Management System</textarea>
       const priorityClass = { Critical: 'priority-critical', High: 'priority-high', Normal: 'priority-normal', Low: 'priority-low' };
 
       document.getElementById('transferTbody').innerHTML = list.map(t => `
-    <tr>
-      <td><span class="tag blue" style="font-family:'IBM Plex Mono',monospace;font-size:11px">${t.id}</span></td>
+    <tr style="cursor:pointer" onclick="openTransferDetail('${t.id}')">
+      <td onclick="event.stopPropagation()"><span class="tag blue" style="font-family:'IBM Plex Mono',monospace;font-size:11px">${t.id}</span></td>
       <td>
         <div style="font-weight:600;font-size:13px">${t.assetName}</div>
         <div style="font-size:11px;color:var(--sap-text-muted);font-family:'IBM Plex Mono',monospace">${t.assetId}</div>
@@ -5568,7 +5726,7 @@ Asset Management System</textarea>
       <td>${transferStatusBadge(t.status)}</td>
       <td>${approvalCell(t.opsApproval)}</td>
       <td>${approvalCell(t.mgrApproval)}</td>
-      <td style="white-space:nowrap">
+      <td style="white-space:nowrap" onclick="event.stopPropagation()">
         <button class="btn btn-ghost btn-icon" title="View Details" onclick="openTransferDetail('${t.id}')"><i class="fas fa-eye"></i></button>
         ${t.status === 'Pending' && canApproveDrilling() ? `<button class="btn btn-ghost btn-icon" title="Drilling Manager Review" style="color:#E65100" onclick="openApprovalModal('${t.id}','drilling')"><i class="fas fa-hard-hat"></i></button>` : ''}
         ${t.status === 'Ops Approved' && canApproveAsset() ? `<button class="btn btn-ghost btn-icon" title="Asset Manager Final Approval" style="color:#6D28D9" onclick="openApprovalModal('${t.id}','asset')"><i class="fas fa-user-tie"></i></button>` : ''}
@@ -5766,66 +5924,210 @@ Asset Management System</textarea>
     }
 
     // ── VIEW TRANSFER DETAIL ───────────────────────────────────
+    // ─────────────────────────────────────────────────────────
+    //  TRANSFER DETAIL / EDIT POPUP
+    // ─────────────────────────────────────────────────────────
+    let _tdId = null;
+
+    function tdTab(name, el) {
+      document.querySelectorAll('#transferDetailModal .popup-tab').forEach(t=>t.classList.remove('active'));
+      document.querySelectorAll('#transferDetailModal .popup-section').forEach(s=>s.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById('tdPane-'+name).classList.add('active');
+      if (name==='edit')     _tdFillEditForm();
+      if (name==='history')  _tdFillHistory();
+      if (name==='approvals')_tdFillApprovals();
+    }
+
     function openTransferDetail(id) {
-      const t = TRANSFERS.find(x => x.id === id);
+      const t = TRANSFERS.find(x=>x.id===id);
       if (!t) return;
-      const asset = ASSETS.find(a => a.assetId === t.assetId);
+      _tdId = id;
+      const asset = ASSETS.find(a=>a.assetId===t.assetId);
 
-      document.getElementById('transferDetailBody').innerHTML = `
-    <div style="background:linear-gradient(135deg,#354A5E,#4A6580);color:#fff;border-radius:6px;padding:16px;margin-bottom:16px">
-      <div style="display:flex;align-items:center;gap:12px">
-        <div style="width:48px;height:48px;background:rgba(255,255,255,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0"><i class="fas fa-exchange-alt"></i></div>
-        <div>
-          <div style="font-weight:700;font-size:16px">${t.assetName}</div>
-          <div style="font-size:12px;opacity:.75">${t.id} · ${t.type} · ${t.requestDate}</div>
-        </div>
-        <div style="margin-left:auto">${transferStatusBadge(t.status)}</div>
-      </div>
-    </div>
+      // Header
+      document.getElementById('tdTitle').textContent = t.assetName;
+      document.getElementById('tdSub').textContent   = t.id+' · '+t.type+' · '+t.requestDate;
+      document.getElementById('tdBadge').innerHTML   = transferStatusBadge(t.status);
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--sap-border);border-radius:6px;overflow:hidden;margin-bottom:14px">
-      ${[
-          ['Request ID', t.id], ['Priority', t.priority], ['Transfer Type', t.type],
-          ['Requested By', t.requestedBy], ['Request Date', t.requestDate], ['Required By', t.requiredDate || '—'],
-          ['Current Location', t.currentLoc], ['Destination', t.destination],
-          ['Dest. Rig', t.destRig || '—'], ['Dest. Company', t.destCompany || '—'],
-        ].map(([l, v], i) => `
-        <div style="padding:9px 12px;border-bottom:1px solid #ECEEF0;${i % 2 === 0 ? 'border-right:1px solid #ECEEF0' : ''}">
-          <div style="font-size:11px;color:var(--sap-text-muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px">${l}</div>
-          <div style="font-size:13px;font-weight:500">${v}</div>
-        </div>`).join('')}
-    </div>
+      // Reset to Details tab
+      document.querySelectorAll('#transferDetailModal .popup-tab').forEach((el,i)=>el.classList.toggle('active',i===0));
+      document.querySelectorAll('#transferDetailModal .popup-section').forEach((el,i)=>el.classList.toggle('active',i===0));
 
-    <div style="padding:12px;background:#F8F9FA;border:1px solid var(--sap-border);border-radius:6px;margin-bottom:14px">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--sap-text-muted);margin-bottom:6px">Reason for Transfer</div>
-      <div style="font-size:13px;line-height:1.6">${t.reason}</div>
-      ${t.instructions ? `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--sap-text-muted);margin:10px 0 4px">Special Instructions</div><div style="font-size:13px;color:var(--sap-text-muted)">${t.instructions}</div>` : ''}
-    </div>
+      // ── Detail fields helper ──────────────────────────────
+      const df=(lbl,val)=>`<div class="detail-field"><span class="detail-label">${lbl}</span><span class="detail-value">${val||'—'}</span></div>`;
+      const pCol={Critical:'#B00020',High:'#E9730C',Normal:'var(--sap-text)',Low:'#888'};
 
-    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--sap-text-muted);margin-bottom:8px">Approval Status</div>
-    <div style="border:1px solid var(--sap-border);border-radius:6px;overflow:hidden">
-      <div style="display:grid;grid-template-columns:1fr 1fr">
-        <div style="padding:12px;border-right:1px solid var(--sap-border)">
-          <div style="font-size:11.5px;font-weight:600;color:#E65100;margin-bottom:8px"><i class="fas fa-hard-hat"></i> Operations Manager</div>
-          ${t.opsApproval.action ?
-          `<div style="font-size:13px;font-weight:600;color:${t.opsApproval.action === 'approve' ? 'var(--sap-success)' : 'var(--sap-error)'}">${t.opsApproval.action === 'approve' ? '✓ Approved' : '✗ Rejected'}</div>
-             <div style="font-size:12px;color:var(--sap-text-muted);margin-top:2px">By ${t.opsApproval.by} on ${t.opsApproval.date}</div>
-             <div style="font-size:12px;font-style:italic;margin-top:6px;color:var(--sap-text-muted)">"${t.opsApproval.comment}"</div>` :
-          `<div style="font-size:13px;color:#ccc"><i class="fas fa-clock"></i> Awaiting Review</div>`}
-        </div>
-        <div style="padding:12px">
-          <div style="font-size:11.5px;font-weight:600;color:#6D28D9;margin-bottom:8px"><i class="fas fa-user-tie"></i> Asset Manager</div>
-          ${t.mgrApproval.action ?
-          `<div style="font-size:13px;font-weight:600;color:${t.mgrApproval.action === 'approve' ? 'var(--sap-success)' : 'var(--sap-error)'}">${t.mgrApproval.action === 'approve' ? '✓ Final Approved' : '✗ Rejected'}</div>
-             <div style="font-size:12px;color:var(--sap-text-muted);margin-top:2px">By ${t.mgrApproval.by} on ${t.mgrApproval.date}</div>
-             <div style="font-size:12px;font-style:italic;margin-top:6px;color:var(--sap-text-muted)">"${t.mgrApproval.comment}"</div>` :
-          `<div style="font-size:13px;color:#ccc"><i class="fas fa-clock"></i> Awaiting Review</div>`}
-        </div>
-      </div>
-    </div>`;
+      // ── Info grid ─────────────────────────────────────────
+      document.getElementById('tdInfoGrid').innerHTML =
+        df('Request ID',`<span style="font-family:'IBM Plex Mono',monospace;font-size:12px;background:#EBF4FF;color:var(--sap-blue);padding:2px 8px;border-radius:4px">${t.id}</span>`) +
+        df('Status', transferStatusBadge(t.status)) +
+        df('Priority',`<strong style="color:${pCol[t.priority]||'inherit'}">${t.priority==='Critical'?'⚠ ':''}${t.priority}</strong>`) +
+        df('Transfer Type', t.type) +
+        df('Requested By', t.requestedBy) +
+        df('Request Date', t.requestDate) +
+        df('Required By', t.requiredDate||'—') +
+        df('Asset ID',`<span style="font-family:'IBM Plex Mono',monospace;font-size:12px">${t.assetId}</span>`) +
+        df('Asset Category', asset?.category||'—') +
+        df('Asset Serial', asset?.serial||'—');
+
+      // ── Route grid ────────────────────────────────────────
+      document.getElementById('tdRouteGrid').innerHTML =
+        df('<i class="fas fa-map-marker-alt" style="color:var(--sap-text-muted)"></i> Current Location', t.currentLoc||asset?.location||'—') +
+        df('<i class="fas fa-location-dot" style="color:var(--sap-blue)"></i> Destination',`<span style="color:var(--sap-blue);font-weight:600">${t.destination}</span>`) +
+        df('Assigned Rig', asset?.rigName||'—') +
+        df('Destination Rig', t.destRig||'—');
+
+      // ── Vendor block ──────────────────────────────────────
+      const vb = document.getElementById('tdVendorBlock');
+      if (t.vendorName) {
+        vb.style.display='';
+        document.getElementById('tdVendorGrid').innerHTML =
+          df('Vendor Name',`<strong>${t.vendorName}</strong>`) +
+          df('Type', t.vendorType||'—') +
+          df('PO Number',`<span style="font-family:'IBM Plex Mono',monospace;font-size:12px">${t.poNumber||'—'}</span>`) +
+          df('Est. Return', t.returnDate||'—') +
+          df('Contact', t.vendorContact||'—');
+      } else { vb.style.display='none'; }
+
+      // ── Reason box ────────────────────────────────────────
+      document.getElementById('tdReasonBox').innerHTML =
+        `<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--sap-text-muted);margin-bottom:6px">Reason for Transfer</div>
+         <div>${t.reason||'—'}</div>` +
+        (t.instructions?`<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--sap-text-muted);margin:10px 0 5px">Special Instructions</div><div style="color:var(--sap-text-muted)">${t.instructions}</div>`:'');
+
+      // ── Fill approvals ────────────────────────────────────
+      _tdFillApprovals();
+
+      // ── Footer buttons ────────────────────────────────────
+      _tdFooter(t);
 
       openModal('transferDetailModal');
     }
+
+    function _tdFooter(t) {
+      const tr = t || TRANSFERS.find(x=>x.id===_tdId);
+      if (!tr) return;
+      let f = `<button class="btn btn-secondary" onclick="closeModal('transferDetailModal')">Close</button>`;
+      if (canEdit())
+        f += `<button class="btn btn-primary" onclick="tdTab('edit',document.querySelectorAll('#transferDetailModal .popup-tab')[1])"><i class="fas fa-pen"></i> Edit</button>`;
+      if (tr.status==='Pending' && canApproveDrilling())
+        f += `<button class="btn" style="background:#E65100;color:#fff;border-color:#E65100;margin-left:auto" onclick="closeModal('transferDetailModal');openApprovalModal('${tr.id}','drilling')"><i class="fas fa-hard-hat"></i> Drilling Review</button>`;
+      if (tr.status==='Ops Approved' && canApproveAsset())
+        f += `<button class="btn" style="background:var(--sap-success);color:#fff;border-color:var(--sap-success);margin-left:auto" onclick="closeModal('transferDetailModal');openApprovalModal('${tr.id}','asset')"><i class="fas fa-user-tie"></i> Final Approve</button>`;
+      if (tr.status==='Pending'||tr.status==='Ops Approved')
+        f += `<button class="btn" style="background:var(--sap-error);color:#fff;border-color:var(--sap-error)" onclick="closeModal('transferDetailModal');cancelTransfer('${tr.id}')"><i class="fas fa-ban"></i> Cancel</button>`;
+      document.getElementById('tdFooter').innerHTML = f;
+    }
+
+    function _tdFillApprovals() {
+      const t = TRANSFERS.find(x=>x.id===_tdId);
+      if (!t) return;
+      const half = (appr, role, color, icon) => {
+        const side = role==='ops' ? 'border-right:1px solid var(--sap-border)' : '';
+        const label = role==='ops' ? 'Operations Manager' : 'Asset Manager';
+        let h = `<div style="padding:14px;${side}">
+          <div style="font-size:12px;font-weight:700;color:${color};margin-bottom:10px"><i class="fas fa-${icon}"></i> ${label}</div>`;
+        if (!appr?.action) return h+`<div style="color:#bbb;font-size:13px"><i class="fas fa-clock"></i> Awaiting Review</div></div>`;
+        const col = appr.action==='approve'?'var(--sap-success)':appr.action==='hold'?'var(--sap-warning)':'var(--sap-error)';
+        const ico = appr.action==='approve'?'check-circle':appr.action==='hold'?'pause-circle':'times-circle';
+        const lbl = appr.action==='approve'?'Approved':appr.action==='hold'?'On Hold':'Rejected';
+        h += `<div style="font-size:14px;font-weight:600;color:${col}"><i class="fas fa-${ico}"></i> ${lbl}</div>
+              <div style="font-size:12px;color:var(--sap-text-muted);margin-top:4px">By <strong>${appr.by||'—'}</strong>${appr.date?' · '+appr.date:''}</div>`;
+        if (appr.comment) h+=`<div style="font-size:12px;font-style:italic;margin-top:8px;padding:8px 10px;background:#F5F6F7;border-radius:4px;color:var(--sap-text-muted)">"${appr.comment}"</div>`;
+        return h+'</div>';
+      };
+      document.getElementById('tdApprovalGrid').innerHTML =
+        half(t.opsApproval,'ops','#E65100','hard-hat') +
+        half(t.mgrApproval,'mgr','#6D28D9','user-tie');
+    }
+
+    function _tdFillEditForm() {
+      const t = TRANSFERS.find(x=>x.id===_tdId);
+      if (!t) return;
+      const rigSel = document.getElementById('tde_destRig');
+      rigSel.innerHTML = '<option value="">— None —</option>' +
+        RIGS.map(r=>`<option value="${r.name}"${r.name===t.destRig?' selected':''}>${r.name}</option>`).join('');
+      document.getElementById('tde_priority').value    = t.priority||'Normal';
+      document.getElementById('tde_type').value        = t.type||'Field to Field';
+      document.getElementById('tde_destination').value = t.destination||'';
+      document.getElementById('tde_requiredDate').value = t.requiredDate||'';
+      document.getElementById('tde_reason').value      = t.reason||'';
+      document.getElementById('tde_instructions').value= t.instructions||'';
+      document.getElementById('tde_vendorName').value  = t.vendorName||'';
+      document.getElementById('tde_vendorType').value  = t.vendorType||'';
+      document.getElementById('tde_poNumber').value    = t.poNumber||'';
+      document.getElementById('tde_returnDate').value  = t.returnDate||'';
+      document.getElementById('tde_vendorContact').value= t.vendorContact||'';
+      tdeTypeChange();
+      document.getElementById('tdFooter').innerHTML =
+        `<button class="btn btn-secondary" onclick="tdTab('details',document.querySelectorAll('#transferDetailModal .popup-tab')[0])"><i class="fas fa-arrow-left"></i> Back</button>
+         <button class="btn btn-primary" onclick="tdSaveEdit()"><i class="fas fa-save"></i> Save Changes</button>`;
+    }
+
+    function tdeTypeChange() {
+      const type = document.getElementById('tde_type')?.value||'';
+      const show = ['For Repair','For Maintenance','For Inspection'].includes(type);
+      const vs = document.getElementById('tde_vendorSection');
+      if (vs) vs.style.display = show?'':'none';
+    }
+
+    function tdSaveEdit() {
+      const destination = document.getElementById('tde_destination').value.trim();
+      const reason      = document.getElementById('tde_reason').value.trim();
+      if (!destination) { showToast('Destination is required.','error'); return; }
+      if (!reason)      { showToast('Reason is required.','error'); return; }
+      const idx = TRANSFERS.findIndex(x=>x.id===_tdId);
+      if (idx<0) return;
+      TRANSFERS[idx] = { ...TRANSFERS[idx],
+        destination,
+        destRig:      document.getElementById('tde_destRig').value||null,
+        destCompany:  document.getElementById('tde_destCompany').value||null,
+        priority:     document.getElementById('tde_priority').value,
+        type:         document.getElementById('tde_type').value,
+        requiredDate: document.getElementById('tde_requiredDate').value||null,
+        reason,
+        instructions: document.getElementById('tde_instructions').value,
+        vendorName:   document.getElementById('tde_vendorName').value.trim()||null,
+        vendorType:   document.getElementById('tde_vendorType').value||null,
+        poNumber:     document.getElementById('tde_poNumber').value.trim()||null,
+        returnDate:   document.getElementById('tde_returnDate').value||null,
+        vendorContact:document.getElementById('tde_vendorContact').value.trim()||null,
+      };
+      renderTransfers();
+      showToast('Transfer '+_tdId+' saved successfully.','success');
+      openTransferDetail(_tdId); // refresh popup
+    }
+
+    function _tdFillHistory() {
+      const t = TRANSFERS.find(x=>x.id===_tdId);
+      if (!t) return;
+      const history = TRANSFERS
+        .filter(x=>x.assetId===t.assetId)
+        .sort((a,b)=>b.requestDate.localeCompare(a.requestDate));
+      const pMap = {Critical:'priority-critical',High:'priority-high',Normal:'priority-normal',Low:'priority-low'};
+      const tbody = document.getElementById('tdHistoryTbody');
+      if (!history.length) {
+        tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--sap-text-muted)">No transfer history for this asset.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = history.map(h=>{
+        const cur = h.id===_tdId;
+        return `<tr style="cursor:pointer;${cur?'background:#EBF4FF;':''}" onclick="openTransferDetail('${h.id}')">
+          <td>
+            <span class="tag blue" style="font-family:'IBM Plex Mono',monospace;font-size:11px">${h.id}</span>
+            ${cur?'<span style="margin-left:5px;font-size:10px;background:var(--sap-blue);color:#fff;border-radius:4px;padding:1px 6px">Current</span>':''}
+          </td>
+          <td style="font-size:12px;color:var(--sap-text-muted)">${h.requestDate}</td>
+          <td style="font-size:12px">${h.type}</td>
+          <td style="font-size:12.5px;color:var(--sap-blue);font-weight:500">${h.destination}</td>
+          <td><span class="${pMap[h.priority]||'priority-normal'}">${h.priority}</span></td>
+          <td style="font-size:12.5px">${h.requestedBy}</td>
+          <td>${transferStatusBadge(h.status)}</td>
+        </tr>`;
+      }).join('');
+    }
+
 
     // ── EXPORT TRANSFERS ───────────────────────────────────────
     function exportTransfers() {
@@ -6838,13 +7140,22 @@ Asset Management System</textarea>
 
     function applyRoleUI() {
       // ── Import buttons: Admin only ──
-      // Uses data-admin-import attribute for reliable targeting
-      document.querySelectorAll('[data-admin-import]').forEach(btn => {
-        if (window.__currentUserRole) {
-          btn.style.display = canImport() ? '' : 'none';
-        } else {
-          btn.style.display = 'none'; // hidden until logged in
-        }
+      const importBtnMap = {
+        'importFile':           'btnImportAssets',
+        'importFileContracts':  'btnImportContracts',
+        'importFileMaint':      'btnImportMaint',
+        'importFileCerts':      'btnImportCerts',
+        'importFileRigs':       'btnImportRigs',
+        'importFileCompanies':  'btnImportCompanies',
+        'importFileUsers':      'btnImportUsers',
+        'importFileBom':        'btnImportBom',
+        'importFileTransfers':  'btnImportTransfers',
+      };
+      Object.keys(importBtnMap).forEach(inputId => {
+        const inp = document.getElementById(inputId);
+        if (!inp) return;
+        const btn = inp.previousElementSibling;
+        if (btn && btn.tagName === 'BUTTON') btn.style.display = canImport() ? '' : 'none';
       });
 
       // ── Add/New buttons: Editor + Admin only ──
