@@ -2723,6 +2723,12 @@
                 <option value="Low">Low</option>
               </select>
             </div>
+            <div class="filter-group">
+              <label class="filter-label">Destination Rig</label>
+              <select class="filter-select" id="trFilterDestRig" onchange="renderTransfers()" style="min-width:150px">
+                <option value="">All Rigs</option>
+              </select>
+            </div>
             <div class="filter-group" style="margin-left:auto">
               <label class="filter-label">&nbsp;</label>
               <button class="btn btn-ghost" onclick="clearTransferFilters()"><i class="fas fa-times"></i> Clear</button>
@@ -2743,7 +2749,7 @@
                   <th>Requested By</th>
                   <th>Request Date</th>
                   <th>Status</th>
-                  <th>Drilling Manager</th>
+                  <th>Ops Manager</th>
                   <th>Asset Manager</th>
                   <th>Actions</th>
                 </tr>
@@ -3626,7 +3632,7 @@ Asset Management System</textarea>
               <i class="fas fa-arrow-right" style="color:var(--sap-blue);font-size:11px"></i>
               <div
                 style="background:#FFF3E0;border:1px solid #FFCC80;border-radius:20px;padding:4px 12px;font-size:11px;font-weight:600;color:#E65100">
-                <i class="fas fa-hard-hat"></i> Drilling Manager
+                <i class="fas fa-hard-hat"></i> Ops Manager Review
               </div>
               <i class="fas fa-arrow-right" style="color:var(--sap-blue);font-size:11px"></i>
               <div
@@ -5518,7 +5524,7 @@ Asset Management System</textarea>
       // Navigate to Transfers tab
       const transfersTab = document.querySelector(".nav-tab[onclick*=\"'transfers'\"]");
       if (transfersTab) switchTab('transfers', transfersTab);
-      showToast(`Transfer request ${newTransfer.id} submitted successfully. Awaiting Drilling Manager approval.`, 'success');
+      showToast(`Transfer request ${newTransfer.id} submitted successfully. Awaiting Operations Manager approval.`, 'success');
 
       // Add notification
       addNotification('info', 'exchange-alt', 'Transfer Request Submitted', `${newTransfer.assetName} → ${destination}`, 'Just now');
@@ -5529,11 +5535,25 @@ Asset Management System</textarea>
       const q = (document.getElementById('trSearch')?.value || '').toLowerCase();
       const fS = document.getElementById('trFilterStatus')?.value;
       const fP = document.getElementById('trFilterPriority')?.value;
+      const fR = document.getElementById('trFilterDestRig')?.value;
+
+      // Populate dest rig dropdown dynamically from RIGS + existing transfer destRigs
+      const rigSel = document.getElementById('trFilterDestRig');
+      if (rigSel) {
+        const currentVal = rigSel.value;
+        const rigNames = [...new Set([
+          ...RIGS.map(r => r.name),
+          ...TRANSFERS.filter(t => t.destRig).map(t => t.destRig)
+        ])].sort();
+        rigSel.innerHTML = '<option value="">All Rigs</option>' +
+          rigNames.map(n => `<option value="${n}"${n === currentVal ? ' selected' : ''}>${n}</option>`).join('');
+      }
 
       const list = TRANSFERS.filter(t => {
         const mq = !q || t.id.toLowerCase().includes(q) || t.assetName.toLowerCase().includes(q) ||
           t.currentLoc.toLowerCase().includes(q) || t.destination.toLowerCase().includes(q);
-        return mq && (!fS || t.status === fS) && (!fP || t.priority === fP);
+        const mR = !fR || (t.destRig || '') === fR;
+        return mq && (!fS || t.status === fS) && (!fP || t.priority === fP) && mR;
       }).sort((a, b) => b.id.localeCompare(a.id));
 
       document.getElementById('trCount').textContent = `(${list.length})`;
@@ -5567,9 +5587,11 @@ Asset Management System</textarea>
       <td>${approvalCell(t.mgrApproval)}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-ghost btn-icon" title="View Details" onclick="openTransferDetail('${t.id}')"><i class="fas fa-eye"></i></button>
-        ${t.status === 'Pending' && canApproveDrilling() ? `<button class="btn btn-ghost btn-icon" title="Drilling Manager Review" style="color:#E65100" onclick="openApprovalModal('${t.id}','drilling')"><i class="fas fa-hard-hat"></i></button>` : ''}
-        ${t.status === 'Ops Approved' && canApproveAsset() ? `<button class="btn btn-ghost btn-icon" title="Asset Manager Final Approval" style="color:#6D28D9" onclick="openApprovalModal('${t.id}','asset')"><i class="fas fa-user-tie"></i></button>` : ''}
-        ${(t.status === 'Pending' || t.status === 'Ops Approved') ? `<button class="btn btn-ghost btn-icon" title="Cancel Request" style="color:var(--sap-error)" onclick="cancelTransfer('${t.id}')"><i class="fas fa-ban"></i></button>` : ''}
+        <button class="btn btn-ghost btn-icon" title="Edit Transfer" style="color:var(--sap-blue)" onclick="openEditTransferModal('${t.id}')"><i class="fas fa-edit"></i></button>
+        ${t.status === 'Pending' ? `<button class="btn btn-ghost btn-icon" title="Ops Manager Review" style="color:#E65100" onclick="openApprovalModal('${t.id}','ops')"><i class="fas fa-hard-hat"></i></button>` : ''}
+        ${t.status === 'Ops Approved' ? `<button class="btn btn-ghost btn-icon" title="Asset Manager Review" style="color:#6D28D9" onclick="openApprovalModal('${t.id}','mgr')"><i class="fas fa-user-tie"></i></button>` : ''}
+        <button class="btn btn-ghost btn-icon" title="Delete Transfer" style="color:var(--sap-error)" onclick="deleteTransfer('${t.id}')"><i class="fas fa-trash"></i></button>
+        ${(t.status === 'Pending' || t.status === 'Ops Approved') ? `<button class="btn btn-ghost btn-icon" title="Cancel Request" style="color:#E9730C" onclick="cancelTransfer('${t.id}')"><i class="fas fa-ban"></i></button>` : ''}
       </td>
     </tr>`).join('') || '<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--sap-text-muted)"><i class="fas fa-exchange-alt" style="font-size:28px;opacity:.3;display:block;margin-bottom:8px"></i>No transfer requests found</td></tr>';
 
@@ -5606,13 +5628,6 @@ Asset Management System</textarea>
 
     // ── OPEN APPROVAL MODAL ────────────────────────────────────
     function openApprovalModal(transferId, role) {
-      // Enforce role-based access per stage
-      if (role === 'drilling' && !canApproveDrilling()) {
-        showToast('Only Drilling Managers (or Admin) can approve Stage 1.', 'error'); return;
-      }
-      if (role === 'asset' && !canApproveAsset()) {
-        showToast('Only Asset Managers (or Admin) can approve Stage 2.', 'error'); return;
-      }
       const t = TRANSFERS.find(x => x.id === transferId);
       if (!t) return;
       currentTransferId = transferId;
@@ -5620,12 +5635,12 @@ Asset Management System</textarea>
 
       document.getElementById('approvalReqId').textContent = transferId;
 
-      const roleLabel = role === 'drilling' ? 'Drilling Manager Review' : 'Asset Manager Final Approval';
-      const roleIcon  = role === 'drilling' ? 'fa-hard-hat' : 'fa-user-tie';
-      const roleColor = role === 'drilling' ? '#E65100' : '#6D28D9';
+      const roleLabel = role === 'ops' ? 'Operations Manager Review' : 'Asset Manager Final Approval';
+      const roleIcon = role === 'ops' ? 'fa-hard-hat' : 'fa-user-tie';
+      const roleColor = role === 'ops' ? '#E65100' : '#6D28D9';
 
       document.getElementById('approvalModalTitle').innerHTML = `<i class="fas ${roleIcon}" style="color:${roleColor}"></i> ${roleLabel}`;
-      document.getElementById('approvalActionTitle').innerHTML = `<i class="fas fa-gavel" style="color:${roleColor}"></i> Your Decision (${role === 'drilling' ? 'Drilling Manager' : 'Asset Manager'})`;
+      document.getElementById('approvalActionTitle').innerHTML = `<i class="fas fa-gavel" style="color:${roleColor}"></i> Your Decision (${role === 'ops' ? 'Operations Manager' : 'Asset Manager'})`;
 
       // Summary grid
       document.getElementById('approvalSummaryGrid').innerHTML = [
@@ -5664,8 +5679,8 @@ Asset Management System</textarea>
           comment: null,
         },
         {
-          label: 'Drilling Manager Review',
-          sub: t.opsApproval.action ? `${t.opsApproval.by} — ${t.opsApproval.date}` : 'Awaiting Drilling Manager',
+          label: 'Operations Manager Review',
+          sub: t.opsApproval.action ? `${t.opsApproval.by} — ${t.opsApproval.date}` : 'Awaiting Operations Manager',
           icon: t.opsApproval.action === 'approve' ? 'fa-check' : t.opsApproval.action === 'reject' ? 'fa-times' : 'fa-hard-hat',
           state: t.opsApproval.action === 'approve' ? 'done' : t.opsApproval.action === 'reject' ? 'reject' : (t.status === 'Pending' ? 'active' : 'pending'),
           comment: t.opsApproval.comment,
@@ -5712,23 +5727,23 @@ Asset Management System</textarea>
       if (!t) return;
 
       const today = new Date().toISOString().slice(0, 10);
-      const approverName = window.__currentUserName || USERS.find(u => u.email === window.__currentUser?.email)?.name || 'Current User';
+      const approverName = USERS.find(u => u.role === (currentApproverRole === 'ops' ? 'Asset Manager' : 'Viewer'))?.name || 'Current User';
 
-      if (currentApproverRole === 'drilling') {
-        t.opsApproval = { by: approverName, role: 'Drilling Manager', date: today, action: decision, comment };
+      if (currentApproverRole === 'ops') {
+        t.opsApproval = { by: 'James Miller', role: 'Operations Manager', date: today, action: decision, comment };
         if (decision === 'approve') {
           t.status = 'Ops Approved';
-          showToast(`TR ${t.id}: Drilling Manager approved. Now pending Asset Manager final approval.`, 'success');
+          showToast(`TR ${t.id}: Operations Manager approved. Now pending Asset Manager final approval.`, 'success');
           addNotification('info', 'user-tie', 'Awaiting Asset Manager', `Transfer ${t.id} for ${t.assetName} needs Asset Manager approval`, today);
         } else if (decision === 'reject') {
           t.status = 'Rejected';
-          showToast(`TR ${t.id}: Rejected by Drilling Manager.`, 'warning');
+          showToast(`TR ${t.id}: Rejected by Operations Manager.`, 'warning');
         } else {
           t.status = 'On Hold';
-          showToast(`TR ${t.id}: Put on hold by Drilling Manager.`, 'info');
+          showToast(`TR ${t.id}: Put on hold by Operations Manager.`, 'info');
         }
       } else {
-        t.mgrApproval = { by: approverName, role: 'Asset Manager', date: today, action: decision, comment };
+        t.mgrApproval = { by: 'Sara Al-Rashid', role: 'Asset Manager', date: today, action: decision, comment };
         if (decision === 'approve') {
           t.status = 'Completed';
           // Update the asset location in ASSETS
@@ -5759,7 +5774,83 @@ Asset Management System</textarea>
       if (!confirm(`Cancel transfer request ${id}? This action cannot be undone.`)) return;
       TRANSFERS = TRANSFERS.filter(t => t.id !== id);
       renderTransfers();
+      updateTransferKPIs();
       showToast(`Transfer request ${id} cancelled.`, 'warning');
+    }
+
+    // ── DELETE TRANSFER (local fallback — overridden by API layer) ─
+    function deleteTransfer(id) {
+      if (!confirm(`Permanently delete transfer request ${id}? This cannot be undone.`)) return;
+      TRANSFERS = TRANSFERS.filter(t => t.id !== id);
+      renderTransfers();
+      updateTransferKPIs();
+      showToast(`Transfer ${id} deleted.`, 'warning');
+    }
+
+    // ── EDIT TRANSFER MODAL ────────────────────────────────────
+    function openEditTransferModal(id) {
+      const t = TRANSFERS.find(x => x.id === id);
+      if (!t) return;
+
+      const assetSel = document.getElementById('etr_asset');
+      assetSel.innerHTML = '<option value="">— Select Asset —</option>' +
+        ASSETS.map(a => `<option value="${a.assetId}"${a.assetId === t.assetId ? ' selected' : ''}>${a.name} (${a.assetId})</option>`).join('');
+
+      const rigSel = document.getElementById('etr_destRig');
+      rigSel.innerHTML = '<option value="">— None / Not Applicable —</option>' +
+        RIGS.map(r => `<option value="${r.name}"${r.name === t.destRig ? ' selected' : ''}>${r.name}</option>`).join('');
+
+      const compSel = document.getElementById('etr_destCompany');
+      compSel.innerHTML = '<option value="">— Same / Not Applicable —</option>' +
+        COMPANIES.map(c => `<option value="${c.name}"${c.name === t.destCompany ? ' selected' : ''}>${c.name}</option>`).join('');
+
+      document.getElementById('etr_id').value           = t.id;
+      document.getElementById('etr_currentLoc').value   = t.currentLoc || '';
+      document.getElementById('etr_destination').value  = t.destination || '';
+      document.getElementById('etr_priority').value     = t.priority || 'Normal';
+      document.getElementById('etr_type').value         = t.type || 'Field to Field';
+      document.getElementById('etr_requestedBy').value  = t.requestedBy || '';
+      document.getElementById('etr_requiredDate').value = t.requiredDate || '';
+      document.getElementById('etr_reason').value       = t.reason || '';
+      document.getElementById('etr_instructions').value = t.instructions || '';
+      document.getElementById('etr_status').value       = t.status || 'Pending';
+
+      openModal('editTransferModal');
+    }
+
+    // ── SAVE EDIT TRANSFER (local fallback — overridden by API layer) ─
+    function saveEditTransfer() {
+      const id          = document.getElementById('etr_id').value;
+      const destination = document.getElementById('etr_destination').value.trim();
+      const reason      = document.getElementById('etr_reason').value.trim();
+      if (!destination) { showToast('Destination is required.', 'error'); return; }
+      if (!reason)      { showToast('Reason is required.', 'error'); return; }
+
+      const assetId = document.getElementById('etr_asset').value;
+      const idx = TRANSFERS.findIndex(x => x.id === id);
+      if (idx < 0) { showToast('Transfer not found.', 'error'); return; }
+
+      TRANSFERS[idx] = {
+        ...TRANSFERS[idx],
+        assetId,
+        assetName:    ASSETS.find(a => a.assetId === assetId)?.name || TRANSFERS[idx].assetName,
+        currentLoc:   document.getElementById('etr_currentLoc').value,
+        destination,
+        destRig:      document.getElementById('etr_destRig').value || null,
+        destCompany:  document.getElementById('etr_destCompany').value || null,
+        priority:     document.getElementById('etr_priority').value,
+        type:         document.getElementById('etr_type').value,
+        requestedBy:  document.getElementById('etr_requestedBy').value,
+        requiredDate: document.getElementById('etr_requiredDate').value || null,
+        reason,
+        instructions: document.getElementById('etr_instructions').value,
+        status:       document.getElementById('etr_status').value,
+      };
+
+      closeModal('editTransferModal');
+      renderTransfers();
+      updateTransferKPIs();
+      showToast(`Transfer ${id} updated successfully.`, 'success');
     }
 
     // ── VIEW TRANSFER DETAIL ───────────────────────────────────
@@ -5863,6 +5954,7 @@ Asset Management System</textarea>
       document.getElementById('trSearch').value = '';
       document.getElementById('trFilterStatus').value = '';
       document.getElementById('trFilterPriority').value = '';
+      document.getElementById('trFilterDestRig').value = '';
       renderTransfers();
     }
 
@@ -6819,19 +6911,12 @@ Asset Management System</textarea>
     function getRole() {
       return (window.__currentUserRole || 'Viewer').trim();
     }
-    function isAdmin()          { return getRole() === 'Admin'; }
-    function isEditor()         { return getRole() === 'Editor'; }
-    function isViewer()         { return getRole() === 'Viewer'; }
-    function isDrillingManager(){ return getRole() === 'Drilling Manager'; }
-    function isAssetManager()   { return getRole() === 'Asset Manager'; }
-    function canEdit()          { return ['Admin','Editor','Drilling Manager','Asset Manager'].includes(getRole()); }
-    function canImport()        { return isAdmin(); }
-    // Stage 1 (ops): Drilling Manager or Admin
-    function canApproveDrilling(){ return isAdmin() || isDrillingManager(); }
-    // Stage 2 (mgr): Asset Manager or Admin
-    function canApproveAsset()   { return isAdmin() || isAssetManager(); }
-    // Any approval role
-    function canApprove()        { return canApproveDrilling() || canApproveAsset(); }
+    function isAdmin()   { return getRole() === 'Admin'; }
+    function isEditor()  { return getRole() === 'Editor'; }
+    function isViewer()  { return getRole() === 'Viewer'; }
+    function canEdit()   { return isAdmin() || isEditor(); }
+    function canImport() { return isAdmin(); }
+    function canApprove(){ return isAdmin(); }
 
     function applyRoleUI() {
       // ── Import buttons: Admin only ──
@@ -6871,9 +6956,7 @@ Asset Management System</textarea>
       const editBtn = document.getElementById('assetDetailEditBtn');
       if (editBtn) editBtn.style.display = canEdit() ? '' : 'none';
 
-      // ── Transfer approve/reject: shown based on role + current stage ──
-      // The actual per-stage gating happens in openApprovalModal
-      // Here we just show/hide the buttons if user has ANY approval role
+      // ── Transfer approve/reject: Admin only ──
       ['btnApprove','btnReject','btnHold'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = canApprove() ? '' : 'none';
@@ -7996,6 +8079,69 @@ Instructions:
       };
 
       // ══════════════════════════════════════════════════════════════════════════
+      //  OVERRIDE: saveEditTransfer()  — PUT to DB
+      // ══════════════════════════════════════════════════════════════════════════
+      window.saveEditTransfer = async function () {
+        const id          = document.getElementById('etr_id').value;
+        const destination = document.getElementById('etr_destination').value.trim();
+        const reason      = document.getElementById('etr_reason').value.trim();
+        if (!destination) { showToast('Destination is required.', 'error'); return; }
+        if (!reason)      { showToast('Reason is required.', 'error'); return; }
+
+        const assetId = document.getElementById('etr_asset').value;
+        const payload = {
+          asset_id:     assetId,
+          asset_name:   ASSETS.find(a => a.assetId === assetId)?.name || '',
+          current_loc:  document.getElementById('etr_currentLoc').value,
+          destination,
+          dest_rig:     document.getElementById('etr_destRig').value || null,
+          dest_company: document.getElementById('etr_destCompany').value || null,
+          priority:     document.getElementById('etr_priority').value,
+          type:         document.getElementById('etr_type').value,
+          requested_by: document.getElementById('etr_requestedBy').value,
+          required_date:document.getElementById('etr_requiredDate').value || null,
+          reason,
+          instructions: document.getElementById('etr_instructions').value,
+          status:       document.getElementById('etr_status').value,
+        };
+
+        try {
+          const r = await PUT(`/transfers/${id}`, payload);
+          const idx = TRANSFERS.findIndex(x => x.id === id);
+          if (idx >= 0) TRANSFERS[idx] = normT(r.data);
+          closeModal('editTransferModal');
+          rerender('renderTransfers', 'updateTransferKPIs');
+          showToast(`Transfer ${id} updated ✓`, 'success');
+        } catch (e) { showToast('Update failed: ' + e.message, 'error'); }
+      };
+
+      // ══════════════════════════════════════════════════════════════════════════
+      //  OVERRIDE: deleteTransfer()  — DELETE from DB
+      // ══════════════════════════════════════════════════════════════════════════
+      window.deleteTransfer = async function (id) {
+        if (!confirm(`Permanently delete transfer request ${id}? This cannot be undone.`)) return;
+        try {
+          await DELETE(`/transfers/${id}`);
+          TRANSFERS = TRANSFERS.filter(t => t.id !== id);
+          rerender('renderTransfers', 'updateTransferKPIs');
+          showToast(`Transfer ${id} deleted ✓`, 'success');
+        } catch (e) { showToast('Delete failed: ' + e.message, 'error'); }
+      };
+
+      // ══════════════════════════════════════════════════════════════════════════
+      //  OVERRIDE: cancelTransfer()  — DELETE from DB
+      // ══════════════════════════════════════════════════════════════════════════
+      window.cancelTransfer = async function (id) {
+        if (!confirm(`Cancel transfer request ${id}? This action cannot be undone.`)) return;
+        try {
+          await DELETE(`/transfers/${id}`);
+          TRANSFERS = TRANSFERS.filter(t => t.id !== id);
+          rerender('renderTransfers', 'updateTransferKPIs');
+          showToast(`Transfer request ${id} cancelled ✓`, 'warning');
+        } catch (e) { showToast('Cancel failed: ' + e.message, 'error'); }
+      };
+
+      // ══════════════════════════════════════════════════════════════════════════
       //  OVERRIDE: submitTransferRequest()
       // ══════════════════════════════════════════════════════════════════════════
       window.submitTransferRequest = async function () {
@@ -8058,7 +8204,7 @@ Instructions:
       //  OVERRIDE: processApproval()  — ops / mgr decision
       // ══════════════════════════════════════════════════════════════════════════
       window.processApproval = async function (decision) {
-        if (!canApprove()) { showToast('Only Drilling Managers and Asset Managers can approve transfers.', 'error'); return; }
+        if (!canApprove()) { showToast('Only Admins can approve or reject transfers.', 'error'); return; }
         const comment = document.getElementById('approvalComment').value.trim();
         if (!comment) { showToast('Please enter your decision comments.', 'error'); return; }
 
@@ -8066,7 +8212,7 @@ Instructions:
           role: currentApproverRole,
           action: decision,
           comment,
-          approved_by: window.__currentUserName || 'Unknown',
+          approved_by: currentApproverRole === 'ops' ? 'James Miller' : 'Sara Al-Rashid',
         };
 
         try {
@@ -8620,5 +8766,88 @@ Instructions:
 
     })(); // end IIFE
   </script>
+  <!-- ======= EDIT TRANSFER MODAL ======= -->
+  <div class="modal-overlay" id="editTransferModal">
+    <div class="modal" style="max-width:660px;width:100%">
+      <div class="modal-header">
+        <h2><i class="fas fa-edit" style="color:var(--sap-blue);margin-right:8px"></i>Edit Transfer Request</h2>
+        <button class="shell-btn" style="color:var(--sap-text-muted)" onclick="closeModal('editTransferModal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="etr_id">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">Asset</label>
+            <select class="form-select" id="etr_asset"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-select" id="etr_status">
+              <option value="Pending">Pending</option>
+              <option value="Ops Approved">Ops Approved</option>
+              <option value="Completed">Completed</option>
+              <option value="Rejected">Rejected</option>
+              <option value="On Hold">On Hold</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Current Location</label>
+            <input class="form-input" id="etr_currentLoc" placeholder="Current location">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Destination <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="etr_destination" placeholder="Destination location">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Destination Rig</label>
+            <select class="form-select" id="etr_destRig"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Destination Company</label>
+            <select class="form-select" id="etr_destCompany"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Priority</label>
+            <select class="form-select" id="etr_priority">
+              <option value="Critical">Critical</option>
+              <option value="High">High</option>
+              <option value="Normal">Normal</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Transfer Type</label>
+            <select class="form-select" id="etr_type">
+              <option value="Field to Field">Field to Field</option>
+              <option value="Field to Yard">Field to Yard</option>
+              <option value="Yard to Field">Yard to Field</option>
+              <option value="Inter-Company">Inter-Company</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Requested By</label>
+            <input class="form-input" id="etr_requestedBy" placeholder="Name">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Required By Date</label>
+            <input class="form-input" type="date" id="etr_requiredDate">
+          </div>
+          <div class="form-group" style="grid-column:span 2">
+            <label class="form-label">Reason for Transfer <span style="color:var(--sap-error)">*</span></label>
+            <textarea class="form-input" id="etr_reason" rows="3" style="resize:vertical;height:72px" placeholder="Reason for transfer..."></textarea>
+          </div>
+          <div class="form-group" style="grid-column:span 2">
+            <label class="form-label">Special Instructions</label>
+            <textarea class="form-input" id="etr_instructions" rows="2" style="resize:vertical;height:52px" placeholder="Optional instructions..."></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('editTransferModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveEditTransfer()"><i class="fas fa-save"></i> Save Changes</button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
