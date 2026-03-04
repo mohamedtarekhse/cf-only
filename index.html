@@ -4355,6 +4355,7 @@ Asset Management System</textarea>
                   <th>Date</th>
                   <th>Type</th>
                   <th>Destination</th>
+                  <th>Rig</th>
                   <th>Priority</th>
                   <th>Requested By</th>
                   <th>Status</th>
@@ -6608,7 +6609,7 @@ Asset Management System</textarea>
       const pMap = { Critical: 'priority-critical', High: 'priority-high', Normal: 'priority-normal', Low: 'priority-low' };
       const tbody = document.getElementById('tdHistoryTbody');
       if (!history.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--sap-text-muted)">No transfer history for this asset.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--sap-text-muted)">No transfer history for this asset.</td></tr>';
         return;
       }
       tbody.innerHTML = history.map(h => {
@@ -6621,6 +6622,7 @@ Asset Management System</textarea>
           <td style="font-size:12px;color:var(--sap-text-muted)">${h.requestDate}</td>
           <td style="font-size:12px">${h.type}</td>
           <td style="font-size:12.5px;color:var(--sap-blue);font-weight:500">${h.destination}</td>
+          <td style="font-size:12.5px;white-space:nowrap">${(() => { const _a = ASSETS.find(a => a.assetId === h.assetId); const _r = _a?.rigName || h.destRig || ''; return _r ? \`<span style="display:inline-flex;align-items:center;gap:4px"><i class="fas fa-oil-well" style="color:var(--sap-text-muted);font-size:10px"></i>\${_r}</span>\` : '<span style="color:#ccc">—</span>'; })()}</td>
           <td><span class="${pMap[h.priority] || 'priority-normal'}">${h.priority}</span></td>
           <td style="font-size:12.5px">${h.requestedBy}</td>
           <td>${transferStatusBadge(h.status)}</td>
