@@ -2401,12 +2401,6 @@
               </select>
             </div>
             <div class="filter-group">
-              <label class="filter-label">Company</label>
-              <select class="filter-select" id="filterCompany" onchange="applyFilters()">
-                <option value="">All</option>
-              </select>
-            </div>
-            <div class="filter-group">
               <label class="filter-label">Rig</label>
               <select class="filter-select" id="filterRig" onchange="applyFilters()">
                 <option value="">All Rigs</option>
@@ -2439,7 +2433,6 @@
                   <th onclick="sortTable('assetId')">Asset ID <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortTable('name')">Asset Name <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortTable('category')">Category <i class="fas fa-sort sort-icon"></i></th>
-                  <th onclick="sortTable('company')">Company <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortTable('rigName')">Rig <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortTable('location')">Location <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortTable('status')">Status <i class="fas fa-sort sort-icon"></i></th>
@@ -2503,7 +2496,6 @@
               <thead>
                 <tr>
                   <th>Contract ID</th>
-                  <th>Company</th>
                   <th>Rig</th>
                   <th>Asset Count</th>
                   <th>Start Date</th>
@@ -2537,7 +2529,6 @@
                   <th>Rig ID</th>
                   <th>Rig Name</th>
                   <th>Type</th>
-                  <th>Company</th>
                   <th>Location</th>
                   <th>Depth Capacity</th>
                   <th>Status</th>
@@ -2552,35 +2543,7 @@
       </div>
     </div>
 
-    <!-- ======= COMPANIES ======= -->
-    <div class="section" id="section-companies">
-      <div class="content">
-        <div class="card">
-          <div class="card-header"><span class="card-title">Contracting Companies</span><button id="btnAddCompany"
-              class="btn btn-primary"><i class="fas fa-plus"></i> Add Company</button>
-            <button class="btn btn-secondary" onclick="document.getElementById('importFileCompanies').click()"><i class="fas fa-upload"></i> Import</button>
-            <input type="file" id="importFileCompanies" accept=".xlsx,.xls,.csv" style="display:none" onchange="importCompanies(event)">
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Company ID</th>
-                  <th>Name</th>
-                  <th>Type</th>
-                  <th>Country</th>
-                  <th>Contact</th>
-                  <th>Email</th>
-                  <th>Active Contracts</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody id="companyTbody"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
+
 
     <!-- ======= USERS ======= -->
     <div class="section" id="section-users">
@@ -3301,9 +3264,6 @@ Asset Management System</textarea>
           </div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label class="form-label">Company</label>
-            <select class="form-select" id="f_company"></select>
-          </div>
           <div class="form-group"><label class="form-label">Rig</label>
             <select class="form-select" id="f_rig"></select>
           </div>
@@ -4222,18 +4182,16 @@ Asset Management System</textarea>
       const q = document.getElementById('searchInput').value.toLowerCase();
       const status = document.getElementById('filterStatus').value;
       const cat = document.getElementById('filterCategory').value;
-      const comp = document.getElementById('filterCompany').value;
       const rig = document.getElementById('filterRig')?.value || '';
       filteredAssets = ASSETS.filter(a => {
-        const searchFields = [a.assetId, a.name, a.location, a.serial || '', a.company, a.category,
+        const searchFields = [a.assetId, a.name, a.location, a.serial || '', a.category,
         a.status, a.rigName || '', a.inspectionType || '', a.lastInspection || '',
         a.notes || '', String(a.value || ''), a.acquisitionDate || ''];
         const matchQ = !q || searchFields.some(f => f.toLowerCase().includes(q));
         const matchS = !status || a.status === status;
         const matchC = !cat || a.category === cat;
-        const matchCo = !comp || a.company === comp;
         const matchR = !rig || a.rigName === rig;
-        return matchQ && matchS && matchC && matchCo && matchR;
+        return matchQ && matchS && matchC && matchR;
       });
       currentPage = 1;
       renderAssets();
@@ -4243,7 +4201,6 @@ Asset Management System</textarea>
       document.getElementById('searchInput').value = '';
       document.getElementById('filterStatus').value = '';
       document.getElementById('filterCategory').value = '';
-      document.getElementById('filterCompany').value = '';
       const fr = document.getElementById('filterRig'); if (fr) fr.value = '';
       activeAssetRig = '';
       applyFilters();
@@ -4253,7 +4210,7 @@ Asset Management System</textarea>
       const q = document.getElementById('contractSearch').value.toLowerCase();
       const status = document.getElementById('contractStatus').value;
       const filtered = CONTRACTS.filter(c => {
-        const mq = !q || c.id.toLowerCase().includes(q) || c.company.toLowerCase().includes(q);
+        const mq = !q || c.id.toLowerCase().includes(q) || (c.rig||'').toLowerCase().includes(q);
         const ms = !status || c.status === status;
         return mq && ms;
       });
@@ -4293,7 +4250,6 @@ Asset Management System</textarea>
         <td><span class="tag blue">${a.assetId}</span></td>
         <td style="font-weight:500">${a.name}</td>
         <td>${a.category}</td>
-        <td>${a.company}</td>
         <td>${a.rigName}</td>
         <td>${a.location}</td>
         <td>${statusBadge(a.status)}</td>
@@ -4377,15 +4333,15 @@ Asset Management System</textarea>
       if (!a) return;
       currentAsset = a;
       document.getElementById('popupTitle').textContent = a.name;
-      document.getElementById('popupSub').textContent = `${a.assetId} · ${a.category} · ${a.company}`;
+      document.getElementById('popupSub').textContent = `${a.assetId} · ${a.category}`;
       document.getElementById('popupStatus').innerHTML = statusBadge(a.status);
 
-      const contract = CONTRACTS.find(c => c.company === a.company && c.rig === a.rigName);
+      const contract = CONTRACTS.find(c => c.rig === a.rigName);
       const rig = RIGS.find(r => r.name === a.rigName);
 
       document.getElementById('popupGeneralGrid').innerHTML = fields([
         ['Asset ID', a.assetId, true], ['Asset Name', a.name], ['Category', a.category],
-        ['Status', statusBadge(a.status)], ['Company', a.company], ['Location', a.location],
+        ['Status', statusBadge(a.status)], ['Location', a.location],
         ['Value (USD)', '$' + Number(a.value).toLocaleString(), true], ['Acquisition Date', a.acquisitionDate], ['Notes', a.notes || '—'],
       ]);
       document.getElementById('popupTechGrid').innerHTML = fields([
@@ -4397,7 +4353,7 @@ Asset Management System</textarea>
         document.getElementById('popupContractInfo').innerHTML = `
       <div class="detail-grid">
         ${fields([
-          ['Contract ID', contract.id, true], ['Company', contract.company], ['Rig', contract.rig],
+          ['Contract ID', contract.id, true], ['Rig', contract.rig],
           ['Start Date', contract.start], ['End Date', contract.end], ['Contract Value', '$' + Number(contract.value).toLocaleString(), true],
           ['Status', statusBadge(contract.status)], ['Asset Count', contract.assetCount],
         ])}
@@ -4412,7 +4368,7 @@ Asset Management System</textarea>
       <div class="detail-grid">
         ${fields([
           ['Rig ID', rig.id, true], ['Rig Name', rig.name], ['Type', rig.type],
-          ['Company', rig.company], ['Location', rig.location], ['Depth Capacity', rig.depth],
+          ['Location', rig.location], ['Depth Capacity', rig.depth],
           ['Status', statusBadge(rig.status)],
         ])}
       </div>`;
@@ -4470,7 +4426,6 @@ Asset Management System</textarea>
         document.getElementById('f_name').value = a.name;
         document.getElementById('f_category').value = a.category;
         document.getElementById('f_status').value = a.status;
-        document.getElementById('f_company').value = a.company;
         document.getElementById('f_rig').value = a.rigName;
         document.getElementById('f_location').value = a.location;
         document.getElementById('f_value').value = a.value;
@@ -4499,7 +4454,6 @@ Asset Management System</textarea>
         assetId, name,
         category: document.getElementById('f_category').value,
         status: document.getElementById('f_status').value,
-        company: document.getElementById('f_company').value,
         rigName: document.getElementById('f_rig').value,
         location: document.getElementById('f_location').value,
         value: Number(document.getElementById('f_value').value) || 0,
@@ -4534,15 +4488,10 @@ Asset Management System</textarea>
     //  POPULATE SELECTS
     // ══════════════════════════════════
     function populateCompanyFilters() {
-      const sel = document.getElementById('filterCompany');
-      COMPANIES.forEach(c => { const o = new Option(c.name, c.name); sel.appendChild(o); });
-      // Populate rig filter dropdown (Maintenance tab)
       const mrSel = document.getElementById('mFilterRig');
       if (mrSel) RIGS.forEach(r => mrSel.appendChild(new Option(r.name, r.name)));
     }
     function populateFormSelects() {
-      const compSel = document.getElementById('f_company');
-      COMPANIES.forEach(c => compSel.appendChild(new Option(c.name, c.name)));
       const rigSel = document.getElementById('f_rig');
       RIGS.forEach(r => rigSel.appendChild(new Option(r.name, r.name)));
     }
@@ -4555,7 +4504,6 @@ Asset Management System</textarea>
       document.getElementById('contractTbody').innerHTML = list.map(c => `
     <tr>
       <td><span class="tag blue">${c.id}</span></td>
-      <td>${c.company}</td>
       <td>${c.rig}</td>
       <td>${c.assetCount}</td>
       <td>${c.start}</td>
@@ -4575,7 +4523,6 @@ Asset Management System</textarea>
       <td><span class="tag">${r.id}</span></td>
       <td style="font-weight:500">${r.name}</td>
       <td>${r.type}</td>
-      <td>${r.company}</td>
       <td>${r.location}</td>
       <td>${r.depth}</td>
       <td>${statusBadge(r.status)}</td>
@@ -4611,14 +4558,13 @@ Asset Management System</textarea>
       const r = currentRig;
 
       document.getElementById('rigPopupTitle').textContent = r.name || r.id;
-      document.getElementById('rigPopupSub').textContent = (r.type || 'Rig') + ' · ' + (r.company || '—');
+      document.getElementById('rigPopupSub').textContent = r.type || 'Rig';
       document.getElementById('rigPopupStatus').innerHTML = statusBadge(r.status);
 
       const fields = [
         { label: 'Rig ID',    value: r.id },
         { label: 'Rig Name',  value: r.name },
         { label: 'Type',      value: r.type || '—' },
-        { label: 'Company',   value: r.company || '—' },
         { label: 'Location',  value: r.location || '—' },
         { label: 'Max Depth', value: r.depth || '—' },
         { label: 'Horsepower',value: r.hp ? r.hp.toLocaleString() + ' HP' : '—' },
@@ -4657,14 +4603,13 @@ Asset Management System</textarea>
       const c = currentContract;
 
       document.getElementById('contractPopupTitle').textContent = c.id;
-      document.getElementById('contractPopupSub').textContent = (c.company || '—') + ' · ' + (c.rig || '—');
+      document.getElementById('contractPopupSub').textContent = c.rig || '—';
       document.getElementById('contractPopupStatus').innerHTML = statusBadge(c.status);
 
       const startFmt = c.start ? new Date(c.start).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) : '—';
       const endFmt   = c.end   ? new Date(c.end).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) : '—';
       const fields = [
         { label: 'Contract ID',  value: c.id },
-        { label: 'Company',      value: c.company || '—' },
         { label: 'Rig',          value: c.rig || '—' },
         { label: 'Contract Value', value: '$' + Number(c.value||0).toLocaleString(undefined,{minimumFractionDigits:2}) },
         { label: 'Start Date',   value: startFmt },
@@ -4677,7 +4622,7 @@ Asset Management System</textarea>
       ).join('');
 
       // Show assets linked to this contract (by rig name match or contract_assets table if available)
-      const contractAssets = ASSETS.filter(a => a.rigName === c.rig || a.company === c.company);
+      const contractAssets = ASSETS.filter(a => a.rigName === c.rig);
       document.getElementById('contractAssetCount').textContent = '(' + contractAssets.length + ')';
       document.getElementById('contractAssetsTbody').innerHTML = contractAssets.length
         ? contractAssets.map(a => `<tr>
@@ -4774,7 +4719,7 @@ Asset Management System</textarea>
     function exportAssets() {
       const ws = XLSX.utils.json_to_sheet(ASSETS.map(a => ({
         'Asset ID': a.assetId, 'Name': a.name, 'Category': a.category,
-        'Company': a.company, 'Rig': a.rigName, 'Location': a.location,
+        'Rig': a.rigName, 'Location': a.location,
         'Status': a.status, 'Value (USD)': a.value,
         'Acquisition Date': a.acquisitionDate, 'Serial': a.serial,
         'Last Inspection': a.lastInspection || '', 'Inspection Type': a.inspectionType || '',
@@ -4788,7 +4733,7 @@ Asset Management System</textarea>
 
     function exportContracts() {
       const ws = XLSX.utils.json_to_sheet(CONTRACTS.map(c => ({
-        'Contract ID': c.id, 'Company': c.company, 'Rig': c.rig, 'Assets': c.assetCount,
+        'Contract ID': c.id, 'Rig': c.rig, 'Assets': c.assetCount,
         'Start': c.start, 'End': c.end, 'Value': c.value, 'Status': c.status
       })));
       const wb = XLSX.utils.book_new();
@@ -5379,8 +5324,7 @@ Asset Management System</textarea>
         RIGS.map(r => `<option value="${r.name}">${r.name}</option>`).join('');
 
       const compSel = document.getElementById('tr_destCompany');
-      compSel.innerHTML = '<option value="">— Same / Not Applicable —</option>' +
-        COMPANIES.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+      compSel.innerHTML = '<option value="">— Same / Not Applicable —</option>';
 
       // Clear form
       ['tr_destination', 'tr_reason', 'tr_instructions',
@@ -5468,7 +5412,7 @@ Asset Management System</textarea>
 
     function updateTransferBanner(a) {
       document.getElementById('trBannerName').textContent = a.name;
-      document.getElementById('trBannerSub').textContent = `${a.assetId} · ${a.category} · ${a.company || '—'} · ${a.location || '—'}`;
+      document.getElementById('trBannerSub').textContent = `${a.assetId} · ${a.category} · ${a.location || '—'}`;
       document.getElementById('trBannerStatus').innerHTML = statusBadge(a.status);
     }
 
@@ -6853,7 +6797,7 @@ Asset Management System</textarea>
 
       // ── Add/New buttons: Editor + Admin only ──
       [
-        'btnNewAsset','btnNewContract','btnNewRig','btnAddCompany',
+        'btnNewAsset','btnNewContract','btnNewRig',
         'btnAddUser','btnAddBOM','btnNewTransfer','btnNewSchedule','btnNewCert'
       ].forEach(id => {
         const el = document.getElementById(id);
@@ -6969,10 +6913,10 @@ Asset Management System</textarea>
         return `ID:${m.id}|Asset:${asset?.name||m.assetId}|Task:${m.task}|Type:${m.type}|Priority:${m.priority}|NextDue:${m.nextDue}|Status:${s}|Tech:${m.tech||'N/A'}`;
       }).join('\n');
       const contractsSummary = CONTRACTS.map(c=>
-        `ID:${c.id}|Company:${c.company}|Rig:${c.rig}|Assets:${c.assetCount}|Start:${c.start}|End:${c.end}|Value:$${Number(c.value).toLocaleString()}|Status:${c.status}`
+        `ID:${c.id}|Rig:${c.rig}|Assets:${c.assetCount}|Start:${c.start}|End:${c.end}|Value:$${Number(c.value).toLocaleString()}|Status:${c.status}`
       ).join('\n');
       const rigsSummary = RIGS.map(r=>
-        `ID:${r.id}|Name:${r.name}|Type:${r.type}|Company:${r.company}|Location:${r.location}|Status:${r.status}|Assets:${ASSETS.filter(a=>a.rigName===r.name).length}`
+        `ID:${r.id}|Name:${r.name}|Type:${r.type}|Location:${r.location}|Status:${r.status}|Assets:${ASSETS.filter(a=>a.rigName===r.name).length}`
       ).join('\n');
       return `You are an intelligent AI Assistant embedded inside an Asset Management System for a Land Rig & Contracting company. You have FULL ACCESS to the live database. Answer questions accurately using ONLY the data provided. Be concise, use markdown formatting, and present data in tables when appropriate.
 
@@ -7712,7 +7656,7 @@ Instructions:
           'renderUsers', 'renderTransfers', 'renderMaintenance', 'renderCertificates',
           'renderBOMSection', 'renderNotifications', 'updateKPIs', 'updateReportKPIs',
           'updateCertKPIs', 'updateMaintKPIs', 'updateTransferKPIs', 'checkMaintAlerts',
-          'populateBomSelects', 'populateFormSelects', 'populateCompanyFilters',
+          'populateBomSelects', 'populateFormSelects',
           'renderMaintRigSelector'
         );
       }
@@ -7724,10 +7668,9 @@ Instructions:
         try {
           showToast('Connecting to database…', 'info');
 
-          const [aR, rR, coR, conR, mR, tR, cR, bR, uR, nR] = await Promise.all([
+          const [aR, rR, conR, mR, tR, cR, bR, uR, nR] = await Promise.all([
             GET('/assets', { limit: 500 }),
             GET('/rigs'),
-            GET('/companies'),
             GET('/contracts', { limit: 200 }),
             GET('/maintenance', { limit: 500 }),
             GET('/transfers', { limit: 200 }),
@@ -7740,7 +7683,6 @@ Instructions:
           // Mutate arrays in place — render functions always see live DB data
           refill(ASSETS, (aR.data || []).map(normA));
           refill(RIGS, rR.data || []);
-          refill(COMPANIES, coR.data || []);
           refill(CONTRACTS, (conR.data || []).map(c => ({
             ...c,
             start: c.start_date, end: c.end_date, assetCount: c.asset_count || 0
@@ -7777,7 +7719,6 @@ Instructions:
           name,
           category: document.getElementById('f_category').value,
           status: document.getElementById('f_status').value,
-          company: document.getElementById('f_company').value,
           rig_name: document.getElementById('f_rig').value,
           location: document.getElementById('f_location').value,
           value: Number(document.getElementById('f_value').value) || 0,
@@ -8228,7 +8169,6 @@ Instructions:
               asset_id,
               name: r['Name'] || r['Asset Name'] || 'Imported Asset',
               category: r['Category'] || 'Other',
-              company: r['Company'] || '',
               rig_name: r['Rig'] || r['Rig Name'] || '',
               location: r['Location'] || '',
               status: r['Status'] || 'Active',
@@ -8275,7 +8215,6 @@ Instructions:
             if (!id) { skipped++; continue; }
             const payload = {
               id,
-              company: r['Company'] || '',
               rig: r['Rig'] || '',
               value: Number(r['Value'] || r['Value (USD)'] || 0) || 0,
               start_date: r['Start Date'] || null,
@@ -8315,7 +8254,6 @@ Instructions:
               id,
               name: r['Rig Name'] || r['Name'] || id,
               type: r['Type'] || '',
-              company: r['Company'] || '',
               location: r['Location'] || '',
               depth: r['Depth'] || '',
               hp: Number(r['HP'] || 0) || 0,
