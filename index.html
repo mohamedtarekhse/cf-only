@@ -2306,8 +2306,6 @@
     <button class="nav-tab" onclick="switchTab('transfers', this)"><i class="fas fa-exchange-alt"></i>
       Transfers</button>
     <button class="nav-tab" onclick="switchTab('rigs', this)"><i class="fas fa-oil-well"></i> Land Rigs</button>
-    <button class="nav-tab" onclick="switchTab('companies', this)"><i class="fas fa-building"></i> Companies</button>
-    <button class="nav-tab" onclick="switchTab('users', this)"><i class="fas fa-users"></i> Users</button>
     <button class="nav-tab" onclick="switchTab('bom', this)"><i class="fas fa-sitemap"></i> Bill of Materials</button>
     <button class="nav-tab" onclick="switchTab('certificates', this)"><i class="fas fa-certificate"></i> Certificates
       <span id="certAlertBadge"
@@ -2736,7 +2734,6 @@
                 <tr>
                   <th>Request ID</th>
                   <th>Asset</th>
-                  <th>Rig</th>
                   <th>Current Location</th>
                   <th>Destination</th>
                   <th>Reason</th>
@@ -5541,19 +5538,12 @@ Asset Management System</textarea>
 
       const priorityClass = { Critical: 'priority-critical', High: 'priority-high', Normal: 'priority-normal', Low: 'priority-low' };
 
-      document.getElementById('transferTbody').innerHTML = list.map(t => {
-      const _asset = ASSETS.find(a => a.assetId === t.assetId);
-      const _rig = _asset?.rigName || '—';
-      return `
+      document.getElementById('transferTbody').innerHTML = list.map(t => `
     <tr>
       <td><span class="tag blue" style="font-family:'IBM Plex Mono',monospace;font-size:11px">${t.id}</span></td>
       <td>
         <div style="font-weight:600;font-size:13px">${t.assetName}</div>
         <div style="font-size:11px;color:var(--sap-text-muted);font-family:'IBM Plex Mono',monospace">${t.assetId}</div>
-      </td>
-      <td style="font-size:12.5px;white-space:nowrap">
-        ${_rig !== '—' ? `<span style="display:inline-flex;align-items:center;gap:4px"><i class="fas fa-oil-well" style="color:var(--sap-text-muted);font-size:10px"></i>${_rig}</span>` : '<span style="color:#ccc">—</span>'}
-        ${t.destRig && t.destRig !== _rig ? `<div style="font-size:10.5px;color:var(--sap-blue);margin-top:2px"><i class="fas fa-arrow-right" style="font-size:9px"></i> ${t.destRig}</div>` : ''}
       </td>
       <td>
         <div style="display:flex;align-items:center;gap:5px;font-size:12.5px">
@@ -5579,7 +5569,7 @@ Asset Management System</textarea>
         ${t.status === 'Ops Approved' && canApproveAsset() ? `<button class="btn btn-ghost btn-icon" title="Asset Manager Final Approval" style="color:#6D28D9" onclick="openApprovalModal('${t.id}','asset')"><i class="fas fa-user-tie"></i></button>` : ''}
         ${(t.status === 'Pending' || t.status === 'Ops Approved') ? `<button class="btn btn-ghost btn-icon" title="Cancel Request" style="color:var(--sap-error)" onclick="cancelTransfer('${t.id}')"><i class="fas fa-ban"></i></button>` : ''}
       </td>
-    </tr>`;}).join('') || '<tr><td colspan="13" style="text-align:center;padding:40px;color:var(--sap-text-muted)"><i class="fas fa-exchange-alt" style="font-size:28px;opacity:.3;display:block;margin-bottom:8px"></i>No transfer requests found</td></tr>';
+    </tr>`).join('') || '<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--sap-text-muted)"><i class="fas fa-exchange-alt" style="font-size:28px;opacity:.3;display:block;margin-bottom:8px"></i>No transfer requests found</td></tr>';
 
       updateTransferKPIs();
     }
