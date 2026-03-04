@@ -2071,6 +2071,9 @@
       try { sessionStorage.setItem('ams_user', JSON.stringify(sessionUser)); } catch (e) { }
       window.__sessionRestored = true;
 
+      // Apply role-based UI now that role is known
+      if (typeof applyRoleUI === 'function') applyRoleUI();
+
       // Toast in the main app
       if (typeof showToast === 'function') {
         showToast('Welcome back, ' + user.name.split(' ')[0] + ' ✓', 'success');
@@ -2369,7 +2372,7 @@
             <span class="card-title">Asset List <span class="record-count" id="assetCount"></span></span>
             <button id="btnNewAsset" class="btn btn-primary" onclick="openAddAssetModal()"><i class="fas fa-plus"></i> New Asset</button>
             <button class="btn btn-secondary" onclick="exportAssets()"><i class="fas fa-file-excel"></i> Export</button>
-            <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()"><i
+            <button data-admin-import class="btn btn-secondary" onclick="document.getElementById('importFile').click()"><i
                 class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFile" accept=".xlsx,.xls,.csv" style="display:none"
               onchange="importAssets(event)">
@@ -2480,7 +2483,7 @@
             <button id="btnNewContract" class="btn btn-primary"><i class="fas fa-plus"></i> New Contract</button>
             <button class="btn btn-secondary" onclick="exportContracts()"><i class="fas fa-file-excel"></i>
               Export</button>
-            <button class="btn btn-secondary" onclick="document.getElementById('importFileContracts').click()"><i class="fas fa-upload"></i> Import</button>
+            <button data-admin-import class="btn btn-secondary" onclick="document.getElementById('importFileContracts').click()"><i class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileContracts" accept=".xlsx,.xls,.csv" style="display:none" onchange="importContracts(event)">
           </div>
           <div class="filter-bar">
@@ -2529,7 +2532,7 @@
           <div class="card-header">
             <span class="card-title">Land Rigs</span>
             <button id="btnNewRig" class="btn btn-primary"><i class="fas fa-plus"></i> New Rig</button>
-            <button class="btn btn-secondary" onclick="document.getElementById('importFileRigs').click()"><i class="fas fa-upload"></i> Import</button>
+            <button data-admin-import class="btn btn-secondary" onclick="document.getElementById('importFileRigs').click()"><i class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileRigs" accept=".xlsx,.xls,.csv" style="display:none" onchange="importRigs(event)">
           </div>
           <div class="table-wrap">
@@ -2560,7 +2563,7 @@
         <div class="card">
           <div class="card-header"><span class="card-title">Contracting Companies</span><button id="btnAddCompany"
               class="btn btn-primary"><i class="fas fa-plus"></i> Add Company</button>
-            <button class="btn btn-secondary" onclick="document.getElementById('importFileCompanies').click()"><i class="fas fa-upload"></i> Import</button>
+            <button data-admin-import class="btn btn-secondary" onclick="document.getElementById('importFileCompanies').click()"><i class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileCompanies" accept=".xlsx,.xls,.csv" style="display:none" onchange="importCompanies(event)">
           </div>
           <div class="table-wrap">
@@ -2590,7 +2593,7 @@
         <div class="card">
           <div class="card-header"><span class="card-title">System Users</span><button id="btnAddUser" class="btn btn-primary"><i
                 class="fas fa-plus"></i> Add User</button>
-            <button class="btn btn-secondary" onclick="document.getElementById('importFileUsers').click()"><i class="fas fa-upload"></i> Import</button>
+            <button data-admin-import class="btn btn-secondary" onclick="document.getElementById('importFileUsers').click()"><i class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileUsers" accept=".xlsx,.xls,.csv" style="display:none" onchange="importUsers(event)">
           </div>
           <div class="user-grid" style="padding:16px" id="userGrid"></div>
@@ -2607,7 +2610,7 @@
             <button id="btnAddBOM" class="btn btn-primary" onclick="openBomModal()"><i class="fas fa-plus"></i> Add BOM</button>
             <button class="btn btn-secondary" onclick="exportBOM()"><i class="fas fa-file-excel"></i> Export
               BOM</button>
-            <button class="btn btn-secondary" onclick="document.getElementById('importFileBom').click()"><i class="fas fa-upload"></i> Import</button>
+            <button data-admin-import class="btn btn-secondary" onclick="document.getElementById('importFileBom').click()"><i class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileBom" accept=".xlsx,.xls,.csv" style="display:none" onchange="importBOM(event)">
             <div class="filter-group search-wrap" style="margin-left:8px">
               <i class="search-icon fas fa-search"></i>
@@ -2691,7 +2694,7 @@
               Request</button>
             <button class="btn btn-secondary" onclick="exportTransfers()"><i class="fas fa-file-excel"></i>
               Export</button>
-            <button class="btn btn-secondary" onclick="document.getElementById('importFileTransfers').click()"><i class="fas fa-upload"></i> Import</button>
+            <button data-admin-import class="btn btn-secondary" onclick="document.getElementById('importFileTransfers').click()"><i class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileTransfers" accept=".xlsx,.xls,.csv" style="display:none" onchange="importTransfers(event)">
           </div>
 
@@ -2835,7 +2838,7 @@
               Export</button>
             <button class="btn btn-secondary" onclick="openMaintLogModal(null,'bulk')"><i class="fas fa-history"></i>
               Log Completion</button>
-            <button class="btn btn-secondary" onclick="document.getElementById('importFileMaint').click()"><i class="fas fa-upload"></i> Import</button>
+            <button data-admin-import class="btn btn-secondary" onclick="document.getElementById('importFileMaint').click()"><i class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileMaint" accept=".xlsx,.xls,.csv" style="display:none" onchange="importMaintenance(event)">
           </div>
 
@@ -2972,7 +2975,7 @@
               Certificate</button>
             <button class="btn btn-secondary" onclick="exportCertificates()"><i class="fas fa-file-excel"></i>
               Export</button>
-            <button class="btn btn-secondary" onclick="document.getElementById('importFileCerts').click()"><i class="fas fa-upload"></i> Import</button>
+            <button data-admin-import class="btn btn-secondary" onclick="document.getElementById('importFileCerts').click()"><i class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileCerts" accept=".xlsx,.xls,.csv" style="display:none" onchange="importCertificates(event)">
           </div>
 
@@ -6835,22 +6838,13 @@ Asset Management System</textarea>
 
     function applyRoleUI() {
       // ── Import buttons: Admin only ──
-      const importBtnMap = {
-        'importFile':           'btnImportAssets',
-        'importFileContracts':  'btnImportContracts',
-        'importFileMaint':      'btnImportMaint',
-        'importFileCerts':      'btnImportCerts',
-        'importFileRigs':       'btnImportRigs',
-        'importFileCompanies':  'btnImportCompanies',
-        'importFileUsers':      'btnImportUsers',
-        'importFileBom':        'btnImportBom',
-        'importFileTransfers':  'btnImportTransfers',
-      };
-      Object.keys(importBtnMap).forEach(inputId => {
-        const inp = document.getElementById(inputId);
-        if (!inp) return;
-        const btn = inp.previousElementSibling;
-        if (btn && btn.tagName === 'BUTTON') btn.style.display = canImport() ? '' : 'none';
+      // Uses data-admin-import attribute for reliable targeting
+      document.querySelectorAll('[data-admin-import]').forEach(btn => {
+        if (window.__currentUserRole) {
+          btn.style.display = canImport() ? '' : 'none';
+        } else {
+          btn.style.display = 'none'; // hidden until logged in
+        }
       });
 
       // ── Add/New buttons: Editor + Admin only ──
