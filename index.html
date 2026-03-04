@@ -2691,6 +2691,7 @@
               Request</button>
             <button class="btn btn-secondary" onclick="exportTransfers()"><i class="fas fa-file-excel"></i>
               Export</button>
+            <button class="btn btn-secondary" onclick="openEmailSettings()" title="Configure email notifications"><i class="fas fa-envelope"></i> Email Alerts</button>
             <button class="btn btn-secondary" onclick="document.getElementById('importFileTransfers').click()"><i class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileTransfers" accept=".xlsx,.xls,.csv" style="display:none" onchange="importTransfers(event)">
           </div>
@@ -2723,6 +2724,12 @@
                 <option value="Low">Low</option>
               </select>
             </div>
+            <div class="filter-group">
+              <label class="filter-label">Destination Rig</label>
+              <select class="filter-select" id="trFilterDestRig" onchange="renderTransfers()" style="min-width:150px">
+                <option value="">All Rigs</option>
+              </select>
+            </div>
             <div class="filter-group" style="margin-left:auto">
               <label class="filter-label">&nbsp;</label>
               <button class="btn btn-ghost" onclick="clearTransferFilters()"><i class="fas fa-times"></i> Clear</button>
@@ -2743,7 +2750,7 @@
                   <th>Requested By</th>
                   <th>Request Date</th>
                   <th>Status</th>
-                  <th>Drilling Manager</th>
+                  <th>Ops Manager</th>
                   <th>Asset Manager</th>
                   <th>Actions</th>
                 </tr>
@@ -3626,7 +3633,7 @@ Asset Management System</textarea>
               <i class="fas fa-arrow-right" style="color:var(--sap-blue);font-size:11px"></i>
               <div
                 style="background:#FFF3E0;border:1px solid #FFCC80;border-radius:20px;padding:4px 12px;font-size:11px;font-weight:600;color:#E65100">
-                <i class="fas fa-hard-hat"></i> Drilling Manager
+                <i class="fas fa-hard-hat"></i> Ops Manager Review
               </div>
               <i class="fas fa-arrow-right" style="color:var(--sap-blue);font-size:11px"></i>
               <div
@@ -3720,18 +3727,114 @@ Asset Management System</textarea>
   <!-- ══════════════════════════════════════════
      TRANSFER DETAIL VIEW MODAL (read-only)
 ═══════════════════════════════════════════ -->
-  <div class="modal-overlay" id="transferDetailModal">
-    <div class="modal" style="width:640px;max-width:95vw">
-      <div class="modal-header">
-        <i class="fas fa-file-alt" style="color:var(--sap-blue);font-size:18px"></i>
-        <h2>Transfer Request Details</h2>
-        <button class="shell-btn" style="color:var(--sap-text-muted)" onclick="closeModal('transferDetailModal')"><i
-            class="fas fa-times"></i></button>
+  <!-- ======= TRANSFER DETAIL SLIDER DRAWER ======= -->
+  <div id="transferDrawerOverlay" onclick="closeTransferDrawer()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:1200;transition:opacity .3s"></div>
+  <div id="transferDrawer" style="
+    position:fixed;top:0;right:0;height:100vh;width:480px;max-width:95vw;
+    background:#fff;z-index:1201;box-shadow:-8px 0 40px rgba(0,0,0,0.18);
+    display:flex;flex-direction:column;
+    transform:translateX(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);
+    overflow:hidden;
+  ">
+    <!-- Drawer Header -->
+    <div id="drawerHeader" style="background:linear-gradient(135deg,#354A5E,#4A6580);color:#fff;padding:16px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0">
+      <div style="width:44px;height:44px;background:rgba(255,255,255,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">
+        <i class="fas fa-exchange-alt"></i>
       </div>
-      <div class="modal-body" id="transferDetailBody"></div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="closeModal('transferDetailModal')">Close</button>
+      <div style="flex:1;min-width:0">
+        <div id="drawerAssetName" style="font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
+        <div id="drawerSubtitle" style="font-size:11.5px;opacity:.75;margin-top:2px">—</div>
       </div>
+      <div id="drawerStatusBadge" style="flex-shrink:0"></div>
+      <button onclick="closeTransferDrawer()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.28)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <!-- Tabs -->
+    <div style="display:flex;border-bottom:2px solid #ECEEF0;background:#FAFBFC;flex-shrink:0">
+      <button class="drawer-tab active" data-tab="details" onclick="switchDrawerTab(this,'details')" style="flex:1;padding:10px 6px;border:none;background:none;font-family:inherit;font-size:12.5px;font-weight:600;color:var(--sap-blue);cursor:pointer;border-bottom:2px solid var(--sap-blue);margin-bottom:-2px;display:flex;align-items:center;justify-content:center;gap:5px"><i class="fas fa-info-circle"></i> Details</button>
+      <button class="drawer-tab" data-tab="approval" onclick="switchDrawerTab(this,'approval')" style="flex:1;padding:10px 6px;border:none;background:none;font-family:inherit;font-size:12.5px;font-weight:500;color:var(--sap-text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;display:flex;align-items:center;justify-content:center;gap:5px"><i class="fas fa-user-check"></i> Approval</button>
+      <button class="drawer-tab" data-tab="reason" onclick="switchDrawerTab(this,'reason')" style="flex:1;padding:10px 6px;border:none;background:none;font-family:inherit;font-size:12.5px;font-weight:500;color:var(--sap-text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;display:flex;align-items:center;justify-content:center;gap:5px"><i class="fas fa-comment-alt"></i> Reason</button>
+      <button class="drawer-tab" data-tab="ai" onclick="switchDrawerTab(this,'ai')" style="flex:1;padding:10px 6px;border:none;background:none;font-family:inherit;font-size:12.5px;font-weight:500;color:var(--sap-text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;display:flex;align-items:center;justify-content:center;gap:5px"><i class="fas fa-robot"></i> AI</button>
+    </div>
+
+    <!-- Scrollable Body -->
+    <div style="flex:1;overflow-y:auto;padding:16px 20px" id="drawerBody">
+
+      <!-- DETAILS TAB -->
+      <div id="drawerTab-details">
+        <div id="drawerDetailsGrid" style="display:grid;grid-template-columns:1fr 1fr;border:1px solid #ECEEF0;border-radius:8px;overflow:hidden;margin-bottom:14px"></div>
+        <!-- Asset info box -->
+        <div id="drawerAssetBox" style="background:#F0F6FF;border:1px solid #C2DCFF;border-radius:8px;padding:12px;display:flex;align-items:center;gap:12px">
+          <div style="width:38px;height:38px;background:var(--sap-blue);color:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0"><i class="fas fa-cog"></i></div>
+          <div id="drawerAssetInfo"><span style="color:#aaa;font-size:12px">No asset info</span></div>
+        </div>
+      </div>
+
+      <!-- APPROVAL TAB -->
+      <div id="drawerTab-approval" style="display:none">
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div id="drawerOpsApproval" style="border:1px solid #ECEEF0;border-radius:8px;overflow:hidden">
+            <div style="background:#FFF3E0;padding:9px 12px;font-size:12px;font-weight:700;color:#E65100;display:flex;align-items:center;gap:6px"><i class="fas fa-hard-hat"></i> Operations Manager</div>
+            <div id="drawerOpsBody" style="padding:12px"></div>
+          </div>
+          <div id="drawerMgrApproval" style="border:1px solid #ECEEF0;border-radius:8px;overflow:hidden">
+            <div style="background:#EDE9FF;padding:9px 12px;font-size:12px;font-weight:700;color:#6D28D9;display:flex;align-items:center;gap:6px"><i class="fas fa-user-tie"></i> Asset Manager</div>
+            <div id="drawerMgrBody" style="padding:12px"></div>
+          </div>
+          <!-- Timeline -->
+          <div style="border:1px solid #ECEEF0;border-radius:8px;overflow:hidden">
+            <div style="background:#F0F4FF;padding:9px 12px;font-size:12px;font-weight:700;color:#0040B0;display:flex;align-items:center;gap:6px"><i class="fas fa-stream"></i> Timeline</div>
+            <div id="drawerTimeline" style="padding:12px;display:flex;flex-direction:column;gap:0"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- REASON TAB -->
+      <div id="drawerTab-reason" style="display:none">
+        <div style="background:#F8F9FA;border:1px solid var(--sap-border);border-radius:8px;padding:14px;margin-bottom:12px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--sap-text-muted);margin-bottom:8px"><i class="fas fa-comment-alt"></i> Reason for Transfer</div>
+          <div id="drawerReason" style="font-size:13px;line-height:1.7;color:var(--sap-text)"></div>
+        </div>
+        <div id="drawerInstructionsWrap" style="display:none;background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;padding:14px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#92400E;margin-bottom:8px"><i class="fas fa-exclamation-circle"></i> Special Instructions</div>
+          <div id="drawerInstructions" style="font-size:13px;line-height:1.7;color:#78350F"></div>
+        </div>
+      </div>
+
+      <!-- AI TAB -->
+      <div id="drawerTab-ai" style="display:none">
+        <div style="background:linear-gradient(135deg,#EBF4FF,#F0E8FF);border:1px solid #C2DCFF;border-radius:8px;padding:14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">
+          <div style="width:36px;height:36px;background:linear-gradient(135deg,#0070F2,#6D28D9);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;flex-shrink:0"><i class="fas fa-robot"></i></div>
+          <div>
+            <div style="font-weight:700;font-size:13px;color:#0040B0">AI Transfer Suggestions</div>
+            <div style="font-size:11.5px;color:var(--sap-text-muted);margin-top:2px">Smart analysis for this transfer request</div>
+          </div>
+        </div>
+        <!-- Quick suggestion chips -->
+        <div style="margin-bottom:12px">
+          <div style="font-size:11px;font-weight:600;color:var(--sap-text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Quick Actions</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px" id="drawerAiChips"></div>
+        </div>
+        <!-- AI response box -->
+        <div id="drawerAiBox" style="background:#F8F9FA;border:1px solid #ECEEF0;border-radius:8px;padding:14px;min-height:120px;font-size:13px;line-height:1.6;color:var(--sap-text)">
+          <span style="color:#bbb"><i class="fas fa-robot" style="margin-right:6px"></i>Click a suggestion or type a question below…</span>
+        </div>
+        <!-- AI input -->
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <input id="drawerAiInput" type="text" placeholder="Ask AI about this transfer…" onkeydown="if(event.key==='Enter') askDrawerAI()" style="flex:1;border:1px solid #D9D9D9;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;outline:none;transition:border .15s" onfocus="this.style.borderColor='#0070F2'" onblur="this.style.borderColor='#D9D9D9'">
+          <button onclick="askDrawerAI()" style="background:var(--sap-blue);color:#fff;border:none;border-radius:8px;padding:0 14px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:5px;font-family:inherit"><i class="fas fa-paper-plane"></i></button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Drawer Footer -->
+    <div style="padding:12px 20px;border-top:1px solid #ECEEF0;background:#FAFBFC;display:flex;gap:8px;flex-shrink:0">
+      <button id="drawerEditBtn" onclick="drawerEditTransfer()" class="btn btn-primary" style="flex:1"><i class="fas fa-edit"></i> Edit</button>
+      <button id="drawerApproveBtn" onclick="drawerApproveTransfer()" class="btn btn-success" style="flex:1;background:var(--sap-success);color:#fff;border-color:var(--sap-success)"><i class="fas fa-hard-hat"></i> Review</button>
+      <button onclick="closeTransferDrawer()" class="btn btn-secondary"><i class="fas fa-times"></i> Close</button>
     </div>
   </div>
 
@@ -5518,7 +5621,7 @@ Asset Management System</textarea>
       // Navigate to Transfers tab
       const transfersTab = document.querySelector(".nav-tab[onclick*=\"'transfers'\"]");
       if (transfersTab) switchTab('transfers', transfersTab);
-      showToast(`Transfer request ${newTransfer.id} submitted successfully. Awaiting Drilling Manager approval.`, 'success');
+      showToast(`Transfer request ${newTransfer.id} submitted successfully. Awaiting Operations Manager approval.`, 'success');
 
       // Add notification
       addNotification('info', 'exchange-alt', 'Transfer Request Submitted', `${newTransfer.assetName} → ${destination}`, 'Just now');
@@ -5529,11 +5632,25 @@ Asset Management System</textarea>
       const q = (document.getElementById('trSearch')?.value || '').toLowerCase();
       const fS = document.getElementById('trFilterStatus')?.value;
       const fP = document.getElementById('trFilterPriority')?.value;
+      const fR = document.getElementById('trFilterDestRig')?.value;
+
+      // Populate dest rig dropdown dynamically from RIGS + existing transfer destRigs
+      const rigSel = document.getElementById('trFilterDestRig');
+      if (rigSel) {
+        const currentVal = rigSel.value;
+        const rigNames = [...new Set([
+          ...RIGS.map(r => r.name),
+          ...TRANSFERS.filter(t => t.destRig).map(t => t.destRig)
+        ])].sort();
+        rigSel.innerHTML = '<option value="">All Rigs</option>' +
+          rigNames.map(n => `<option value="${n}"${n === currentVal ? ' selected' : ''}>${n}</option>`).join('');
+      }
 
       const list = TRANSFERS.filter(t => {
         const mq = !q || t.id.toLowerCase().includes(q) || t.assetName.toLowerCase().includes(q) ||
           t.currentLoc.toLowerCase().includes(q) || t.destination.toLowerCase().includes(q);
-        return mq && (!fS || t.status === fS) && (!fP || t.priority === fP);
+        const mR = !fR || (t.destRig || '') === fR;
+        return mq && (!fS || t.status === fS) && (!fP || t.priority === fP) && mR;
       }).sort((a, b) => b.id.localeCompare(a.id));
 
       document.getElementById('trCount').textContent = `(${list.length})`;
@@ -5567,9 +5684,11 @@ Asset Management System</textarea>
       <td>${approvalCell(t.mgrApproval)}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-ghost btn-icon" title="View Details" onclick="openTransferDetail('${t.id}')"><i class="fas fa-eye"></i></button>
-        ${t.status === 'Pending' && canApproveDrilling() ? `<button class="btn btn-ghost btn-icon" title="Drilling Manager Review" style="color:#E65100" onclick="openApprovalModal('${t.id}','drilling')"><i class="fas fa-hard-hat"></i></button>` : ''}
-        ${t.status === 'Ops Approved' && canApproveAsset() ? `<button class="btn btn-ghost btn-icon" title="Asset Manager Final Approval" style="color:#6D28D9" onclick="openApprovalModal('${t.id}','asset')"><i class="fas fa-user-tie"></i></button>` : ''}
-        ${(t.status === 'Pending' || t.status === 'Ops Approved') ? `<button class="btn btn-ghost btn-icon" title="Cancel Request" style="color:var(--sap-error)" onclick="cancelTransfer('${t.id}')"><i class="fas fa-ban"></i></button>` : ''}
+        <button class="btn btn-ghost btn-icon" title="Edit Transfer" style="color:var(--sap-blue)" onclick="openEditTransferModal('${t.id}')"><i class="fas fa-edit"></i></button>
+        ${t.status === 'Pending' ? `<button class="btn btn-ghost btn-icon" title="Ops Manager Review" style="color:#E65100" onclick="openApprovalModal('${t.id}','ops')"><i class="fas fa-hard-hat"></i></button>` : ''}
+        ${t.status === 'Ops Approved' ? `<button class="btn btn-ghost btn-icon" title="Asset Manager Review" style="color:#6D28D9" onclick="openApprovalModal('${t.id}','mgr')"><i class="fas fa-user-tie"></i></button>` : ''}
+        <button class="btn btn-ghost btn-icon" title="Delete Transfer" style="color:var(--sap-error)" onclick="deleteTransfer('${t.id}')"><i class="fas fa-trash"></i></button>
+        ${(t.status === 'Pending' || t.status === 'Ops Approved') ? `<button class="btn btn-ghost btn-icon" title="Cancel Request" style="color:#E9730C" onclick="cancelTransfer('${t.id}')"><i class="fas fa-ban"></i></button>` : ''}
       </td>
     </tr>`).join('') || '<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--sap-text-muted)"><i class="fas fa-exchange-alt" style="font-size:28px;opacity:.3;display:block;margin-bottom:8px"></i>No transfer requests found</td></tr>';
 
@@ -5606,13 +5725,6 @@ Asset Management System</textarea>
 
     // ── OPEN APPROVAL MODAL ────────────────────────────────────
     function openApprovalModal(transferId, role) {
-      // Enforce role-based access per stage
-      if (role === 'drilling' && !canApproveDrilling()) {
-        showToast('Only Drilling Managers (or Admin) can approve Stage 1.', 'error'); return;
-      }
-      if (role === 'asset' && !canApproveAsset()) {
-        showToast('Only Asset Managers (or Admin) can approve Stage 2.', 'error'); return;
-      }
       const t = TRANSFERS.find(x => x.id === transferId);
       if (!t) return;
       currentTransferId = transferId;
@@ -5620,12 +5732,12 @@ Asset Management System</textarea>
 
       document.getElementById('approvalReqId').textContent = transferId;
 
-      const roleLabel = role === 'drilling' ? 'Drilling Manager Review' : 'Asset Manager Final Approval';
-      const roleIcon  = role === 'drilling' ? 'fa-hard-hat' : 'fa-user-tie';
-      const roleColor = role === 'drilling' ? '#E65100' : '#6D28D9';
+      const roleLabel = role === 'ops' ? 'Operations Manager Review' : 'Asset Manager Final Approval';
+      const roleIcon = role === 'ops' ? 'fa-hard-hat' : 'fa-user-tie';
+      const roleColor = role === 'ops' ? '#E65100' : '#6D28D9';
 
       document.getElementById('approvalModalTitle').innerHTML = `<i class="fas ${roleIcon}" style="color:${roleColor}"></i> ${roleLabel}`;
-      document.getElementById('approvalActionTitle').innerHTML = `<i class="fas fa-gavel" style="color:${roleColor}"></i> Your Decision (${role === 'drilling' ? 'Drilling Manager' : 'Asset Manager'})`;
+      document.getElementById('approvalActionTitle').innerHTML = `<i class="fas fa-gavel" style="color:${roleColor}"></i> Your Decision (${role === 'ops' ? 'Operations Manager' : 'Asset Manager'})`;
 
       // Summary grid
       document.getElementById('approvalSummaryGrid').innerHTML = [
@@ -5664,8 +5776,8 @@ Asset Management System</textarea>
           comment: null,
         },
         {
-          label: 'Drilling Manager Review',
-          sub: t.opsApproval.action ? `${t.opsApproval.by} — ${t.opsApproval.date}` : 'Awaiting Drilling Manager',
+          label: 'Operations Manager Review',
+          sub: t.opsApproval.action ? `${t.opsApproval.by} — ${t.opsApproval.date}` : 'Awaiting Operations Manager',
           icon: t.opsApproval.action === 'approve' ? 'fa-check' : t.opsApproval.action === 'reject' ? 'fa-times' : 'fa-hard-hat',
           state: t.opsApproval.action === 'approve' ? 'done' : t.opsApproval.action === 'reject' ? 'reject' : (t.status === 'Pending' ? 'active' : 'pending'),
           comment: t.opsApproval.comment,
@@ -5712,23 +5824,23 @@ Asset Management System</textarea>
       if (!t) return;
 
       const today = new Date().toISOString().slice(0, 10);
-      const approverName = window.__currentUserName || USERS.find(u => u.email === window.__currentUser?.email)?.name || 'Current User';
+      const approverName = USERS.find(u => u.role === (currentApproverRole === 'ops' ? 'Asset Manager' : 'Viewer'))?.name || 'Current User';
 
-      if (currentApproverRole === 'drilling') {
-        t.opsApproval = { by: approverName, role: 'Drilling Manager', date: today, action: decision, comment };
+      if (currentApproverRole === 'ops') {
+        t.opsApproval = { by: 'James Miller', role: 'Operations Manager', date: today, action: decision, comment };
         if (decision === 'approve') {
           t.status = 'Ops Approved';
-          showToast(`TR ${t.id}: Drilling Manager approved. Now pending Asset Manager final approval.`, 'success');
+          showToast(`TR ${t.id}: Operations Manager approved. Now pending Asset Manager final approval.`, 'success');
           addNotification('info', 'user-tie', 'Awaiting Asset Manager', `Transfer ${t.id} for ${t.assetName} needs Asset Manager approval`, today);
         } else if (decision === 'reject') {
           t.status = 'Rejected';
-          showToast(`TR ${t.id}: Rejected by Drilling Manager.`, 'warning');
+          showToast(`TR ${t.id}: Rejected by Operations Manager.`, 'warning');
         } else {
           t.status = 'On Hold';
-          showToast(`TR ${t.id}: Put on hold by Drilling Manager.`, 'info');
+          showToast(`TR ${t.id}: Put on hold by Operations Manager.`, 'info');
         }
       } else {
-        t.mgrApproval = { by: approverName, role: 'Asset Manager', date: today, action: decision, comment };
+        t.mgrApproval = { by: 'Sara Al-Rashid', role: 'Asset Manager', date: today, action: decision, comment };
         if (decision === 'approve') {
           t.status = 'Completed';
           // Update the asset location in ASSETS
@@ -5759,69 +5871,282 @@ Asset Management System</textarea>
       if (!confirm(`Cancel transfer request ${id}? This action cannot be undone.`)) return;
       TRANSFERS = TRANSFERS.filter(t => t.id !== id);
       renderTransfers();
+      updateTransferKPIs();
       showToast(`Transfer request ${id} cancelled.`, 'warning');
     }
 
+    // ── DELETE TRANSFER (local fallback — overridden by API layer) ─
+    function deleteTransfer(id) {
+      if (!confirm(`Permanently delete transfer request ${id}? This cannot be undone.`)) return;
+      TRANSFERS = TRANSFERS.filter(t => t.id !== id);
+      renderTransfers();
+      updateTransferKPIs();
+      showToast(`Transfer ${id} deleted.`, 'warning');
+    }
+
+    // ── EDIT TRANSFER MODAL ────────────────────────────────────
+    function openEditTransferModal(id) {
+      const t = TRANSFERS.find(x => x.id === id);
+      if (!t) return;
+
+      const assetSel = document.getElementById('etr_asset');
+      assetSel.innerHTML = '<option value="">— Select Asset —</option>' +
+        ASSETS.map(a => `<option value="${a.assetId}"${a.assetId === t.assetId ? ' selected' : ''}>${a.name} (${a.assetId})</option>`).join('');
+
+      const rigSel = document.getElementById('etr_destRig');
+      rigSel.innerHTML = '<option value="">— None / Not Applicable —</option>' +
+        RIGS.map(r => `<option value="${r.name}"${r.name === t.destRig ? ' selected' : ''}>${r.name}</option>`).join('');
+
+      const compSel = document.getElementById('etr_destCompany');
+      compSel.innerHTML = '<option value="">— Same / Not Applicable —</option>' +
+        COMPANIES.map(c => `<option value="${c.name}"${c.name === t.destCompany ? ' selected' : ''}>${c.name}</option>`).join('');
+
+      document.getElementById('etr_id').value           = t.id;
+      document.getElementById('etr_currentLoc').value   = t.currentLoc || '';
+      document.getElementById('etr_destination').value  = t.destination || '';
+      document.getElementById('etr_priority').value     = t.priority || 'Normal';
+      document.getElementById('etr_type').value         = t.type || 'Field to Field';
+      document.getElementById('etr_requestedBy').value  = t.requestedBy || '';
+      document.getElementById('etr_requiredDate').value = t.requiredDate || '';
+      document.getElementById('etr_reason').value       = t.reason || '';
+      document.getElementById('etr_instructions').value = t.instructions || '';
+      document.getElementById('etr_status').value       = t.status || 'Pending';
+
+      openModal('editTransferModal');
+    }
+
+    // ── SAVE EDIT TRANSFER (local fallback — overridden by API layer) ─
+    function saveEditTransfer() {
+      const id          = document.getElementById('etr_id').value;
+      const destination = document.getElementById('etr_destination').value.trim();
+      const reason      = document.getElementById('etr_reason').value.trim();
+      if (!destination) { showToast('Destination is required.', 'error'); return; }
+      if (!reason)      { showToast('Reason is required.', 'error'); return; }
+
+      const assetId = document.getElementById('etr_asset').value;
+      const idx = TRANSFERS.findIndex(x => x.id === id);
+      if (idx < 0) { showToast('Transfer not found.', 'error'); return; }
+
+      TRANSFERS[idx] = {
+        ...TRANSFERS[idx],
+        assetId,
+        assetName:    ASSETS.find(a => a.assetId === assetId)?.name || TRANSFERS[idx].assetName,
+        currentLoc:   document.getElementById('etr_currentLoc').value,
+        destination,
+        destRig:      document.getElementById('etr_destRig').value || null,
+        destCompany:  document.getElementById('etr_destCompany').value || null,
+        priority:     document.getElementById('etr_priority').value,
+        type:         document.getElementById('etr_type').value,
+        requestedBy:  document.getElementById('etr_requestedBy').value,
+        requiredDate: document.getElementById('etr_requiredDate').value || null,
+        reason,
+        instructions: document.getElementById('etr_instructions').value,
+        status:       document.getElementById('etr_status').value,
+      };
+
+      closeModal('editTransferModal');
+      renderTransfers();
+      updateTransferKPIs();
+      showToast(`Transfer ${id} updated successfully.`, 'success');
+    }
+
     // ── VIEW TRANSFER DETAIL ───────────────────────────────────
+    let _drawerTransferId = null;
+
     function openTransferDetail(id) {
       const t = TRANSFERS.find(x => x.id === id);
       if (!t) return;
+      _drawerTransferId = id;
       const asset = ASSETS.find(a => a.assetId === t.assetId);
 
-      document.getElementById('transferDetailBody').innerHTML = `
-    <div style="background:linear-gradient(135deg,#354A5E,#4A6580);color:#fff;border-radius:6px;padding:16px;margin-bottom:16px">
-      <div style="display:flex;align-items:center;gap:12px">
-        <div style="width:48px;height:48px;background:rgba(255,255,255,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0"><i class="fas fa-exchange-alt"></i></div>
-        <div>
-          <div style="font-weight:700;font-size:16px">${t.assetName}</div>
-          <div style="font-size:12px;opacity:.75">${t.id} · ${t.type} · ${t.requestDate}</div>
-        </div>
-        <div style="margin-left:auto">${transferStatusBadge(t.status)}</div>
-      </div>
-    </div>
+      // ── Header
+      document.getElementById('drawerAssetName').textContent = t.assetName || '—';
+      document.getElementById('drawerSubtitle').textContent  = `${t.id} · ${t.type} · ${t.requestDate}`;
+      document.getElementById('drawerStatusBadge').innerHTML = transferStatusBadge(t.status);
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--sap-border);border-radius:6px;overflow:hidden;margin-bottom:14px">
-      ${[
-          ['Request ID', t.id], ['Priority', t.priority], ['Transfer Type', t.type],
-          ['Requested By', t.requestedBy], ['Request Date', t.requestDate], ['Required By', t.requiredDate || '—'],
-          ['Current Location', t.currentLoc], ['Destination', t.destination],
-          ['Dest. Rig', t.destRig || '—'], ['Dest. Company', t.destCompany || '—'],
-        ].map(([l, v], i) => `
-        <div style="padding:9px 12px;border-bottom:1px solid #ECEEF0;${i % 2 === 0 ? 'border-right:1px solid #ECEEF0' : ''}">
-          <div style="font-size:11px;color:var(--sap-text-muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px">${l}</div>
+      // ── Details grid
+      const fields = [
+        ['Request ID', `<span style="font-family:'IBM Plex Mono',monospace;font-size:12px">${t.id}</span>`],
+        ['Priority', `<span class="${{Critical:'priority-critical',High:'priority-high',Normal:'priority-normal',Low:'priority-low'}[t.priority]||'priority-normal'}">${t.priority === 'Critical' ? '⚠ ' : ''}${t.priority}</span>`],
+        ['Transfer Type', t.type],
+        ['Requested By', t.requestedBy || '—'],
+        ['Request Date', t.requestDate || '—'],
+        ['Required By',  t.requiredDate || '—'],
+        ['Current Location', `<span style="color:var(--sap-text-muted)"><i class="fas fa-map-marker-alt" style="font-size:10px;margin-right:3px"></i>${t.currentLoc || '—'}</span>`],
+        ['Destination', `<span style="color:var(--sap-blue);font-weight:600"><i class="fas fa-location-dot" style="font-size:10px;margin-right:3px"></i>${t.destination || '—'}</span>`],
+        ['Dest. Rig', t.destRig || '—'],
+        ['Dest. Company', t.destCompany || '—'],
+      ];
+      document.getElementById('drawerDetailsGrid').innerHTML = fields.map(([l,v],i) => `
+        <div style="padding:9px 12px;border-bottom:1px solid #F0F2F4;${i%2===0?'border-right:1px solid #F0F2F4':''}">
+          <div style="font-size:10px;color:var(--sap-text-muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px">${l}</div>
           <div style="font-size:13px;font-weight:500">${v}</div>
-        </div>`).join('')}
-    </div>
+        </div>`).join('');
 
-    <div style="padding:12px;background:#F8F9FA;border:1px solid var(--sap-border);border-radius:6px;margin-bottom:14px">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--sap-text-muted);margin-bottom:6px">Reason for Transfer</div>
-      <div style="font-size:13px;line-height:1.6">${t.reason}</div>
-      ${t.instructions ? `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--sap-text-muted);margin:10px 0 4px">Special Instructions</div><div style="font-size:13px;color:var(--sap-text-muted)">${t.instructions}</div>` : ''}
-    </div>
+      // ── Asset info box
+      document.getElementById('drawerAssetInfo').innerHTML = asset
+        ? `<div><div style="font-weight:600;font-size:13px">${asset.name}</div><div style="font-size:11.5px;color:var(--sap-text-muted);margin-top:2px">${asset.assetId} · ${asset.category} · <span style="color:${asset.status==='Active'?'var(--sap-success)':asset.status==='Maintenance'?'#E9730C':'var(--sap-error)'}">${asset.status}</span></div><div style="font-size:11.5px;color:var(--sap-text-muted);margin-top:1px"><i class="fas fa-oil-well" style="font-size:10px"></i> ${asset.rigName||'—'} · ${asset.location||'—'}</div></div>`
+        : `<span style="color:#aaa;font-size:12px">Asset not found in database</span>`;
 
-    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--sap-text-muted);margin-bottom:8px">Approval Status</div>
-    <div style="border:1px solid var(--sap-border);border-radius:6px;overflow:hidden">
-      <div style="display:grid;grid-template-columns:1fr 1fr">
-        <div style="padding:12px;border-right:1px solid var(--sap-border)">
-          <div style="font-size:11.5px;font-weight:600;color:#E65100;margin-bottom:8px"><i class="fas fa-hard-hat"></i> Operations Manager</div>
-          ${t.opsApproval.action ?
-          `<div style="font-size:13px;font-weight:600;color:${t.opsApproval.action === 'approve' ? 'var(--sap-success)' : 'var(--sap-error)'}">${t.opsApproval.action === 'approve' ? '✓ Approved' : '✗ Rejected'}</div>
-             <div style="font-size:12px;color:var(--sap-text-muted);margin-top:2px">By ${t.opsApproval.by} on ${t.opsApproval.date}</div>
-             <div style="font-size:12px;font-style:italic;margin-top:6px;color:var(--sap-text-muted)">"${t.opsApproval.comment}"</div>` :
-          `<div style="font-size:13px;color:#ccc"><i class="fas fa-clock"></i> Awaiting Review</div>`}
-        </div>
-        <div style="padding:12px">
-          <div style="font-size:11.5px;font-weight:600;color:#6D28D9;margin-bottom:8px"><i class="fas fa-user-tie"></i> Asset Manager</div>
-          ${t.mgrApproval.action ?
-          `<div style="font-size:13px;font-weight:600;color:${t.mgrApproval.action === 'approve' ? 'var(--sap-success)' : 'var(--sap-error)'}">${t.mgrApproval.action === 'approve' ? '✓ Final Approved' : '✗ Rejected'}</div>
-             <div style="font-size:12px;color:var(--sap-text-muted);margin-top:2px">By ${t.mgrApproval.by} on ${t.mgrApproval.date}</div>
-             <div style="font-size:12px;font-style:italic;margin-top:6px;color:var(--sap-text-muted)">"${t.mgrApproval.comment}"</div>` :
-          `<div style="font-size:13px;color:#ccc"><i class="fas fa-clock"></i> Awaiting Review</div>`}
-        </div>
-      </div>
-    </div>`;
+      // ── Approval tab
+      const apprHtml = (appr, label) => appr.action
+        ? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+             <span style="font-size:14px">${appr.action==='approve'?'✅':appr.action==='reject'?'❌':'⏸'}</span>
+             <div><div style="font-size:13px;font-weight:600;color:${appr.action==='approve'?'var(--sap-success)':appr.action==='reject'?'var(--sap-error)':'var(--sap-warning)'}">${appr.action==='approve'?'Approved':appr.action==='reject'?'Rejected':'On Hold'}</div>
+             <div style="font-size:11.5px;color:var(--sap-text-muted)">By ${appr.by} · ${appr.date}</div></div></div>
+             ${appr.comment?`<div style="background:#F8F9FA;border-left:3px solid #D9D9D9;padding:8px 10px;border-radius:0 6px 6px 0;font-size:12.5px;font-style:italic;color:var(--sap-text-muted)">"${appr.comment}"</div>`:''}` 
+        : `<div style="color:#ccc;font-size:13px;display:flex;align-items:center;gap:6px"><i class="fas fa-clock"></i> Awaiting review</div>`;
+      document.getElementById('drawerOpsBody').innerHTML = apprHtml(t.opsApproval);
+      document.getElementById('drawerMgrBody').innerHTML = apprHtml(t.mgrApproval);
 
-      openModal('transferDetailModal');
+      // ── Timeline
+      const timelineItems = [
+        { label: 'Request Submitted', date: t.requestDate, icon: 'fa-paper-plane', color: '#0070F2', done: true },
+        { label: 'Ops Manager Review', date: t.opsApproval?.date, icon: 'fa-hard-hat', color: t.opsApproval?.action==='approve'?'var(--sap-success)':t.opsApproval?.action==='reject'?'var(--sap-error)':'#D9D9D9', done: !!t.opsApproval?.action },
+        { label: 'Asset Manager Review', date: t.mgrApproval?.date, icon: 'fa-user-tie', color: t.mgrApproval?.action==='approve'?'var(--sap-success)':t.mgrApproval?.action==='reject'?'var(--sap-error)':'#D9D9D9', done: !!t.mgrApproval?.action },
+        { label: 'Transfer Completed', date: t.status==='Completed'?t.mgrApproval?.date:null, icon: 'fa-check-double', color: t.status==='Completed'?'var(--sap-success)':'#D9D9D9', done: t.status==='Completed' },
+      ];
+      document.getElementById('drawerTimeline').innerHTML = timelineItems.map((item, i) => `
+        <div style="display:flex;gap:12px;padding-bottom:${i<timelineItems.length-1?'14':'0'}px;position:relative">
+          ${i<timelineItems.length-1?`<div style="position:absolute;left:13px;top:26px;width:2px;height:calc(100% - 12px);background:${item.done?'#D1E8FF':'#ECEEF0'}"></div>`:''}
+          <div style="width:28px;height:28px;border-radius:50%;background:${item.done?item.color:'#F0F2F4'};color:${item.done?'#fff':'#ccc'};display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;border:2px solid ${item.done?item.color:'#ECEEF0'}">
+            <i class="fas ${item.icon}"></i>
+          </div>
+          <div style="padding-top:4px">
+            <div style="font-size:13px;font-weight:${item.done?'600':'400'};color:${item.done?'var(--sap-text)':'#ccc'}">${item.label}</div>
+            ${item.date?`<div style="font-size:11px;color:var(--sap-text-muted);margin-top:1px">${item.date}</div>`:`<div style="font-size:11px;color:#ccc;margin-top:1px">Pending</div>`}
+          </div>
+        </div>`).join('');
+
+      // ── Reason tab
+      document.getElementById('drawerReason').textContent = t.reason || '—';
+      if (t.instructions) {
+        document.getElementById('drawerInstructionsWrap').style.display = 'block';
+        document.getElementById('drawerInstructions').textContent = t.instructions;
+      } else {
+        document.getElementById('drawerInstructionsWrap').style.display = 'none';
+      }
+
+      // ── AI chips
+      document.getElementById('drawerAiChips').innerHTML = [
+        { label: 'Risk Assessment', q: `Assess the risk level of transfer ${t.id}: asset "${t.assetName}" from "${t.currentLoc}" to "${t.destination}". Consider asset value, rig operations, and urgency.` },
+        { label: 'Suggest Priority', q: `Based on the transfer reason: "${t.reason}", is the priority "${t.priority}" appropriate? Suggest an optimal priority.` },
+        { label: 'Check Similar Transfers', q: `Are there any other pending or recent transfers for the same asset (${t.assetId}) or the same destination rig (${t.destRig||t.destination})?` },
+        { label: 'Approval Recommendation', q: `Should transfer ${t.id} be approved? Summarise the justification from the reason and context provided.` },
+      ].map(c => `<button onclick="sendDrawerAiChip(this,'${c.q.replace(/'/g,"&#39;")}')" style="padding:5px 11px;border-radius:20px;border:1px solid #D9D9D9;background:#fff;font-size:12px;color:var(--sap-text-muted);cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap" onmouseover="this.style.background='#EBF4FF';this.style.borderColor='#0070F2';this.style.color='#0070F2'" onmouseout="this.style.background='#fff';this.style.borderColor='#D9D9D9';this.style.color='var(--sap-text-muted)'">${c.label}</button>`).join('');
+      document.getElementById('drawerAiBox').innerHTML = '<span style="color:#bbb"><i class="fas fa-robot" style="margin-right:6px"></i>Click a suggestion or type a question below…</span>';
+      document.getElementById('drawerAiInput').value = '';
+
+      // ── Footer buttons
+      document.getElementById('drawerEditBtn').onclick    = () => { closeTransferDrawer(); openEditTransferModal(id); };
+      document.getElementById('drawerApproveBtn').style.display = (t.status==='Pending'||t.status==='Ops Approved') ? '' : 'none';
+      document.getElementById('drawerApproveBtn').onclick = () => { closeTransferDrawer(); openApprovalModal(id, t.status==='Pending'?'ops':'mgr'); };
+
+      // ── Reset to details tab
+      switchDrawerTab(document.querySelector('.drawer-tab[data-tab="details"]'), 'details');
+
+      // ── Open drawer
+      document.getElementById('transferDrawerOverlay').style.display = 'block';
+      document.getElementById('transferDrawer').style.transform = 'translateX(0)';
+    }
+
+    function closeTransferDrawer() {
+      document.getElementById('transferDrawer').style.transform = 'translateX(100%)';
+      setTimeout(() => { document.getElementById('transferDrawerOverlay').style.display = 'none'; }, 320);
+      _drawerTransferId = null;
+    }
+
+    function switchDrawerTab(btn, tab) {
+      document.querySelectorAll('.drawer-tab').forEach(b => {
+        b.style.color = 'var(--sap-text-muted)'; b.style.fontWeight = '500';
+        b.style.borderBottomColor = 'transparent';
+      });
+      btn.style.color = 'var(--sap-blue)'; btn.style.fontWeight = '600';
+      btn.style.borderBottomColor = 'var(--sap-blue)';
+      ['details','approval','reason','ai'].forEach(t => {
+        document.getElementById('drawerTab-'+t).style.display = t===tab ? '' : 'none';
+      });
+    }
+
+    function drawerEditTransfer() {
+      if (_drawerTransferId) { closeTransferDrawer(); openEditTransferModal(_drawerTransferId); }
+    }
+    function drawerApproveTransfer() {
+      if (!_drawerTransferId) return;
+      const t = TRANSFERS.find(x => x.id === _drawerTransferId);
+      if (t) { closeTransferDrawer(); openApprovalModal(_drawerTransferId, t.status==='Pending'?'ops':'mgr'); }
+    }
+
+    async function sendDrawerAiChip(btn, question) {
+      document.getElementById('drawerAiInput').value = question;
+      await askDrawerAI();
+    }
+
+    async function askDrawerAI() {
+      const input = document.getElementById('drawerAiInput');
+      const q = input.value.trim();
+      if (!q) return;
+      const box = document.getElementById('drawerAiBox');
+      box.innerHTML = '<span style="color:var(--sap-text-muted)"><i class="fas fa-spinner fa-spin" style="margin-right:6px"></i>Analysing…</span>';
+      input.value = '';
+
+      const t = _drawerTransferId ? TRANSFERS.find(x => x.id === _drawerTransferId) : null;
+      const transferContext = t ? `
+Current Transfer being reviewed:
+- ID: ${t.id}
+- Asset: ${t.assetName} (${t.assetId})
+- From: ${t.currentLoc} → To: ${t.destination}
+- Dest Rig: ${t.destRig||'N/A'} | Dest Company: ${t.destCompany||'N/A'}
+- Priority: ${t.priority} | Type: ${t.type}
+- Status: ${t.status}
+- Requested By: ${t.requestedBy} on ${t.requestDate}
+- Required By: ${t.requiredDate||'N/A'}
+- Reason: ${t.reason}
+- Instructions: ${t.instructions||'None'}
+- Ops Approval: ${t.opsApproval?.action||'Awaiting'}
+- Mgr Approval: ${t.mgrApproval?.action||'Awaiting'}
+
+All Transfers Summary:
+${TRANSFERS.map(x=>`${x.id}|${x.assetName}|${x.status}|${x.priority}|${x.destination}`).join('\n')}` : '';
+
+      const systemPrompt = `You are an AI assistant embedded in an Asset Management System. Answer concisely using markdown. Focus on the transfer request context.
+${transferContext}
+All Assets: ${ASSETS.map(a=>`${a.assetId}:${a.name}:${a.rigName}:${a.status}`).join(', ')}`;
+
+      try {
+        const key = getChatKey ? getChatKey(chatProvider) : null;
+        if (!key) {
+          box.innerHTML = '<span style="color:#E9730C"><i class="fas fa-key" style="margin-right:6px"></i>Please set your AI API key in the main chat panel first.</span>';
+          return;
+        }
+
+        let reply = '';
+        if (chatProvider === 'anthropic') {
+          const res = await fetch('https://api.anthropic.com/v1/messages', {
+            method:'POST', headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'},
+            body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:800, system: systemPrompt, messages:[{role:'user',content:q}] })
+          });
+          const d = await res.json();
+          reply = d.content?.[0]?.text || 'No response';
+        } else if (chatProvider === 'gemini') {
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`, {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ contents:[{parts:[{text:systemPrompt+'\n\nUser: '+q}]}] })
+          });
+          const d = await res.json();
+          reply = d.candidates?.[0]?.content?.parts?.[0]?.text || 'No response';
+        } else {
+          const res = await fetch('https://api.openai.com/v1/chat/completions', {
+            method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+            body: JSON.stringify({ model:'gpt-4o-mini', max_tokens:800, messages:[{role:'system',content:systemPrompt},{role:'user',content:q}] })
+          });
+          const d = await res.json();
+          reply = d.choices?.[0]?.message?.content || 'No response';
+        }
+        box.innerHTML = renderMarkdown(reply);
+      } catch(e) {
+        box.innerHTML = `<span style="color:var(--sap-error)"><i class="fas fa-exclamation-triangle" style="margin-right:6px"></i>Error: ${e.message}</span>`;
+      }
     }
 
     // ── EXPORT TRANSFERS ───────────────────────────────────────
@@ -5863,6 +6188,7 @@ Asset Management System</textarea>
       document.getElementById('trSearch').value = '';
       document.getElementById('trFilterStatus').value = '';
       document.getElementById('trFilterPriority').value = '';
+      document.getElementById('trFilterDestRig').value = '';
       renderTransfers();
     }
 
@@ -6819,19 +7145,12 @@ Asset Management System</textarea>
     function getRole() {
       return (window.__currentUserRole || 'Viewer').trim();
     }
-    function isAdmin()          { return getRole() === 'Admin'; }
-    function isEditor()         { return getRole() === 'Editor'; }
-    function isViewer()         { return getRole() === 'Viewer'; }
-    function isDrillingManager(){ return getRole() === 'Drilling Manager'; }
-    function isAssetManager()   { return getRole() === 'Asset Manager'; }
-    function canEdit()          { return ['Admin','Editor','Drilling Manager','Asset Manager'].includes(getRole()); }
-    function canImport()        { return isAdmin(); }
-    // Stage 1 (ops): Drilling Manager or Admin
-    function canApproveDrilling(){ return isAdmin() || isDrillingManager(); }
-    // Stage 2 (mgr): Asset Manager or Admin
-    function canApproveAsset()   { return isAdmin() || isAssetManager(); }
-    // Any approval role
-    function canApprove()        { return canApproveDrilling() || canApproveAsset(); }
+    function isAdmin()   { return getRole() === 'Admin'; }
+    function isEditor()  { return getRole() === 'Editor'; }
+    function isViewer()  { return getRole() === 'Viewer'; }
+    function canEdit()   { return isAdmin() || isEditor(); }
+    function canImport() { return isAdmin(); }
+    function canApprove(){ return isAdmin(); }
 
     function applyRoleUI() {
       // ── Import buttons: Admin only ──
@@ -6871,9 +7190,7 @@ Asset Management System</textarea>
       const editBtn = document.getElementById('assetDetailEditBtn');
       if (editBtn) editBtn.style.display = canEdit() ? '' : 'none';
 
-      // ── Transfer approve/reject: shown based on role + current stage ──
-      // The actual per-stage gating happens in openApprovalModal
-      // Here we just show/hide the buttons if user has ANY approval role
+      // ── Transfer approve/reject: Admin only ──
       ['btnApprove','btnReject','btnHold'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = canApprove() ? '' : 'none';
@@ -6953,7 +7270,7 @@ Asset Management System</textarea>
         switchChatProvider(chatProvider); // sync UI
         if (!getChatKey(chatProvider)) refreshKeyBar();
         const provNames = {anthropic:'Anthropic Claude', gemini:'Google Gemini', openai:'OpenAI GPT-4o Mini'};
-        appendChatMsg('assistant', `👋 Hello! I\'m your AI Assistant powered by **${provNames[chatProvider]||chatProvider}**.\n\nI have full access to your live database: **${ASSETS.length} assets**, **${CERTIFICATES.length} certificates**, **${MAINT_SCHEDULES.length} maintenance schedules**, **${CONTRACTS.length} contracts**, **${RIGS.length} rigs**.\n\nSwitch providers anytime using the buttons in the header. Ask me anything!`);
+        appendChatMsg('assistant', `👋 Hello! I\'m your AI Assistant powered by **${provNames[chatProvider]||chatProvider}**.\n\nI have full access to your live database: **${ASSETS.length} assets**, **${CERTIFICATES.length} certificates**, **${MAINT_SCHEDULES.length} maintenance schedules**, **${CONTRACTS.length} contracts**, **${RIGS.length} rigs**, and **${TRANSFERS.length} transfer requests**.\n\nSwitch providers anytime using the buttons in the header. Ask me anything!`);
       }
     }
 
@@ -6976,6 +7293,9 @@ Asset Management System</textarea>
       const rigsSummary = RIGS.map(r=>
         `ID:${r.id}|Name:${r.name}|Type:${r.type}|Company:${r.company}|Location:${r.location}|Status:${r.status}|Assets:${ASSETS.filter(a=>a.rigName===r.name).length}`
       ).join('\n');
+      const transfersSummary = (typeof TRANSFERS!=='undefined'?TRANSFERS:[]).map(t=>
+        `ID:${t.id}|Asset:${t.assetName}(${t.assetId})|From:${t.currentLoc}|To:${t.destination}|DestRig:${t.destRig||'N/A'}|Priority:${t.priority}|Type:${t.type}|Status:${t.status}|ReqBy:${t.requestedBy}|ReqDate:${t.requestDate}|RequiredBy:${t.requiredDate||'N/A'}|OpsAction:${t.opsApproval?.action||'Awaiting'}|MgrAction:${t.mgrApproval?.action||'Awaiting'}|Reason:${(t.reason||'').substring(0,80)}`
+      ).join('\n');
       return `You are an intelligent AI Assistant embedded inside an Asset Management System for a Land Rig & Contracting company. You have FULL ACCESS to the live database. Answer questions accurately using ONLY the data provided. Be concise, use markdown formatting, and present data in tables when appropriate.
 
 Today's date: ${new Date().toISOString().split('T')[0]}
@@ -6995,11 +7315,15 @@ ${contractsSummary}
 ═══ LAND RIGS (${RIGS.length}) ═══
 ${rigsSummary}
 
+═══ ASSET TRANSFERS (${(typeof TRANSFERS!=='undefined'?TRANSFERS:[]).length}) ═══
+${transfersSummary}
+
 Instructions:
 - Answer ONLY from the data above. Do not invent data.
 - For numbers/totals, calculate them accurately.
 - Use markdown tables for lists of records.
 - Highlight overdue/expiring items with ⚠️.
+- Flag Critical/High priority transfers with 🚨.
 - Be conversational and helpful.
 - If asked about something not in the database, say so clearly.`;
     }
@@ -7433,6 +7757,10 @@ Instructions:
       <button class="chat-chip" onclick="sendQuickMsg('What is the total value of all assets?')"><i class="fas fa-dollar-sign" style="font-size:10px;margin-right:3px"></i> Total Value</button>
       <button class="chat-chip" onclick="sendQuickMsg('Show a summary of assets by category')"><i class="fas fa-chart-bar" style="font-size:10px;margin-right:3px"></i> By Category</button>
       <button class="chat-chip" onclick="sendQuickMsg('Which rigs have the most assets?')"><i class="fas fa-oil-well" style="font-size:10px;margin-right:3px"></i> Assets by Rig</button>
+      <button class="chat-chip" onclick="sendQuickMsg('List all pending transfer requests and their priority levels')"><i class="fas fa-exchange-alt" style="font-size:10px;margin-right:3px"></i> Pending Transfers</button>
+      <button class="chat-chip" onclick="sendQuickMsg('Which transfers are Critical or High priority and still awaiting approval?')"><i class="fas fa-exclamation-triangle" style="font-size:10px;margin-right:3px"></i> Urgent Transfers</button>
+      <button class="chat-chip" onclick="sendQuickMsg('Summarise all completed transfers and what assets were moved where')"><i class="fas fa-check-double" style="font-size:10px;margin-right:3px"></i> Completed Transfers</button>
+      <button class="chat-chip" onclick="sendQuickMsg('Are there any assets with multiple transfer requests? Flag any duplicates or conflicts.')"><i class="fas fa-clone" style="font-size:10px;margin-right:3px"></i> Duplicate Checks</button>
     </div>
 
     <!-- API Key bar -->
@@ -7996,6 +8324,69 @@ Instructions:
       };
 
       // ══════════════════════════════════════════════════════════════════════════
+      //  OVERRIDE: saveEditTransfer()  — PUT to DB
+      // ══════════════════════════════════════════════════════════════════════════
+      window.saveEditTransfer = async function () {
+        const id          = document.getElementById('etr_id').value;
+        const destination = document.getElementById('etr_destination').value.trim();
+        const reason      = document.getElementById('etr_reason').value.trim();
+        if (!destination) { showToast('Destination is required.', 'error'); return; }
+        if (!reason)      { showToast('Reason is required.', 'error'); return; }
+
+        const assetId = document.getElementById('etr_asset').value;
+        const payload = {
+          asset_id:     assetId,
+          asset_name:   ASSETS.find(a => a.assetId === assetId)?.name || '',
+          current_loc:  document.getElementById('etr_currentLoc').value,
+          destination,
+          dest_rig:     document.getElementById('etr_destRig').value || null,
+          dest_company: document.getElementById('etr_destCompany').value || null,
+          priority:     document.getElementById('etr_priority').value,
+          type:         document.getElementById('etr_type').value,
+          requested_by: document.getElementById('etr_requestedBy').value,
+          required_date:document.getElementById('etr_requiredDate').value || null,
+          reason,
+          instructions: document.getElementById('etr_instructions').value,
+          status:       document.getElementById('etr_status').value,
+        };
+
+        try {
+          const r = await PUT(`/transfers/${id}`, payload);
+          const idx = TRANSFERS.findIndex(x => x.id === id);
+          if (idx >= 0) TRANSFERS[idx] = normT(r.data);
+          closeModal('editTransferModal');
+          rerender('renderTransfers', 'updateTransferKPIs');
+          showToast(`Transfer ${id} updated ✓`, 'success');
+        } catch (e) { showToast('Update failed: ' + e.message, 'error'); }
+      };
+
+      // ══════════════════════════════════════════════════════════════════════════
+      //  OVERRIDE: deleteTransfer()  — DELETE from DB
+      // ══════════════════════════════════════════════════════════════════════════
+      window.deleteTransfer = async function (id) {
+        if (!confirm(`Permanently delete transfer request ${id}? This cannot be undone.`)) return;
+        try {
+          await DELETE(`/transfers/${id}`);
+          TRANSFERS = TRANSFERS.filter(t => t.id !== id);
+          rerender('renderTransfers', 'updateTransferKPIs');
+          showToast(`Transfer ${id} deleted ✓`, 'success');
+        } catch (e) { showToast('Delete failed: ' + e.message, 'error'); }
+      };
+
+      // ══════════════════════════════════════════════════════════════════════════
+      //  OVERRIDE: cancelTransfer()  — DELETE from DB
+      // ══════════════════════════════════════════════════════════════════════════
+      window.cancelTransfer = async function (id) {
+        if (!confirm(`Cancel transfer request ${id}? This action cannot be undone.`)) return;
+        try {
+          await DELETE(`/transfers/${id}`);
+          TRANSFERS = TRANSFERS.filter(t => t.id !== id);
+          rerender('renderTransfers', 'updateTransferKPIs');
+          showToast(`Transfer request ${id} cancelled ✓`, 'warning');
+        } catch (e) { showToast('Cancel failed: ' + e.message, 'error'); }
+      };
+
+      // ══════════════════════════════════════════════════════════════════════════
       //  OVERRIDE: submitTransferRequest()
       // ══════════════════════════════════════════════════════════════════════════
       window.submitTransferRequest = async function () {
@@ -8058,7 +8449,7 @@ Instructions:
       //  OVERRIDE: processApproval()  — ops / mgr decision
       // ══════════════════════════════════════════════════════════════════════════
       window.processApproval = async function (decision) {
-        if (!canApprove()) { showToast('Only Drilling Managers and Asset Managers can approve transfers.', 'error'); return; }
+        if (!canApprove()) { showToast('Only Admins can approve or reject transfers.', 'error'); return; }
         const comment = document.getElementById('approvalComment').value.trim();
         if (!comment) { showToast('Please enter your decision comments.', 'error'); return; }
 
@@ -8066,7 +8457,7 @@ Instructions:
           role: currentApproverRole,
           action: decision,
           comment,
-          approved_by: window.__currentUserName || 'Unknown',
+          approved_by: currentApproverRole === 'ops' ? 'James Miller' : 'Sara Al-Rashid',
         };
 
         try {
@@ -8620,5 +9011,567 @@ Instructions:
 
     })(); // end IIFE
   </script>
+  <!-- ======= EDIT TRANSFER MODAL ======= -->
+  <div class="modal-overlay" id="editTransferModal">
+    <div class="modal" style="max-width:660px;width:100%">
+      <div class="modal-header">
+        <h2><i class="fas fa-edit" style="color:var(--sap-blue);margin-right:8px"></i>Edit Transfer Request</h2>
+        <button class="shell-btn" style="color:var(--sap-text-muted)" onclick="closeModal('editTransferModal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="etr_id">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">Asset</label>
+            <select class="form-select" id="etr_asset"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-select" id="etr_status">
+              <option value="Pending">Pending</option>
+              <option value="Ops Approved">Ops Approved</option>
+              <option value="Completed">Completed</option>
+              <option value="Rejected">Rejected</option>
+              <option value="On Hold">On Hold</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Current Location</label>
+            <input class="form-input" id="etr_currentLoc" placeholder="Current location">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Destination <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="etr_destination" placeholder="Destination location">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Destination Rig</label>
+            <select class="form-select" id="etr_destRig"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Destination Company</label>
+            <select class="form-select" id="etr_destCompany"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Priority</label>
+            <select class="form-select" id="etr_priority">
+              <option value="Critical">Critical</option>
+              <option value="High">High</option>
+              <option value="Normal">Normal</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Transfer Type</label>
+            <select class="form-select" id="etr_type">
+              <option value="Field to Field">Field to Field</option>
+              <option value="Field to Yard">Field to Yard</option>
+              <option value="Yard to Field">Yard to Field</option>
+              <option value="Inter-Company">Inter-Company</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Requested By</label>
+            <input class="form-input" id="etr_requestedBy" placeholder="Name">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Required By Date</label>
+            <input class="form-input" type="date" id="etr_requiredDate">
+          </div>
+          <div class="form-group" style="grid-column:span 2">
+            <label class="form-label">Reason for Transfer <span style="color:var(--sap-error)">*</span></label>
+            <textarea class="form-input" id="etr_reason" rows="3" style="resize:vertical;height:72px" placeholder="Reason for transfer..."></textarea>
+          </div>
+          <div class="form-group" style="grid-column:span 2">
+            <label class="form-label">Special Instructions</label>
+            <textarea class="form-input" id="etr_instructions" rows="2" style="resize:vertical;height:52px" placeholder="Optional instructions..."></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('editTransferModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveEditTransfer()"><i class="fas fa-save"></i> Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+     EMAIL NOTIFICATIONS — EmailJS Integration
+  ═══════════════════════════════════════════ -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+  <script>
+    // ── Pre-load EmailJS credentials so email works without manual setup ──
+    (function seedEmailConfig() {
+      try {
+        const DEFAULTS = {
+          publicKey:  '3WSS99Btab-6I1HtU',
+          serviceId:  'service_kl3vokv',
+          templateId: 'template_qpnm8ci',
+        };
+        const existing = JSON.parse(localStorage.getItem('ams_email_cfg') || '{}');
+        // Only fill in missing keys — never overwrite values the user has set
+        let changed = false;
+        for (const k of Object.keys(DEFAULTS)) {
+          if (!existing[k]) { existing[k] = DEFAULTS[k]; changed = true; }
+        }
+        // Default all trigger flags to ON if not explicitly set
+        for (const flag of ['trigSubmit','trigOpsApprove','trigComplete','trigReject']) {
+          if (existing[flag] === undefined) { existing[flag] = true; changed = true; }
+        }
+        if (changed) localStorage.setItem('ams_email_cfg', JSON.stringify(existing));
+
+        // Also initialise EmailJS immediately with the public key
+        if (window.emailjs) emailjs.init({ publicKey: DEFAULTS.publicKey });
+        else window.addEventListener('load', () => {
+          if (window.emailjs) emailjs.init({ publicKey: DEFAULTS.publicKey });
+        });
+      } catch(e) { console.warn('[Email seed]', e); }
+    })();
+  </script>
+
+  <!-- Email Settings Modal -->
+  <div class="modal-overlay" id="emailSettingsModal">
+    <div class="modal" style="max-width:560px;width:100%">
+      <div class="modal-header" style="background:linear-gradient(135deg,#354A5E,#4A6580);color:#fff;border-radius:8px 8px 0 0">
+        <i class="fas fa-envelope" style="font-size:18px"></i>
+        <h2 style="color:#fff">Transfer Email Notifications</h2>
+        <button class="shell-btn" onclick="closeModal('emailSettingsModal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
+
+        <!-- EmailJS setup guide -->
+        <div style="background:#EBF4FF;border:1px solid #C2DCFF;border-radius:8px;padding:12px 14px;font-size:12.5px;color:#0040B0">
+          <div style="font-weight:700;margin-bottom:6px"><i class="fas fa-info-circle"></i> Setup: EmailJS (free, no backend needed)</div>
+          <ol style="margin-left:16px;line-height:2">
+            <li>Sign up free at <b>emailjs.com</b> → go to <b>Email Services</b> → Add New Service (Gmail/Outlook) → copy <b>Service ID</b></li>
+            <li>Go to <b>Email Templates</b> → Create New Template → set <b>To Email = <code style="background:#fff;padding:1px 5px;border-radius:3px">{{to_email}}</code></b> (critical!) → copy <b>Template ID</b></li>
+            <li>Go to <b>Account → General</b> → copy <b>Public Key</b></li>
+            <li>Paste all three below, add recipient emails, click <b>Send Test Email</b></li>
+          </ol>
+          <div style="margin-top:6px;background:#fff2;border-radius:6px;padding:7px 10px;font-size:11.5px">
+            <b>Optional template variables:</b> <code>{{asset_name}}</code> · <code>{{from_rig}}</code> · <code>{{dest_rig}}</code> · <code>{{destination}}</code> · <code>{{priority}}</code> · <code>{{reason}}</code> · <code>{{transfer_id}}</code> · <code>{{status}}</code> · <code>{{message_body}}</code> (full HTML email)
+          </div>
+        </div>
+
+        <!-- Credentials -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-group">
+            <label class="form-label">EmailJS Public Key <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="ejsPublicKey" placeholder="e.g. user_xxxxxxxxxxxx" oninput="saveEmailSettings()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Service ID <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="ejsServiceId" placeholder="e.g. service_xxxxxxx" oninput="saveEmailSettings()">
+          </div>
+          <div class="form-group" style="grid-column:span 2">
+            <label class="form-label">Template ID <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="ejsTemplateId" placeholder="e.g. template_xxxxxxx" oninput="saveEmailSettings()">
+          </div>
+        </div>
+
+        <!-- Recipients -->
+        <div>
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--sap-text-muted);margin-bottom:8px"><i class="fas fa-users"></i> Notification Recipients</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+              <div class="form-group">
+                <label class="form-label" style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:#E9730C;border-radius:50%;display:inline-block"></span> Drilling Manager</label>
+                <input class="form-input" id="emailDrillingMgr" placeholder="drilling@company.com" oninput="saveEmailSettings()">
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:#6D28D9;border-radius:50%;display:inline-block"></span> Asset Manager</label>
+                <input class="form-input" id="emailAssetMgr" placeholder="assets@company.com" oninput="saveEmailSettings()">
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:#0070F2;border-radius:50%;display:inline-block"></span> Admin</label>
+                <input class="form-input" id="emailAdmin" placeholder="admin@company.com" oninput="saveEmailSettings()">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label"><i class="fas fa-plus-circle" style="color:var(--sap-blue)"></i> Additional CC (comma-separated)</label>
+              <input class="form-input" id="emailCC" placeholder="cc1@company.com, cc2@company.com" oninput="saveEmailSettings()">
+            </div>
+          </div>
+        </div>
+
+        <!-- Trigger settings -->
+        <div>
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--sap-text-muted);margin-bottom:8px"><i class="fas fa-bell"></i> Send Email When</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+              <input type="checkbox" id="trigOnSubmit" onchange="saveEmailSettings()" style="width:15px;height:15px;accent-color:var(--sap-blue)">
+              New transfer request submitted — notify all recipients to review
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+              <input type="checkbox" id="trigOnOpsApprove" onchange="saveEmailSettings()" style="width:15px;height:15px;accent-color:var(--sap-blue)">
+              Ops Manager approves — notify Asset Manager for final approval
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+              <input type="checkbox" id="trigOnComplete" onchange="saveEmailSettings()" style="width:15px;height:15px;accent-color:var(--sap-blue)">
+              Transfer fully approved / completed — notify all recipients
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+              <input type="checkbox" id="trigOnReject" onchange="saveEmailSettings()" style="width:15px;height:15px;accent-color:var(--sap-blue)">
+              Transfer rejected or cancelled — notify requester and admins
+            </label>
+          </div>
+        </div>
+
+        <!-- Status -->
+        <div id="emailSettingsStatus" style="display:none;padding:10px 12px;border-radius:6px;font-size:12.5px"></div>
+
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('emailSettingsModal')">Close</button>
+        <button class="btn btn-ghost" onclick="testTransferEmail()" style="margin-right:auto"><i class="fas fa-paper-plane"></i> Send Test Email</button>
+        <button class="btn btn-primary" onclick="saveEmailSettings();showToast('Email settings saved ✓','success');closeModal('emailSettingsModal')"><i class="fas fa-save"></i> Save Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  // ══════════════════════════════════════════════════════════════
+  //  TRANSFER EMAIL NOTIFICATION SYSTEM
+  // ══════════════════════════════════════════════════════════════
+
+  // ── Load / Save settings from localStorage ──────────────────
+  function loadEmailSettings() {
+    try {
+      const s = JSON.parse(localStorage.getItem('ams_email_cfg') || '{}');
+      document.getElementById('ejsPublicKey').value   = s.publicKey   || '3WSS99Btab-6I1HtU';
+      document.getElementById('ejsServiceId').value   = s.serviceId   || 'service_kl3vokv';
+      document.getElementById('ejsTemplateId').value  = s.templateId  || 'template_qpnm8ci';
+      document.getElementById('emailDrillingMgr').value = s.drillingMgr || '';
+      document.getElementById('emailAssetMgr').value    = s.assetMgr    || '';
+      document.getElementById('emailAdmin').value        = s.admin       || '';
+      document.getElementById('emailCC').value           = s.cc          || '';
+      document.getElementById('trigOnSubmit').checked     = s.trigSubmit     !== false;
+      document.getElementById('trigOnOpsApprove').checked = s.trigOpsApprove !== false;
+      document.getElementById('trigOnComplete').checked   = s.trigComplete   !== false;
+      document.getElementById('trigOnReject').checked     = s.trigReject     !== false;
+    } catch(e) {}
+  }
+
+  function saveEmailSettings() {
+    try {
+      localStorage.setItem('ams_email_cfg', JSON.stringify({
+        publicKey:    document.getElementById('ejsPublicKey').value.trim(),
+        serviceId:    document.getElementById('ejsServiceId').value.trim(),
+        templateId:   document.getElementById('ejsTemplateId').value.trim(),
+        drillingMgr:  document.getElementById('emailDrillingMgr').value.trim(),
+        assetMgr:     document.getElementById('emailAssetMgr').value.trim(),
+        admin:        document.getElementById('emailAdmin').value.trim(),
+        cc:           document.getElementById('emailCC').value.trim(),
+        trigSubmit:     document.getElementById('trigOnSubmit').checked,
+        trigOpsApprove: document.getElementById('trigOnOpsApprove').checked,
+        trigComplete:   document.getElementById('trigOnComplete').checked,
+        trigReject:     document.getElementById('trigOnReject').checked,
+      }));
+    } catch(e) {}
+  }
+
+  function openEmailSettings() {
+    loadEmailSettings();
+    document.getElementById('emailSettingsStatus').style.display = 'none';
+    openModal('emailSettingsModal');
+  }
+
+  // ── Core email sender ────────────────────────────────────────
+  async function sendTransferEmail(transfer, eventType, extraParams = {}) {
+    try {
+      const _stored = JSON.parse(localStorage.getItem('ams_email_cfg') || '{}');
+      const cfg = {
+        publicKey:  _stored.publicKey  || '3WSS99Btab-6I1HtU',
+        serviceId:  _stored.serviceId  || 'service_kl3vokv',
+        templateId: _stored.templateId || 'template_qpnm8ci',
+        drillingMgr: _stored.drillingMgr || '',
+        assetMgr:    _stored.assetMgr    || '',
+        admin:       _stored.admin       || '',
+        cc:          _stored.cc          || '',
+        trigSubmit:     _stored.trigSubmit     !== false,
+        trigOpsApprove: _stored.trigOpsApprove !== false,
+        trigComplete:   _stored.trigComplete   !== false,
+        trigReject:     _stored.trigReject     !== false,
+      };
+      if (!cfg.publicKey || !cfg.serviceId || !cfg.templateId) {
+        console.warn('[Email] Not configured — skipping notification.');
+        return;
+      }
+
+      // Build recipient list
+      const recipients = [];
+      if (cfg.drillingMgr) recipients.push({ name: 'Drilling Manager', email: cfg.drillingMgr });
+      if (cfg.assetMgr)    recipients.push({ name: 'Asset Manager',    email: cfg.assetMgr });
+      if (cfg.admin)       recipients.push({ name: 'Admin',            email: cfg.admin });
+      if (cfg.cc) cfg.cc.split(',').map(e => e.trim()).filter(Boolean).forEach(e => recipients.push({ name: 'CC', email: e }));
+
+      if (recipients.length === 0) {
+        console.warn('[Email] No recipients configured.');
+        return;
+      }
+
+      // Get full asset details
+      const asset = (typeof ASSETS !== 'undefined') ? ASSETS.find(a => a.assetId === transfer.assetId) : null;
+
+      // Build subject & event label
+      const eventLabels = {
+        'new_request':   '🔔 New Transfer Request Submitted',
+        'ops_approved':  '✅ Transfer Ops-Approved — Awaiting Asset Manager',
+        'completed':     '✅ Transfer Fully Approved & Completed',
+        'rejected':      '❌ Transfer Request Rejected',
+        'on_hold':       '⏸ Transfer Request Put On Hold',
+        'cancelled':     '🚫 Transfer Request Cancelled',
+      };
+      const eventLabel = eventLabels[eventType] || eventType;
+      const subject    = `[AMS] ${eventLabel} — ${transfer.id} · ${transfer.assetName}`;
+
+      // Build rich HTML message body
+      const priorityColor = { Critical: '#B00', High: '#E9730C', Normal: '#0070F2', Low: '#107E3E' }[transfer.priority] || '#354A5E';
+      const messageBody = `
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+  <div style="background:linear-gradient(135deg,#354A5E,#4A6580);color:#fff;padding:20px 24px;border-radius:8px 8px 0 0">
+    <h2 style="margin:0;font-size:18px">⛽ Land Rig Asset Management System</h2>
+    <p style="margin:6px 0 0;opacity:.8;font-size:13px">${eventLabel}</p>
+  </div>
+  <div style="border:1px solid #ECEEF0;border-top:none;padding:20px 24px;border-radius:0 0 8px 8px;background:#fff">
+
+    <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
+      <tr><td colspan="2" style="background:#F0F2F4;padding:8px 12px;font-weight:700;font-size:13px;border-bottom:2px solid #D9D9D9">📋 Transfer Request Details</td></tr>
+      <tr style="border-bottom:1px solid #F0F2F4"><td style="padding:8px 12px;font-size:12px;color:#6A6D70;width:38%">Request ID</td><td style="padding:8px 12px;font-size:13px;font-weight:600;font-family:monospace">${transfer.id}</td></tr>
+      <tr style="border-bottom:1px solid #F0F2F4;background:#FAFBFC"><td style="padding:8px 12px;font-size:12px;color:#6A6D70">Status</td><td style="padding:8px 12px"><span style="background:${priorityColor}20;color:${priorityColor};padding:2px 10px;border-radius:12px;font-size:12px;font-weight:700">${transfer.status}</span></td></tr>
+      <tr style="border-bottom:1px solid #F0F2F4"><td style="padding:8px 12px;font-size:12px;color:#6A6D70">Priority</td><td style="padding:8px 12px"><span style="color:${priorityColor};font-weight:700;font-size:13px">${transfer.priority === 'Critical' ? '⚠ ' : ''}${transfer.priority}</span></td></tr>
+      <tr style="border-bottom:1px solid #F0F2F4;background:#FAFBFC"><td style="padding:8px 12px;font-size:12px;color:#6A6D70">Transfer Type</td><td style="padding:8px 12px;font-size:13px">${transfer.type}</td></tr>
+      <tr style="border-bottom:1px solid #F0F2F4"><td style="padding:8px 12px;font-size:12px;color:#6A6D70">Requested By</td><td style="padding:8px 12px;font-size:13px">${transfer.requestedBy}</td></tr>
+      <tr style="border-bottom:1px solid #F0F2F4;background:#FAFBFC"><td style="padding:8px 12px;font-size:12px;color:#6A6D70">Request Date</td><td style="padding:8px 12px;font-size:13px">${transfer.requestDate}</td></tr>
+      ${transfer.requiredDate ? `<tr style="border-bottom:1px solid #F0F2F4"><td style="padding:8px 12px;font-size:12px;color:#6A6D70">Required By</td><td style="padding:8px 12px;font-size:13px;color:#E9730C;font-weight:600">${transfer.requiredDate}</td></tr>` : ''}
+    </table>
+
+    <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
+      <tr><td colspan="2" style="background:#F0F2F4;padding:8px 12px;font-weight:700;font-size:13px;border-bottom:2px solid #D9D9D9">🔧 Asset Description</td></tr>
+      <tr style="border-bottom:1px solid #F0F2F4"><td style="padding:8px 12px;font-size:12px;color:#6A6D70;width:38%">Asset Name</td><td style="padding:8px 12px;font-size:13px;font-weight:700">${transfer.assetName}</td></tr>
+      <tr style="border-bottom:1px solid #F0F2F4;background:#FAFBFC"><td style="padding:8px 12px;font-size:12px;color:#6A6D70">Asset ID</td><td style="padding:8px 12px;font-size:13px;font-family:monospace">${transfer.assetId}</td></tr>
+      ${asset ? `
+      <tr style="border-bottom:1px solid #F0F2F4"><td style="padding:8px 12px;font-size:12px;color:#6A6D70">Category</td><td style="padding:8px 12px;font-size:13px">${asset.category || '—'}</td></tr>
+      <tr style="border-bottom:1px solid #F0F2F4;background:#FAFBFC"><td style="padding:8px 12px;font-size:12px;color:#6A6D70">Serial No.</td><td style="padding:8px 12px;font-size:13px;font-family:monospace">${asset.serial || '—'}</td></tr>
+      <tr style="border-bottom:1px solid #F0F2F4"><td style="padding:8px 12px;font-size:12px;color:#6A6D70">Asset Status</td><td style="padding:8px 12px;font-size:13px">${asset.status || '—'}</td></tr>
+      <tr style="border-bottom:1px solid #F0F2F4;background:#FAFBFC"><td style="padding:8px 12px;font-size:12px;color:#6A6D70">Value</td><td style="padding:8px 12px;font-size:13px">$${Number(asset.value||0).toLocaleString()}</td></tr>
+      ` : ''}
+    </table>
+
+    <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
+      <tr><td colspan="2" style="background:#EBF4FF;padding:8px 12px;font-weight:700;font-size:13px;border-bottom:2px solid #C2DCFF;color:#0040B0">🚚 Movement Details</td></tr>
+      <tr style="border-bottom:1px solid #F0F2F4"><td style="padding:8px 12px;font-size:12px;color:#6A6D70;width:38%">📍 From Location</td><td style="padding:8px 12px;font-size:13px;font-weight:600">${transfer.currentLoc || '—'}</td></tr>
+      ${asset?.rigName ? `<tr style="border-bottom:1px solid #F0F2F4;background:#FAFBFC"><td style="padding:8px 12px;font-size:12px;color:#6A6D70">🛢 Assigned Rig (Origin)</td><td style="padding:8px 12px;font-size:13px;font-weight:700;color:#E65100">${asset.rigName}</td></tr>` : ''}
+      <tr style="border-bottom:1px solid #F0F2F4;${asset?.rigName?'':'background:#FAFBFC'}"><td style="padding:8px 12px;font-size:12px;color:#6A6D70">🎯 Destination</td><td style="padding:8px 12px;font-size:13px;font-weight:700;color:#0070F2">${transfer.destination}</td></tr>
+      ${transfer.destRig ? `<tr style="border-bottom:1px solid #F0F2F4;background:#E8F5EC"><td style="padding:8px 12px;font-size:12px;color:#6A6D70">🛢 Destination Rig</td><td style="padding:8px 12px;font-size:14px;font-weight:700;color:#107E3E">${transfer.destRig}</td></tr>` : ''}
+      ${transfer.destCompany ? `<tr style="border-bottom:1px solid #F0F2F4"><td style="padding:8px 12px;font-size:12px;color:#6A6D70">🏢 Destination Company</td><td style="padding:8px 12px;font-size:13px">${transfer.destCompany}</td></tr>` : ''}
+    </table>
+
+    <div style="background:#F8F9FA;border-left:4px solid #354A5E;padding:12px 14px;border-radius:0 6px 6px 0;margin-bottom:16px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#6A6D70;margin-bottom:6px">Reason for Transfer</div>
+      <div style="font-size:13px;line-height:1.6">${transfer.reason || '—'}</div>
+      ${transfer.instructions ? `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#6A6D70;margin:10px 0 4px">Special Instructions</div><div style="font-size:13px;color:#6A6D70">${transfer.instructions}</div>` : ''}
+    </div>
+
+    ${extraParams.approver ? `
+    <div style="background:#E8F5EC;border:1px solid #B7DFC8;border-radius:6px;padding:12px 14px;margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;color:#107E3E;margin-bottom:4px"><i>✅ Approval Action</i></div>
+      <div style="font-size:13px"><b>By:</b> ${extraParams.approver}</div>
+      ${extraParams.comment ? `<div style="font-size:13px;margin-top:4px"><b>Comment:</b> ${extraParams.comment}</div>` : ''}
+    </div>` : ''}
+
+    <div style="text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid #ECEEF0;font-size:11.5px;color:#6A6D70">
+      This is an automated notification from the <b>Land Rig Asset Management System</b>.<br>
+      Please do not reply to this email.
+    </div>
+  </div>
+</div>`.trim();
+
+      // Init EmailJS with public key — v3 API
+      emailjs.init({ publicKey: cfg.publicKey });
+
+      // Send one email per recipient (so to_email resolves correctly per person)
+      let sent = 0;
+      const errors = [];
+      for (const recip of recipients) {
+        const params = {
+          to_email:          recip.email,
+          to_name:           recip.name,
+          subject,
+          event_type:        eventLabel,
+          transfer_id:       transfer.id,
+          asset_name:        transfer.assetName,
+          asset_id:          transfer.assetId,
+          asset_category:    asset?.category || '—',
+          asset_serial:      asset?.serial   || '—',
+          from_rig:          asset?.rigName  || '—',
+          from_location:     transfer.currentLoc || '—',
+          dest_rig:          transfer.destRig    || '—',
+          destination:       transfer.destination,
+          priority:          transfer.priority,
+          transfer_type:     transfer.type,
+          requested_by:      transfer.requestedBy,
+          request_date:      transfer.requestDate,
+          reason:            transfer.reason,
+          status:            transfer.status,
+          approver:          extraParams.approver || '',
+          approval_comment:  extraParams.comment  || '',
+          message_body:      messageBody,
+        };
+        try {
+          const result = await emailjs.send(cfg.serviceId, cfg.templateId, params);
+          console.log(`[Email] Sent to ${recip.email}:`, result.status, result.text);
+          sent++;
+        } catch(err) {
+          const msg = err?.text || err?.message || JSON.stringify(err);
+          console.error(`[Email] Failed to send to ${recip.email}:`, msg);
+          errors.push(`${recip.email}: ${msg}`);
+        }
+      }
+
+      if (sent > 0) {
+        showToast(`📧 Email notification sent to ${sent} recipient(s)`, 'success');
+        addNotification('info', 'envelope', 'Transfer Email Sent', `${eventLabel} — ${transfer.id}`, 'Just now');
+      }
+      if (errors.length > 0) {
+        console.error('[Email] Send errors:', errors);
+        showToast(`⚠ ${errors.length} email(s) failed — check browser console for details`, 'warning');
+      }
+
+    } catch(e) {
+      console.error('[Email] sendTransferEmail error:', e);
+    }
+  }
+
+  // ── Test email ───────────────────────────────────────────────
+  async function testTransferEmail() {
+    saveEmailSettings();
+    const _s = JSON.parse(localStorage.getItem('ams_email_cfg') || '{}');
+    const cfg = {
+      publicKey:  _s.publicKey  || '3WSS99Btab-6I1HtU',
+      serviceId:  _s.serviceId  || 'service_kl3vokv',
+      templateId: _s.templateId || 'template_qpnm8ci',
+      drillingMgr: _s.drillingMgr || '',
+      assetMgr:    _s.assetMgr    || '',
+      admin:       _s.admin       || '',
+    };
+    const statusEl = document.getElementById('emailSettingsStatus');
+    if (!cfg.publicKey || !cfg.serviceId || !cfg.templateId) {
+      statusEl.style.cssText = 'display:block;background:#FFF0F0;border:1px solid #FFBDBD;color:#B00;padding:10px 12px;border-radius:6px;font-size:12.5px';
+      statusEl.innerHTML = '❌ Please fill in Public Key, Service ID, and Template ID first.';
+      return;
+    }
+    if (!cfg.drillingMgr && !cfg.assetMgr && !cfg.admin) {
+      statusEl.style.cssText = 'display:block;background:#FFF0F0;border:1px solid #FFBDBD;color:#B00;padding:10px 12px;border-radius:6px;font-size:12.5px';
+      statusEl.innerHTML = '❌ Please add at least one recipient email (Drilling Manager, Asset Manager, or Admin).';
+      return;
+    }
+    statusEl.style.cssText = 'display:block;background:#FFF8E1;border:1px solid #FFE082;color:#7A5C00;padding:10px 12px;border-radius:6px;font-size:12.5px';
+    statusEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending test email…';
+
+    const mockTransfer = {
+      id: 'TR-TEST', assetId: 'ASSET-001', assetName: 'Test Drill Bit Assembly',
+      currentLoc: 'Rig Yard A', destination: 'Rig Alpha-7 — Location B4',
+      destRig: 'Rig Alpha-7', destCompany: 'Test Company',
+      priority: 'High', type: 'Field to Field',
+      requestedBy: window.__currentUserName || 'System Admin',
+      requestDate: new Date().toISOString().slice(0,10),
+      requiredDate: '', reason: 'This is a test notification from the AMS email settings panel.',
+      instructions: '', status: 'Pending',
+      opsApproval: {}, mgrApproval: {},
+    };
+
+    // Test send directly — capture real error
+    try {
+      emailjs.init({ publicKey: cfg.publicKey });
+      const testRecip = cfg.drillingMgr || cfg.assetMgr || cfg.admin;
+      const asset = null;
+      const eventLabel = '🔔 TEST — New Transfer Request Submitted';
+      const subject = `[AMS TEST] Transfer Notification Test — ${new Date().toLocaleTimeString()}`;
+      const result = await emailjs.send(cfg.serviceId, cfg.templateId, {
+        to_email:         testRecip,
+        to_name:          'Test Recipient',
+        subject,
+        event_type:       eventLabel,
+        transfer_id:      mockTransfer.id,
+        asset_name:       mockTransfer.assetName,
+        asset_id:         mockTransfer.assetId,
+        asset_category:   'Drilling Equipment',
+        asset_serial:     'SN-TEST-001',
+        from_rig:         'Rig Beta-3',
+        from_location:    mockTransfer.currentLoc,
+        dest_rig:         mockTransfer.destRig,
+        destination:      mockTransfer.destination,
+        priority:         mockTransfer.priority,
+        transfer_type:    mockTransfer.type,
+        requested_by:     mockTransfer.requestedBy,
+        request_date:     mockTransfer.requestDate,
+        reason:           mockTransfer.reason,
+        status:           mockTransfer.status,
+        approver:         '',
+        approval_comment: '',
+        message_body:     `<p>This is a <b>test email</b> from your Asset Management System.</p><p>If you received this, your EmailJS configuration is working correctly ✅</p>`,
+      });
+      console.log('[Email Test] Success:', result);
+      statusEl.style.cssText = 'display:block;background:#E8F5EC;border:1px solid #B7DFC8;color:#107E3E;padding:10px 12px;border-radius:6px;font-size:12.5px';
+      statusEl.innerHTML = `✅ Test email sent successfully to <b>${testRecip}</b>! Check your inbox. (Status: ${result.status})`;
+    } catch(err) {
+      console.error('[Email Test] Failed:', err);
+      const errMsg = err?.text || err?.message || JSON.stringify(err);
+      statusEl.style.cssText = 'display:block;background:#FFF0F0;border:1px solid #FFBDBD;color:#B00;padding:10px 12px;border-radius:6px;font-size:12.5px';
+      statusEl.innerHTML = `❌ <b>Send failed:</b> ${errMsg}<br><br>
+        <b>Common fixes:</b><br>
+        • Check your <b>Service ID</b> — go to EmailJS → Email Services → copy the ID exactly<br>
+        • Check your <b>Template ID</b> — go to EmailJS → Email Templates → copy the ID exactly<br>
+        • Check your <b>Public Key</b> — go to EmailJS → Account → General → Public Key<br>
+        • Make sure your Email Service is <b>connected and verified</b> in EmailJS<br>
+        • Make sure your template has a <b>To Email</b> field set to <code>{{to_email}}</code>`;
+    }
+  }
+
+  // ── Override submitTransferRequest to trigger email ──────────
+  (function patchTransferEmail() {
+    // Wait for API layer to define its own override first, then wrap it
+    window.addEventListener('load', () => {
+      const _origSubmit = window.submitTransferRequest;
+      window.submitTransferRequest = async function() {
+        await _origSubmit.apply(this, arguments);
+        // Find the most recently added transfer (highest ID)
+        const cfg = JSON.parse(localStorage.getItem('ams_email_cfg') || '{}');
+        if (!cfg.trigSubmit && cfg.trigSubmit !== undefined) return;
+        const latest = [...TRANSFERS].sort((a,b) => b.id.localeCompare(a.id))[0];
+        if (latest) await sendTransferEmail(latest, 'new_request');
+      };
+
+      const _origApproval = window.processApproval;
+      window.processApproval = async function(decision) {
+        const tIdBefore = currentTransferId;
+        await _origApproval.apply(this, arguments);
+        const cfg = JSON.parse(localStorage.getItem('ams_email_cfg') || '{}');
+        const t = TRANSFERS.find(x => x.id === tIdBefore);
+        if (!t) return;
+        const approver = window.__currentUserName || 'Approver';
+        const comment  = document.getElementById('approvalComment')?.value || '';
+        if (decision === 'approve' && currentApproverRole === 'ops' && cfg.trigOpsApprove !== false) {
+          await sendTransferEmail(t, 'ops_approved', { approver, comment });
+        } else if (decision === 'approve' && currentApproverRole === 'mgr' && cfg.trigComplete !== false) {
+          await sendTransferEmail(t, 'completed', { approver, comment });
+        } else if (decision === 'reject' && cfg.trigReject !== false) {
+          await sendTransferEmail(t, 'rejected', { approver, comment });
+        } else if (decision === 'hold' && cfg.trigReject !== false) {
+          await sendTransferEmail(t, 'on_hold', { approver, comment });
+        }
+      };
+
+      const _origCancel = window.cancelTransfer;
+      window.cancelTransfer = async function(id) {
+        const t = TRANSFERS.find(x => x.id === id);
+        await _origCancel.apply(this, arguments);
+        const cfg = JSON.parse(localStorage.getItem('ams_email_cfg') || '{}');
+        if (t && cfg.trigReject !== false) await sendTransferEmail(t, 'cancelled');
+      };
+    });
+  })();
+  </script>
+
 </body>
 </html>
