@@ -8498,9 +8498,9 @@ Instructions:
             try {
               const existing = TRANSFERS.find(t => t.id === id);
               if (existing) {
-                const res = await PUT(`/transfers/${id}`, payload);
+                const res = await PATCH(`/transfers/${id}`, payload);
                 const idx = TRANSFERS.findIndex(t => t.id === id);
-                if (idx >= 0) TRANSFERS[idx] = res.data;
+                if (idx >= 0) TRANSFERS[idx] = normT(res.data);
               } else {
                 const res = await POST('/transfers', payload);
                 TRANSFERS.push(res.data);
