@@ -1970,66 +1970,6 @@
       #aiChatPanel { height: 85vh; max-height: 85vh; }
       .popup-header-icon { width: 32px; height: 32px; font-size: 14px; }
     }
-
-    /* ── TRANSFER SIDE PANEL ───────────────────────────── */
-    .tsp-overlay {
-      position: fixed; inset: 0; z-index: 1100;
-      background: transparent; pointer-events: none;
-      transition: background .25s;
-    }
-    .tsp-overlay.open { background: rgba(0,0,0,.38); pointer-events: all; }
-    .tsp-panel {
-      position: fixed; top: 0; right: 0; bottom: 0;
-      width: 580px; max-width: 97vw;
-      background: #fff;
-      box-shadow: -4px 0 30px rgba(0,0,0,.15);
-      display: flex; flex-direction: column;
-      transform: translateX(102%);
-      transition: transform .3s cubic-bezier(.4,0,.2,1);
-      z-index: 1101;
-    }
-    .tsp-overlay.open .tsp-panel { transform: translateX(0); }
-    .tsp-header {
-      background: linear-gradient(135deg,#354A5E,#4A6580);
-      color:#fff; padding:14px 16px;
-      display:flex; align-items:flex-start; gap:12px; flex-shrink:0;
-    }
-    .tsp-tabs {
-      display:flex; border-bottom:2px solid var(--sap-border);
-      background:#FAFBFC; flex-shrink:0; overflow-x:auto;
-    }
-    .tsp-tab {
-      padding:10px 16px; font-size:12.5px; font-weight:600;
-      color:var(--sap-text-muted); cursor:pointer; border:none;
-      background:transparent; border-bottom:2px solid transparent;
-      margin-bottom:-2px; transition:all .15s; white-space:nowrap;
-      display:flex; align-items:center; gap:5px;
-    }
-    .tsp-tab.active { color:var(--sap-blue); border-bottom-color:var(--sap-blue); }
-    .tsp-tab:hover:not(.active) { color:var(--sap-text); background:#F0F2F4; }
-    .tsp-body { flex:1; overflow-y:auto; }
-    .tsp-pane { display:none; padding:16px; flex-direction:column; gap:14px; }
-    .tsp-pane.active { display:flex; }
-    .tsp-footer {
-      border-top:1px solid var(--sap-border); padding:10px 16px;
-      display:flex; gap:8px; align-items:center; flex-shrink:0; background:#FAFBFC;
-    }
-    .tsp-stitle {
-      font-size:11px; font-weight:700; text-transform:uppercase;
-      letter-spacing:.5px; color:var(--sap-text-muted);
-      display:flex; align-items:center; gap:6px; margin-bottom:8px;
-    }
-    .tsp-stitle::after { content:''; flex:1; height:1px; background:var(--sap-border); }
-    .tsp-grid { display:grid; grid-template-columns:1fr 1fr; border:1px solid var(--sap-border); border-radius:6px; overflow:hidden; }
-    .tsp-cell { padding:9px 12px; border-bottom:1px solid #ECEEF0; }
-    .tsp-cell:nth-child(odd) { border-right:1px solid #ECEEF0; }
-    .tsp-cell .lbl { font-size:10.5px; color:var(--sap-text-muted); text-transform:uppercase; letter-spacing:.3px; margin-bottom:3px; }
-    .tsp-cell .val { font-size:13px; font-weight:500; word-break:break-word; }
-    .tsp-ef { width:100%; border:1px solid #C8D2DC; border-radius:4px; padding:4px 8px; font-size:13px; background:#fff; }
-    .tsp-ef:focus { outline:none; border-color:var(--sap-blue); box-shadow:0 0 0 2px rgba(0,112,242,.15); }
-    .tsp-appr-grid { display:grid; grid-template-columns:1fr 1fr; border:1px solid var(--sap-border); border-radius:6px; overflow:hidden; }
-    .tsp-appr-half { padding:12px; }
-    .tsp-appr-half:first-child { border-right:1px solid var(--sap-border); }
   </style>
 </head>
 <script>
@@ -2130,9 +2070,6 @@
       try { localStorage.setItem('ams_user', JSON.stringify(sessionUser)); } catch (e) { }
       try { sessionStorage.setItem('ams_user', JSON.stringify(sessionUser)); } catch (e) { }
       window.__sessionRestored = true;
-
-      // Apply role-based UI (import buttons, add buttons, etc.) now that role is known
-      if (typeof applyRoleUI === 'function') applyRoleUI();
 
       // Toast in the main app
       if (typeof showToast === 'function') {
@@ -2369,6 +2306,8 @@
     <button class="nav-tab" onclick="switchTab('transfers', this)"><i class="fas fa-exchange-alt"></i>
       Transfers</button>
     <button class="nav-tab" onclick="switchTab('rigs', this)"><i class="fas fa-oil-well"></i> Land Rigs</button>
+    <button class="nav-tab" onclick="switchTab('companies', this)"><i class="fas fa-building"></i> Companies</button>
+    <button class="nav-tab" onclick="switchTab('users', this)"><i class="fas fa-users"></i> Users</button>
     <button class="nav-tab" onclick="switchTab('bom', this)"><i class="fas fa-sitemap"></i> Bill of Materials</button>
     <button class="nav-tab" onclick="switchTab('certificates', this)"><i class="fas fa-certificate"></i> Certificates
       <span id="certAlertBadge"
@@ -2464,6 +2403,12 @@
               </select>
             </div>
             <div class="filter-group">
+              <label class="filter-label">Company</label>
+              <select class="filter-select" id="filterCompany" onchange="applyFilters()">
+                <option value="">All</option>
+              </select>
+            </div>
+            <div class="filter-group">
               <label class="filter-label">Rig</label>
               <select class="filter-select" id="filterRig" onchange="applyFilters()">
                 <option value="">All Rigs</option>
@@ -2496,6 +2441,7 @@
                   <th onclick="sortTable('assetId')">Asset ID <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortTable('name')">Asset Name <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortTable('category')">Category <i class="fas fa-sort sort-icon"></i></th>
+                  <th onclick="sortTable('company')">Company <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortTable('rigName')">Rig <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortTable('location')">Location <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortTable('status')">Status <i class="fas fa-sort sort-icon"></i></th>
@@ -2559,6 +2505,7 @@
               <thead>
                 <tr>
                   <th>Contract ID</th>
+                  <th>Company</th>
                   <th>Rig</th>
                   <th>Asset Count</th>
                   <th>Start Date</th>
@@ -2592,6 +2539,7 @@
                   <th>Rig ID</th>
                   <th>Rig Name</th>
                   <th>Type</th>
+                  <th>Company</th>
                   <th>Location</th>
                   <th>Depth Capacity</th>
                   <th>Status</th>
@@ -2606,7 +2554,35 @@
       </div>
     </div>
 
-
+    <!-- ======= COMPANIES ======= -->
+    <div class="section" id="section-companies">
+      <div class="content">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Contracting Companies</span><button id="btnAddCompany"
+              class="btn btn-primary"><i class="fas fa-plus"></i> Add Company</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('importFileCompanies').click()"><i class="fas fa-upload"></i> Import</button>
+            <input type="file" id="importFileCompanies" accept=".xlsx,.xls,.csv" style="display:none" onchange="importCompanies(event)">
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Company ID</th>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Country</th>
+                  <th>Contact</th>
+                  <th>Email</th>
+                  <th>Active Contracts</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="companyTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- ======= USERS ======= -->
     <div class="section" id="section-users">
@@ -3327,6 +3303,9 @@ Asset Management System</textarea>
           </div>
         </div>
         <div class="form-row">
+          <div class="form-group"><label class="form-label">Company</label>
+            <select class="form-select" id="f_company"></select>
+          </div>
           <div class="form-group"><label class="form-label">Rig</label>
             <select class="form-select" id="f_rig"></select>
           </div>
@@ -3739,160 +3718,20 @@ Asset Management System</textarea>
   </div>
 
   <!-- ══════════════════════════════════════════
-     TRANSFER DETAIL / EDIT SIDE PANEL
+     TRANSFER DETAIL VIEW MODAL (read-only)
 ═══════════════════════════════════════════ -->
-  <div class="tsp-overlay" id="tspOverlay" onclick="closeTsp(event)">
-    <div class="tsp-panel" id="tspPanel">
-
-      <!-- Header -->
-      <div class="tsp-header">
-        <div style="width:44px;height:44px;background:rgba(255,255,255,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">
-          <i class="fas fa-exchange-alt"></i>
-        </div>
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="tspTitle">—</div>
-          <div style="font-size:11.5px;opacity:.75;margin-top:2px" id="tspSub">—</div>
-        </div>
-        <div id="tspBadge" style="flex-shrink:0;margin-left:8px"></div>
-        <button onclick="closeTsp()" style="background:none;border:none;color:rgba(255,255,255,.8);font-size:18px;cursor:pointer;padding:4px;margin-left:6px;flex-shrink:0"><i class="fas fa-times"></i></button>
+  <div class="modal-overlay" id="transferDetailModal">
+    <div class="modal" style="width:640px;max-width:95vw">
+      <div class="modal-header">
+        <i class="fas fa-file-alt" style="color:var(--sap-blue);font-size:18px"></i>
+        <h2>Transfer Request Details</h2>
+        <button class="shell-btn" style="color:var(--sap-text-muted)" onclick="closeModal('transferDetailModal')"><i
+            class="fas fa-times"></i></button>
       </div>
-
-      <!-- Tabs -->
-      <div class="tsp-tabs">
-        <button class="tsp-tab active" onclick="tspTab('details',this)"><i class="fas fa-info-circle"></i> Details</button>
-        <button class="tsp-tab" onclick="tspTab('edit',this)"><i class="fas fa-pen"></i> Edit</button>
-        <button class="tsp-tab" onclick="tspTab('approval',this)"><i class="fas fa-user-check"></i> Approvals</button>
+      <div class="modal-body" id="transferDetailBody"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('transferDetailModal')">Close</button>
       </div>
-
-      <!-- Body -->
-      <div class="tsp-body">
-
-        <!-- DETAILS PANE -->
-        <div class="tsp-pane active" id="tsp-details">
-
-          <div>
-            <div class="tsp-stitle"><i class="fas fa-info-circle"></i> Request Info</div>
-            <div class="tsp-grid" id="tspInfoGrid"></div>
-          </div>
-
-          <div>
-            <div class="tsp-stitle"><i class="fas fa-route"></i> Route</div>
-            <div class="tsp-grid" id="tspRouteGrid"></div>
-          </div>
-
-          <div id="tspVendorSection" style="display:none">
-            <div class="tsp-stitle"><i class="fas fa-store"></i> Vendor / Workshop</div>
-            <div style="background:#FFF8E1;border:1px solid #FFE082;border-radius:6px;padding:12px 14px" id="tspVendorGrid"></div>
-          </div>
-
-          <div>
-            <div class="tsp-stitle"><i class="fas fa-comment-alt"></i> Reason & Notes</div>
-            <div style="background:#F8F9FA;border:1px solid var(--sap-border);border-radius:6px;padding:12px 14px" id="tspReasonBox"></div>
-          </div>
-
-        </div>
-
-        <!-- EDIT PANE -->
-        <div class="tsp-pane" id="tsp-edit">
-          <div style="background:#EBF4FF;border:1px solid #C2DCFF;border-radius:6px;padding:10px 14px;font-size:12.5px;color:#0040B0">
-            <i class="fas fa-info-circle"></i> You can edit the fields below. Click <strong>Save Changes</strong> when done.
-          </div>
-
-          <div>
-            <div class="tsp-stitle"><i class="fas fa-sliders-h"></i> Transfer Details</div>
-            <div style="display:flex;flex-direction:column;gap:10px">
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label">Priority</label>
-                  <select class="form-select tsp-ef" id="tsp_priority">
-                    <option>Critical</option><option>High</option><option selected>Normal</option><option>Low</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Transfer Type</label>
-                  <select class="form-select tsp-ef" id="tsp_type" onchange="tspTypeChange()">
-                    <option>Field to Field</option><option>Field to Warehouse</option>
-                    <option>Warehouse to Field</option><option>Rig to Rig</option>
-                    <option>For Repair</option><option>For Maintenance</option>
-                    <option>For Inspection</option><option>Return to Owner</option>
-                  </select>
-                </div>
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label">Destination <span style="color:var(--sap-error)">*</span></label>
-                  <input class="form-input tsp-ef" id="tsp_destination" placeholder="Destination location">
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Destination Rig</label>
-                  <select class="form-select tsp-ef" id="tsp_destRig"></select>
-                </div>
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label">Required By Date</label>
-                  <input class="form-input tsp-ef" id="tsp_requiredDate" type="date">
-                </div>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Reason for Transfer <span style="color:var(--sap-error)">*</span></label>
-                <textarea class="form-textarea tsp-ef" id="tsp_reason" rows="3"></textarea>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Special Instructions</label>
-                <textarea class="form-textarea tsp-ef" id="tsp_instructions" rows="2"></textarea>
-              </div>
-            </div>
-          </div>
-
-          <div id="tspEditVendor">
-            <div class="tsp-stitle"><i class="fas fa-store"></i> Vendor / Workshop</div>
-            <div style="background:#FFF8E1;border:1px solid #FFE082;border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:10px">
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label">Vendor Name</label>
-                  <input class="form-input tsp-ef" id="tsp_vendorName" placeholder="e.g. Al-Rashid Workshop">
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Vendor Type</label>
-                  <select class="form-select tsp-ef" id="tsp_vendorType">
-                    <option value="">— Select —</option>
-                    <option>Workshop</option><option>Supplier</option><option>Vendor</option>
-                    <option>OEM</option><option>Subcontractor</option><option>Internal</option>
-                  </select>
-                </div>
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label">PO Number</label>
-                  <input class="form-input tsp-ef" id="tsp_poNumber" placeholder="PO-2024-0042">
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Return Date</label>
-                  <input class="form-input tsp-ef" id="tsp_returnDate" type="date">
-                </div>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Vendor Contact / Notes</label>
-                <input class="form-input tsp-ef" id="tsp_vendorContact" placeholder="Contact name, phone, email…">
-              </div>
-            </div>
-          </div>
-
-        </div>
-
-        <!-- APPROVALS PANE -->
-        <div class="tsp-pane" id="tsp-approval">
-          <div id="tspApprovalContent"></div>
-        </div>
-
-      </div>
-
-      <!-- Footer -->
-      <div class="tsp-footer" id="tspFooter">
-        <button class="btn btn-secondary" onclick="closeTsp()">Close</button>
-      </div>
-
     </div>
   </div>
 
@@ -4385,16 +4224,18 @@ Asset Management System</textarea>
       const q = document.getElementById('searchInput').value.toLowerCase();
       const status = document.getElementById('filterStatus').value;
       const cat = document.getElementById('filterCategory').value;
+      const comp = document.getElementById('filterCompany').value;
       const rig = document.getElementById('filterRig')?.value || '';
       filteredAssets = ASSETS.filter(a => {
-        const searchFields = [a.assetId, a.name, a.location, a.serial || '', a.category,
+        const searchFields = [a.assetId, a.name, a.location, a.serial || '', a.company, a.category,
         a.status, a.rigName || '', a.inspectionType || '', a.lastInspection || '',
         a.notes || '', String(a.value || ''), a.acquisitionDate || ''];
         const matchQ = !q || searchFields.some(f => f.toLowerCase().includes(q));
         const matchS = !status || a.status === status;
         const matchC = !cat || a.category === cat;
+        const matchCo = !comp || a.company === comp;
         const matchR = !rig || a.rigName === rig;
-        return matchQ && matchS && matchC && matchR;
+        return matchQ && matchS && matchC && matchCo && matchR;
       });
       currentPage = 1;
       renderAssets();
@@ -4404,6 +4245,7 @@ Asset Management System</textarea>
       document.getElementById('searchInput').value = '';
       document.getElementById('filterStatus').value = '';
       document.getElementById('filterCategory').value = '';
+      document.getElementById('filterCompany').value = '';
       const fr = document.getElementById('filterRig'); if (fr) fr.value = '';
       activeAssetRig = '';
       applyFilters();
@@ -4413,7 +4255,7 @@ Asset Management System</textarea>
       const q = document.getElementById('contractSearch').value.toLowerCase();
       const status = document.getElementById('contractStatus').value;
       const filtered = CONTRACTS.filter(c => {
-        const mq = !q || c.id.toLowerCase().includes(q) || (c.rig||'').toLowerCase().includes(q);
+        const mq = !q || c.id.toLowerCase().includes(q) || c.company.toLowerCase().includes(q);
         const ms = !status || c.status === status;
         return mq && ms;
       });
@@ -4453,6 +4295,7 @@ Asset Management System</textarea>
         <td><span class="tag blue">${a.assetId}</span></td>
         <td style="font-weight:500">${a.name}</td>
         <td>${a.category}</td>
+        <td>${a.company}</td>
         <td>${a.rigName}</td>
         <td>${a.location}</td>
         <td>${statusBadge(a.status)}</td>
@@ -4536,15 +4379,15 @@ Asset Management System</textarea>
       if (!a) return;
       currentAsset = a;
       document.getElementById('popupTitle').textContent = a.name;
-      document.getElementById('popupSub').textContent = `${a.assetId} · ${a.category}`;
+      document.getElementById('popupSub').textContent = `${a.assetId} · ${a.category} · ${a.company}`;
       document.getElementById('popupStatus').innerHTML = statusBadge(a.status);
 
-      const contract = CONTRACTS.find(c => c.rig === a.rigName);
+      const contract = CONTRACTS.find(c => c.company === a.company && c.rig === a.rigName);
       const rig = RIGS.find(r => r.name === a.rigName);
 
       document.getElementById('popupGeneralGrid').innerHTML = fields([
         ['Asset ID', a.assetId, true], ['Asset Name', a.name], ['Category', a.category],
-        ['Status', statusBadge(a.status)], ['Location', a.location],
+        ['Status', statusBadge(a.status)], ['Company', a.company], ['Location', a.location],
         ['Value (USD)', '$' + Number(a.value).toLocaleString(), true], ['Acquisition Date', a.acquisitionDate], ['Notes', a.notes || '—'],
       ]);
       document.getElementById('popupTechGrid').innerHTML = fields([
@@ -4556,7 +4399,7 @@ Asset Management System</textarea>
         document.getElementById('popupContractInfo').innerHTML = `
       <div class="detail-grid">
         ${fields([
-          ['Contract ID', contract.id, true], ['Rig', contract.rig],
+          ['Contract ID', contract.id, true], ['Company', contract.company], ['Rig', contract.rig],
           ['Start Date', contract.start], ['End Date', contract.end], ['Contract Value', '$' + Number(contract.value).toLocaleString(), true],
           ['Status', statusBadge(contract.status)], ['Asset Count', contract.assetCount],
         ])}
@@ -4571,7 +4414,7 @@ Asset Management System</textarea>
       <div class="detail-grid">
         ${fields([
           ['Rig ID', rig.id, true], ['Rig Name', rig.name], ['Type', rig.type],
-          ['Location', rig.location], ['Depth Capacity', rig.depth],
+          ['Company', rig.company], ['Location', rig.location], ['Depth Capacity', rig.depth],
           ['Status', statusBadge(rig.status)],
         ])}
       </div>`;
@@ -4629,6 +4472,7 @@ Asset Management System</textarea>
         document.getElementById('f_name').value = a.name;
         document.getElementById('f_category').value = a.category;
         document.getElementById('f_status').value = a.status;
+        document.getElementById('f_company').value = a.company;
         document.getElementById('f_rig').value = a.rigName;
         document.getElementById('f_location').value = a.location;
         document.getElementById('f_value').value = a.value;
@@ -4657,6 +4501,7 @@ Asset Management System</textarea>
         assetId, name,
         category: document.getElementById('f_category').value,
         status: document.getElementById('f_status').value,
+        company: document.getElementById('f_company').value,
         rigName: document.getElementById('f_rig').value,
         location: document.getElementById('f_location').value,
         value: Number(document.getElementById('f_value').value) || 0,
@@ -4691,10 +4536,15 @@ Asset Management System</textarea>
     //  POPULATE SELECTS
     // ══════════════════════════════════
     function populateCompanyFilters() {
+      const sel = document.getElementById('filterCompany');
+      COMPANIES.forEach(c => { const o = new Option(c.name, c.name); sel.appendChild(o); });
+      // Populate rig filter dropdown (Maintenance tab)
       const mrSel = document.getElementById('mFilterRig');
       if (mrSel) RIGS.forEach(r => mrSel.appendChild(new Option(r.name, r.name)));
     }
     function populateFormSelects() {
+      const compSel = document.getElementById('f_company');
+      COMPANIES.forEach(c => compSel.appendChild(new Option(c.name, c.name)));
       const rigSel = document.getElementById('f_rig');
       RIGS.forEach(r => rigSel.appendChild(new Option(r.name, r.name)));
     }
@@ -4707,6 +4557,7 @@ Asset Management System</textarea>
       document.getElementById('contractTbody').innerHTML = list.map(c => `
     <tr>
       <td><span class="tag blue">${c.id}</span></td>
+      <td>${c.company}</td>
       <td>${c.rig}</td>
       <td>${c.assetCount}</td>
       <td>${c.start}</td>
@@ -4726,6 +4577,7 @@ Asset Management System</textarea>
       <td><span class="tag">${r.id}</span></td>
       <td style="font-weight:500">${r.name}</td>
       <td>${r.type}</td>
+      <td>${r.company}</td>
       <td>${r.location}</td>
       <td>${r.depth}</td>
       <td>${statusBadge(r.status)}</td>
@@ -4761,13 +4613,14 @@ Asset Management System</textarea>
       const r = currentRig;
 
       document.getElementById('rigPopupTitle').textContent = r.name || r.id;
-      document.getElementById('rigPopupSub').textContent = r.type || 'Rig';
+      document.getElementById('rigPopupSub').textContent = (r.type || 'Rig') + ' · ' + (r.company || '—');
       document.getElementById('rigPopupStatus').innerHTML = statusBadge(r.status);
 
       const fields = [
         { label: 'Rig ID',    value: r.id },
         { label: 'Rig Name',  value: r.name },
         { label: 'Type',      value: r.type || '—' },
+        { label: 'Company',   value: r.company || '—' },
         { label: 'Location',  value: r.location || '—' },
         { label: 'Max Depth', value: r.depth || '—' },
         { label: 'Horsepower',value: r.hp ? r.hp.toLocaleString() + ' HP' : '—' },
@@ -4806,13 +4659,14 @@ Asset Management System</textarea>
       const c = currentContract;
 
       document.getElementById('contractPopupTitle').textContent = c.id;
-      document.getElementById('contractPopupSub').textContent = c.rig || '—';
+      document.getElementById('contractPopupSub').textContent = (c.company || '—') + ' · ' + (c.rig || '—');
       document.getElementById('contractPopupStatus').innerHTML = statusBadge(c.status);
 
       const startFmt = c.start ? new Date(c.start).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) : '—';
       const endFmt   = c.end   ? new Date(c.end).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) : '—';
       const fields = [
         { label: 'Contract ID',  value: c.id },
+        { label: 'Company',      value: c.company || '—' },
         { label: 'Rig',          value: c.rig || '—' },
         { label: 'Contract Value', value: '$' + Number(c.value||0).toLocaleString(undefined,{minimumFractionDigits:2}) },
         { label: 'Start Date',   value: startFmt },
@@ -4825,7 +4679,7 @@ Asset Management System</textarea>
       ).join('');
 
       // Show assets linked to this contract (by rig name match or contract_assets table if available)
-      const contractAssets = ASSETS.filter(a => a.rigName === c.rig);
+      const contractAssets = ASSETS.filter(a => a.rigName === c.rig || a.company === c.company);
       document.getElementById('contractAssetCount').textContent = '(' + contractAssets.length + ')';
       document.getElementById('contractAssetsTbody').innerHTML = contractAssets.length
         ? contractAssets.map(a => `<tr>
@@ -4922,7 +4776,7 @@ Asset Management System</textarea>
     function exportAssets() {
       const ws = XLSX.utils.json_to_sheet(ASSETS.map(a => ({
         'Asset ID': a.assetId, 'Name': a.name, 'Category': a.category,
-        'Rig': a.rigName, 'Location': a.location,
+        'Company': a.company, 'Rig': a.rigName, 'Location': a.location,
         'Status': a.status, 'Value (USD)': a.value,
         'Acquisition Date': a.acquisitionDate, 'Serial': a.serial,
         'Last Inspection': a.lastInspection || '', 'Inspection Type': a.inspectionType || '',
@@ -4936,7 +4790,7 @@ Asset Management System</textarea>
 
     function exportContracts() {
       const ws = XLSX.utils.json_to_sheet(CONTRACTS.map(c => ({
-        'Contract ID': c.id, 'Rig': c.rig, 'Assets': c.assetCount,
+        'Contract ID': c.id, 'Company': c.company, 'Rig': c.rig, 'Assets': c.assetCount,
         'Start': c.start, 'End': c.end, 'Value': c.value, 'Status': c.status
       })));
       const wb = XLSX.utils.book_new();
@@ -5527,7 +5381,8 @@ Asset Management System</textarea>
         RIGS.map(r => `<option value="${r.name}">${r.name}</option>`).join('');
 
       const compSel = document.getElementById('tr_destCompany');
-      compSel.innerHTML = '<option value="">— Same / Not Applicable —</option>';
+      compSel.innerHTML = '<option value="">— Same / Not Applicable —</option>' +
+        COMPANIES.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
 
       // Clear form
       ['tr_destination', 'tr_reason', 'tr_instructions',
@@ -5615,7 +5470,7 @@ Asset Management System</textarea>
 
     function updateTransferBanner(a) {
       document.getElementById('trBannerName').textContent = a.name;
-      document.getElementById('trBannerSub').textContent = `${a.assetId} · ${a.category} · ${a.location || '—'}`;
+      document.getElementById('trBannerSub').textContent = `${a.assetId} · ${a.category} · ${a.company || '—'} · ${a.location || '—'}`;
       document.getElementById('trBannerStatus').innerHTML = statusBadge(a.status);
     }
 
@@ -5685,19 +5540,12 @@ Asset Management System</textarea>
 
       const priorityClass = { Critical: 'priority-critical', High: 'priority-high', Normal: 'priority-normal', Low: 'priority-low' };
 
-      document.getElementById('transferTbody').innerHTML = list.map(t => {
-      const _a = ASSETS.find(a => a.assetId === t.assetId);
-      const _rig = _a?.rigName || '—';
-      return `
-    <tr style="cursor:pointer" onclick="openTransferDetail('${t.id}')">
-      <td onclick="event.stopPropagation()"><span class="tag blue" style="font-family:'IBM Plex Mono',monospace;font-size:11px">${t.id}</span></td>
+      document.getElementById('transferTbody').innerHTML = list.map(t => `
+    <tr>
+      <td><span class="tag blue" style="font-family:'IBM Plex Mono',monospace;font-size:11px">${t.id}</span></td>
       <td>
         <div style="font-weight:600;font-size:13px">${t.assetName}</div>
         <div style="font-size:11px;color:var(--sap-text-muted);font-family:'IBM Plex Mono',monospace">${t.assetId}</div>
-      </td>
-      <td style="font-size:12.5px;white-space:nowrap">
-        ${_rig !== '—' ? `<span style="display:inline-flex;align-items:center;gap:4px"><i class="fas fa-oil-well" style="color:var(--sap-text-muted);font-size:10px"></i>${_rig}</span>` : '<span style="color:#ccc">—</span>'}
-        ${t.destRig && t.destRig !== _rig ? `<div style="font-size:10.5px;color:var(--sap-blue);margin-top:2px"><i class="fas fa-arrow-right" style="font-size:9px"></i> ${t.destRig}</div>` : ''}
       </td>
       <td>
         <div style="display:flex;align-items:center;gap:5px;font-size:12.5px">
@@ -5717,14 +5565,13 @@ Asset Management System</textarea>
       <td>${transferStatusBadge(t.status)}</td>
       <td>${approvalCell(t.opsApproval)}</td>
       <td>${approvalCell(t.mgrApproval)}</td>
-      <td style="white-space:nowrap" onclick="event.stopPropagation()">
+      <td style="white-space:nowrap">
         <button class="btn btn-ghost btn-icon" title="View Details" onclick="openTransferDetail('${t.id}')"><i class="fas fa-eye"></i></button>
-        ${canEdit() ? `<button class="btn btn-ghost btn-icon" title="Edit" style="color:var(--sap-blue)" onclick="openTransferDetail('${t.id}');setTimeout(()=>tspTab('edit',document.querySelectorAll('.tsp-tab')[1]),80)"><i class="fas fa-pen"></i></button>` : ''}
         ${t.status === 'Pending' && canApproveDrilling() ? `<button class="btn btn-ghost btn-icon" title="Drilling Manager Review" style="color:#E65100" onclick="openApprovalModal('${t.id}','drilling')"><i class="fas fa-hard-hat"></i></button>` : ''}
         ${t.status === 'Ops Approved' && canApproveAsset() ? `<button class="btn btn-ghost btn-icon" title="Asset Manager Final Approval" style="color:#6D28D9" onclick="openApprovalModal('${t.id}','asset')"><i class="fas fa-user-tie"></i></button>` : ''}
         ${(t.status === 'Pending' || t.status === 'Ops Approved') ? `<button class="btn btn-ghost btn-icon" title="Cancel Request" style="color:var(--sap-error)" onclick="cancelTransfer('${t.id}')"><i class="fas fa-ban"></i></button>` : ''}
       </td>
-    </tr>`; }).join('') || '<tr><td colspan="13" style="text-align:center;padding:40px;color:var(--sap-text-muted)"><i class="fas fa-exchange-alt" style="font-size:28px;opacity:.3;display:block;margin-bottom:8px"></i>No transfer requests found</td></tr>';
+    </tr>`).join('') || '<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--sap-text-muted)"><i class="fas fa-exchange-alt" style="font-size:28px;opacity:.3;display:block;margin-bottom:8px"></i>No transfer requests found</td></tr>';
 
       updateTransferKPIs();
     }
@@ -5915,202 +5762,66 @@ Asset Management System</textarea>
       showToast(`Transfer request ${id} cancelled.`, 'warning');
     }
 
-    // ── TRANSFER SIDE PANEL ──────────────────────────────────
-    let _tspId = null;
-    let _tspEditMode = false;
-
-    function tspTab(name, el) {
-      document.querySelectorAll('.tsp-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tsp-pane').forEach(p => p.classList.remove('active'));
-      el.classList.add('active');
-      document.getElementById('tsp-' + name).classList.add('active');
-      if (name === 'edit') _buildTspEditForm();
-      if (name === 'approval') _buildTspApprovals();
-    }
-
+    // ── VIEW TRANSFER DETAIL ───────────────────────────────────
     function openTransferDetail(id) {
       const t = TRANSFERS.find(x => x.id === id);
       if (!t) return;
-      _tspId = id;
       const asset = ASSETS.find(a => a.assetId === t.assetId);
 
-      // Header
-      document.getElementById('tspTitle').textContent = t.assetName;
-      document.getElementById('tspSub').textContent = t.id + ' · ' + t.type + ' · ' + t.requestDate;
-      document.getElementById('tspBadge').innerHTML = transferStatusBadge(t.status);
-
-      // Reset to details tab
-      document.querySelectorAll('.tsp-tab').forEach((tab,i) => tab.classList.toggle('active', i===0));
-      document.querySelectorAll('.tsp-pane').forEach((p,i) => p.classList.toggle('active', i===0));
-
-      // Info grid
-      const pMap = { Critical:'#B00', High:'#E9730C', Normal:'var(--sap-text)', Low:'#888' };
-      const cell = (lbl, val) => `<div class="tsp-cell"><div class="lbl">${lbl}</div><div class="val">${val||'—'}</div></div>`;
-      document.getElementById('tspInfoGrid').innerHTML =
-        cell('Request ID', `<span style="font-family:'IBM Plex Mono',monospace;font-size:12px;background:#EBF4FF;color:#0040B0;padding:2px 7px;border-radius:4px">${t.id}</span>`) +
-        cell('Status', transferStatusBadge(t.status)) +
-        cell('Priority', `<span style="font-weight:600;color:${pMap[t.priority]||'var(--sap-text)'}">${t.priority==='Critical'?'⚠ ':''}${t.priority}</span>`) +
-        cell('Transfer Type', t.type) +
-        cell('Requested By', t.requestedBy) +
-        cell('Request Date', t.requestDate) +
-        cell('Required By', t.requiredDate||'—') +
-        cell('Asset ID', `<span style="font-family:'IBM Plex Mono',monospace;font-size:12px">${t.assetId}</span>`) +
-        cell('Asset Category', asset?.category||'—') +
-        cell('Asset Serial', asset?.serial||'—');
-
-      // Route grid
-      document.getElementById('tspRouteGrid').innerHTML =
-        cell('<i class="fas fa-map-marker-alt"></i> Current Location', t.currentLoc) +
-        cell('<i class="fas fa-location-dot" style="color:var(--sap-blue)"></i> Destination', `<span style="color:var(--sap-blue);font-weight:600">${t.destination}</span>`) +
-        cell('Destination Rig', t.destRig||'—') +
-        cell('Asset Rig', asset?.rigName||'—');
-
-      // Vendor section
-      const vs = document.getElementById('tspVendorSection');
-      if (t.vendorName) {
-        vs.style.display = '';
-        document.getElementById('tspVendorGrid').innerHTML = `
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px">
-            <div><div style="font-size:10.5px;color:#7B5800;text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px">Vendor Name</div><div style="font-size:13px;font-weight:600;color:#7B5800">${t.vendorName}</div></div>
-            <div><div style="font-size:10.5px;color:#7B5800;text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px">Vendor Type</div><div style="font-size:13px;color:#7B5800">${t.vendorType||'—'}</div></div>
-            <div><div style="font-size:10.5px;color:#7B5800;text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px">PO Number</div><div style="font-size:13px;font-family:'IBM Plex Mono',monospace;color:#7B5800">${t.poNumber||'—'}</div></div>
-            <div><div style="font-size:10.5px;color:#7B5800;text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px">Return Date</div><div style="font-size:13px;color:#7B5800">${t.returnDate||'—'}</div></div>
-            ${t.vendorContact ? `<div style="grid-column:span 2"><div style="font-size:10.5px;color:#7B5800;text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px">Contact</div><div style="font-size:12.5px;color:#7B5800">${t.vendorContact}</div></div>` : ''}
-          </div>`;
-      } else { vs.style.display = 'none'; }
-
-      // Reason box
-      document.getElementById('tspReasonBox').innerHTML =
-        `<div style="font-size:10.5px;color:var(--sap-text-muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:5px;font-weight:700">Reason for Transfer</div>
-         <div style="font-size:13px;line-height:1.6">${t.reason||'—'}</div>` +
-        (t.instructions ? `<div style="font-size:10.5px;color:var(--sap-text-muted);text-transform:uppercase;letter-spacing:.3px;margin:10px 0 5px;font-weight:700">Special Instructions</div><div style="font-size:13px;line-height:1.6;color:var(--sap-text-muted)">${t.instructions}</div>` : '');
-
-      // Footer buttons
-      _buildTspFooter(t);
-
-      // Open panel
-      document.getElementById('tspOverlay').classList.add('open');
-      document.body.style.overflow = 'hidden';
-    }
-
-    function _buildTspFooter(t) {
-      const transfer = t || TRANSFERS.find(x => x.id === _tspId);
-      if (!transfer) return;
-      let html = `<button class="btn btn-secondary" onclick="closeTsp()">Close</button>`;
-      if (canEdit()) {
-        html += `<button class="btn btn-primary" onclick="tspTab('edit',document.querySelectorAll('.tsp-tab')[1])"><i class="fas fa-pen"></i> Edit</button>`;
-      }
-      if (transfer.status === 'Pending' && canApproveDrilling()) {
-        html += `<button class="btn btn-warning" onclick="closeTsp();openApprovalModal('${transfer.id}','drilling')" style="margin-left:auto"><i class="fas fa-hard-hat"></i> Drilling Review</button>`;
-      }
-      if (transfer.status === 'Ops Approved' && canApproveAsset()) {
-        html += `<button class="btn btn-success" onclick="closeTsp();openApprovalModal('${transfer.id}','asset')" style="background:var(--sap-success);color:#fff;border-color:var(--sap-success);margin-left:auto"><i class="fas fa-user-tie"></i> Final Approve</button>`;
-      }
-      if (transfer.status === 'Pending' || transfer.status === 'Ops Approved') {
-        html += `<button class="btn btn-danger" onclick="closeTsp();cancelTransfer('${transfer.id}')" style="background:var(--sap-error);color:#fff;border-color:var(--sap-error)"><i class="fas fa-ban"></i> Cancel</button>`;
-      }
-      document.getElementById('tspFooter').innerHTML = html;
-    }
-
-    function _buildTspEditForm() {
-      const t = TRANSFERS.find(x => x.id === _tspId);
-      if (!t) return;
-      // Populate rig dropdown
-      const rigSel = document.getElementById('tsp_destRig');
-      rigSel.innerHTML = '<option value="">— None —</option>' +
-        RIGS.map(r => `<option value="${r.name}"${r.name===t.destRig?' selected':''}>${r.name}</option>`).join('');
-      // Fill fields
-      document.getElementById('tsp_priority').value = t.priority || 'Normal';
-      document.getElementById('tsp_type').value = t.type || 'Field to Field';
-      document.getElementById('tsp_destination').value = t.destination || '';
-      document.getElementById('tsp_requiredDate').value = t.requiredDate || '';
-      document.getElementById('tsp_reason').value = t.reason || '';
-      document.getElementById('tsp_instructions').value = t.instructions || '';
-      document.getElementById('tsp_vendorName').value = t.vendorName || '';
-      document.getElementById('tsp_vendorType').value = t.vendorType || '';
-      document.getElementById('tsp_poNumber').value = t.poNumber || '';
-      document.getElementById('tsp_returnDate').value = t.returnDate || '';
-      document.getElementById('tsp_vendorContact').value = t.vendorContact || '';
-      tspTypeChange();
-      // Footer
-      document.getElementById('tspFooter').innerHTML =
-        `<button class="btn btn-secondary" onclick="tspTab('details',document.querySelectorAll('.tsp-tab')[0])">Cancel</button>
-         <button class="btn btn-primary" onclick="saveTspEdit()"><i class="fas fa-save"></i> Save Changes</button>`;
-    }
-
-    function tspTypeChange() {
-      const type = document.getElementById('tsp_type')?.value || '';
-      const isRepair = ['For Maintenance','For Inspection','For Repair'].includes(type);
-      const vEl = document.getElementById('tspEditVendor');
-      if (vEl) vEl.style.display = isRepair ? '' : 'none';
-    }
-
-    function _buildTspApprovals() {
-      const t = TRANSFERS.find(x => x.id === _tspId);
-      if (!t) return;
-      const half = (appr, role, color, icon) => {
-        if (!appr || !appr.action) return `
-          <div class="tsp-appr-half">
-            <div style="font-size:11.5px;font-weight:600;color:${color};margin-bottom:8px"><i class="fas fa-${icon}"></i> ${role}</div>
-            <div style="font-size:13px;color:#ccc"><i class="fas fa-clock"></i> Awaiting Review</div>
-          </div>`;
-        const col = appr.action==='approve' ? 'var(--sap-success)' : appr.action==='hold' ? 'var(--sap-warning)' : 'var(--sap-error)';
-        const ico = appr.action==='approve' ? 'check-circle' : appr.action==='hold' ? 'pause-circle' : 'times-circle';
-        const lbl = appr.action==='approve' ? 'Approved' : appr.action==='hold' ? 'On Hold' : 'Rejected';
-        return `
-          <div class="tsp-appr-half">
-            <div style="font-size:11.5px;font-weight:600;color:${color};margin-bottom:8px"><i class="fas fa-${icon}"></i> ${role}</div>
-            <div style="font-size:13px;font-weight:600;color:${col}"><i class="fas fa-${ico}"></i> ${lbl}</div>
-            <div style="font-size:12px;color:var(--sap-text-muted);margin-top:3px">By <b>${appr.by||'—'}</b>${appr.date?' on '+appr.date:''}</div>
-            ${appr.comment ? `<div style="font-size:12px;font-style:italic;margin-top:6px;padding:6px 10px;background:#F5F6F7;border-radius:4px;color:var(--sap-text-muted)">"${appr.comment}"</div>` : ''}
-          </div>`;
-      };
-      document.getElementById('tspApprovalContent').innerHTML = `
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--sap-text-muted);margin-bottom:8px;display:flex;align-items:center;gap:6px;padding:16px 16px 0">
-          <i class="fas fa-user-check"></i> Approval Status
-          <span style="flex:1;height:1px;background:var(--sap-border);display:block"></span>
+      document.getElementById('transferDetailBody').innerHTML = `
+    <div style="background:linear-gradient(135deg,#354A5E,#4A6580);color:#fff;border-radius:6px;padding:16px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:48px;height:48px;background:rgba(255,255,255,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0"><i class="fas fa-exchange-alt"></i></div>
+        <div>
+          <div style="font-weight:700;font-size:16px">${t.assetName}</div>
+          <div style="font-size:12px;opacity:.75">${t.id} · ${t.type} · ${t.requestDate}</div>
         </div>
-        <div style="padding:0 16px 16px">
-          <div class="tsp-appr-grid">
-            ${half(t.opsApproval,'Operations Manager','#E65100','hard-hat')}
-            ${half(t.mgrApproval,'Asset Manager','#6D28D9','user-tie')}
-          </div>
-        </div>`;
-      _buildTspFooter(t);
-    }
+        <div style="margin-left:auto">${transferStatusBadge(t.status)}</div>
+      </div>
+    </div>
 
-    function saveTspEdit() {
-      const destination = document.getElementById('tsp_destination').value.trim();
-      const reason = document.getElementById('tsp_reason').value.trim();
-      if (!destination) { showToast('Destination is required.', 'error'); return; }
-      if (!reason) { showToast('Reason is required.', 'error'); return; }
-      const idx = TRANSFERS.findIndex(x => x.id === _tspId);
-      if (idx < 0) return;
-      const t = TRANSFERS[idx];
-      t.destination    = destination;
-      t.destRig        = document.getElementById('tsp_destRig').value || null;
-      t.priority       = document.getElementById('tsp_priority').value;
-      t.type           = document.getElementById('tsp_type').value;
-      t.requiredDate   = document.getElementById('tsp_requiredDate').value || null;
-      t.reason         = reason;
-      t.instructions   = document.getElementById('tsp_instructions').value;
-      t.vendorName     = document.getElementById('tsp_vendorName').value.trim() || null;
-      t.vendorType     = document.getElementById('tsp_vendorType').value || null;
-      t.poNumber       = document.getElementById('tsp_poNumber').value.trim() || null;
-      t.returnDate     = document.getElementById('tsp_returnDate').value || null;
-      t.vendorContact  = document.getElementById('tsp_vendorContact').value.trim() || null;
-      TRANSFERS[idx] = t;
-      renderTransfers();
-      showToast(`Transfer ${t.id} updated successfully.`, 'success');
-      // Refresh the details pane
-      openTransferDetail(t.id);
-    }
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--sap-border);border-radius:6px;overflow:hidden;margin-bottom:14px">
+      ${[
+          ['Request ID', t.id], ['Priority', t.priority], ['Transfer Type', t.type],
+          ['Requested By', t.requestedBy], ['Request Date', t.requestDate], ['Required By', t.requiredDate || '—'],
+          ['Current Location', t.currentLoc], ['Destination', t.destination],
+          ['Dest. Rig', t.destRig || '—'], ['Dest. Company', t.destCompany || '—'],
+        ].map(([l, v], i) => `
+        <div style="padding:9px 12px;border-bottom:1px solid #ECEEF0;${i % 2 === 0 ? 'border-right:1px solid #ECEEF0' : ''}">
+          <div style="font-size:11px;color:var(--sap-text-muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px">${l}</div>
+          <div style="font-size:13px;font-weight:500">${v}</div>
+        </div>`).join('')}
+    </div>
 
-    function closeTsp(e) {
-      if (e && e.target !== document.getElementById('tspOverlay')) return;
-      document.getElementById('tspOverlay').classList.remove('open');
-      document.body.style.overflow = '';
-      _tspId = null;
+    <div style="padding:12px;background:#F8F9FA;border:1px solid var(--sap-border);border-radius:6px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--sap-text-muted);margin-bottom:6px">Reason for Transfer</div>
+      <div style="font-size:13px;line-height:1.6">${t.reason}</div>
+      ${t.instructions ? `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--sap-text-muted);margin:10px 0 4px">Special Instructions</div><div style="font-size:13px;color:var(--sap-text-muted)">${t.instructions}</div>` : ''}
+    </div>
+
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--sap-text-muted);margin-bottom:8px">Approval Status</div>
+    <div style="border:1px solid var(--sap-border);border-radius:6px;overflow:hidden">
+      <div style="display:grid;grid-template-columns:1fr 1fr">
+        <div style="padding:12px;border-right:1px solid var(--sap-border)">
+          <div style="font-size:11.5px;font-weight:600;color:#E65100;margin-bottom:8px"><i class="fas fa-hard-hat"></i> Operations Manager</div>
+          ${t.opsApproval.action ?
+          `<div style="font-size:13px;font-weight:600;color:${t.opsApproval.action === 'approve' ? 'var(--sap-success)' : 'var(--sap-error)'}">${t.opsApproval.action === 'approve' ? '✓ Approved' : '✗ Rejected'}</div>
+             <div style="font-size:12px;color:var(--sap-text-muted);margin-top:2px">By ${t.opsApproval.by} on ${t.opsApproval.date}</div>
+             <div style="font-size:12px;font-style:italic;margin-top:6px;color:var(--sap-text-muted)">"${t.opsApproval.comment}"</div>` :
+          `<div style="font-size:13px;color:#ccc"><i class="fas fa-clock"></i> Awaiting Review</div>`}
+        </div>
+        <div style="padding:12px">
+          <div style="font-size:11.5px;font-weight:600;color:#6D28D9;margin-bottom:8px"><i class="fas fa-user-tie"></i> Asset Manager</div>
+          ${t.mgrApproval.action ?
+          `<div style="font-size:13px;font-weight:600;color:${t.mgrApproval.action === 'approve' ? 'var(--sap-success)' : 'var(--sap-error)'}">${t.mgrApproval.action === 'approve' ? '✓ Final Approved' : '✗ Rejected'}</div>
+             <div style="font-size:12px;color:var(--sap-text-muted);margin-top:2px">By ${t.mgrApproval.by} on ${t.mgrApproval.date}</div>
+             <div style="font-size:12px;font-style:italic;margin-top:6px;color:var(--sap-text-muted)">"${t.mgrApproval.comment}"</div>` :
+          `<div style="font-size:13px;color:#ccc"><i class="fas fa-clock"></i> Awaiting Review</div>`}
+        </div>
+      </div>
+    </div>`;
+
+      openModal('transferDetailModal');
     }
 
     // ── EXPORT TRANSFERS ───────────────────────────────────────
@@ -7139,20 +6850,12 @@ Asset Management System</textarea>
         const inp = document.getElementById(inputId);
         if (!inp) return;
         const btn = inp.previousElementSibling;
-        if (btn && btn.tagName === 'BUTTON') {
-          // Only hide if a user is actually logged in and lacks permission
-          // If no user yet (login screen), leave buttons in their default state
-          if (window.__currentUserRole) {
-            btn.style.display = canImport() ? '' : 'none';
-          } else {
-            btn.style.display = '';  // show by default until role is known
-          }
-        }
+        if (btn && btn.tagName === 'BUTTON') btn.style.display = canImport() ? '' : 'none';
       });
 
       // ── Add/New buttons: Editor + Admin only ──
       [
-        'btnNewAsset','btnNewContract','btnNewRig',
+        'btnNewAsset','btnNewContract','btnNewRig','btnAddCompany',
         'btnAddUser','btnAddBOM','btnNewTransfer','btnNewSchedule','btnNewCert'
       ].forEach(id => {
         const el = document.getElementById(id);
@@ -7268,10 +6971,10 @@ Asset Management System</textarea>
         return `ID:${m.id}|Asset:${asset?.name||m.assetId}|Task:${m.task}|Type:${m.type}|Priority:${m.priority}|NextDue:${m.nextDue}|Status:${s}|Tech:${m.tech||'N/A'}`;
       }).join('\n');
       const contractsSummary = CONTRACTS.map(c=>
-        `ID:${c.id}|Rig:${c.rig}|Assets:${c.assetCount}|Start:${c.start}|End:${c.end}|Value:$${Number(c.value).toLocaleString()}|Status:${c.status}`
+        `ID:${c.id}|Company:${c.company}|Rig:${c.rig}|Assets:${c.assetCount}|Start:${c.start}|End:${c.end}|Value:$${Number(c.value).toLocaleString()}|Status:${c.status}`
       ).join('\n');
       const rigsSummary = RIGS.map(r=>
-        `ID:${r.id}|Name:${r.name}|Type:${r.type}|Location:${r.location}|Status:${r.status}|Assets:${ASSETS.filter(a=>a.rigName===r.name).length}`
+        `ID:${r.id}|Name:${r.name}|Type:${r.type}|Company:${r.company}|Location:${r.location}|Status:${r.status}|Assets:${ASSETS.filter(a=>a.rigName===r.name).length}`
       ).join('\n');
       return `You are an intelligent AI Assistant embedded inside an Asset Management System for a Land Rig & Contracting company. You have FULL ACCESS to the live database. Answer questions accurately using ONLY the data provided. Be concise, use markdown formatting, and present data in tables when appropriate.
 
@@ -8011,7 +7714,7 @@ Instructions:
           'renderUsers', 'renderTransfers', 'renderMaintenance', 'renderCertificates',
           'renderBOMSection', 'renderNotifications', 'updateKPIs', 'updateReportKPIs',
           'updateCertKPIs', 'updateMaintKPIs', 'updateTransferKPIs', 'checkMaintAlerts',
-          'populateBomSelects', 'populateFormSelects',
+          'populateBomSelects', 'populateFormSelects', 'populateCompanyFilters',
           'renderMaintRigSelector'
         );
       }
@@ -8019,113 +7722,14 @@ Instructions:
       // ══════════════════════════════════════════════════════════════════════════
       //  BOOTSTRAP — load all data from DB on page load
       // ══════════════════════════════════════════════════════════════════════════
-      // ══════════════════════════════════════════════════════════════════════════
-      //  DEMO DATA — loaded when API is unavailable
-      // ══════════════════════════════════════════════════════════════════════════
-      function loadDemoData() {
-        const rigs = [
-          { id:'RIG-01', name:'Rig Alpha-1', type:'Land Rig', location:'Block 7 – Western Desert', depth:'5,000 m', hp:2000, status:'Active' },
-          { id:'RIG-02', name:'Rig Alpha-2', type:'Land Rig', location:'Block 12 – Eastern Region', depth:'4,500 m', hp:1800, status:'Active' },
-          { id:'RIG-03', name:'Rig Bravo-1', type:'Land Rig', location:'Block 3 – North Sinai',    depth:'6,000 m', hp:2200, status:'Active' },
-          { id:'RIG-04', name:'Rig Bravo-2', type:'Workover', location:'Sukhna Yard',              depth:'3,000 m', hp:1200, status:'Maintenance' },
-          { id:'RIG-05', name:'Rig Charlie',  type:'Land Rig', location:'Block 9 – South Delta',   depth:'5,500 m', hp:2100, status:'Active' },
-        ];
-        const contracts = [
-          { id:'CON-001', rig:'Rig Alpha-1', start:'2024-01-01', end:'2025-12-31', value:4500000, assetCount:18, status:'Active' },
-          { id:'CON-002', rig:'Rig Alpha-2', start:'2024-03-01', end:'2025-06-30', value:3200000, assetCount:12, status:'Active' },
-          { id:'CON-003', rig:'Rig Bravo-1', start:'2023-07-01', end:'2024-06-30', value:5100000, assetCount:22, status:'Expired' },
-          { id:'CON-004', rig:'Rig Charlie',  start:'2024-09-01', end:'2026-08-31', value:6200000, assetCount:25, status:'Active' },
-        ];
-        const assets = [
-          { asset_id:'AST-001', name:'5" Drill Pipe (Range 2)',         category:'Tubular',              rig_name:'Rig Alpha-1',  location:'Assigned Rig',  status:'Active',      value:185000, acquisition_date:'2022-03-15', serial:'DP-5-R2-001', inspection_type:'Tubular Inspection DS1', last_inspection:'2024-09-10', cert_link:'', notes:'Grade E, 19.5 lb/ft' },
-          { asset_id:'AST-002', name:'3½" Drill Pipe (Range 3)',         category:'Tubular',              rig_name:'Rig Alpha-2',  location:'Assigned Rig',  status:'Active',      value:95000,  acquisition_date:'2021-11-20', serial:'DP-35-R3-001', inspection_type:'Tubular Inspection DS1', last_inspection:'2024-08-01', cert_link:'', notes:'Grade G, 13.3 lb/ft' },
-          { asset_id:'AST-003', name:'Kelly Bushing Assembly',           category:'Handling Tools',       rig_name:'Rig Alpha-1',  location:'Assigned Rig',  status:'Active',      value:42000,  acquisition_date:'2023-01-10', serial:'KB-001-2023', inspection_type:'Cat III', last_inspection:'2024-06-15', cert_link:'', notes:'' },
-          { asset_id:'AST-004', name:'Top Drive Unit (500T)',            category:'Handling Tools',       rig_name:'Rig Bravo-1',  location:'Assigned Rig',  status:'Maintenance', value:620000, acquisition_date:'2020-05-22', serial:'TDU-500-009', inspection_type:'Cat IV', last_inspection:'2024-02-20', cert_link:'', notes:'Hydraulic seal replacement in progress' },
-          { asset_id:'AST-005', name:'BOP Stack (3000 PSI)',             category:'Well Control Equipment',rig_name:'Rig Alpha-1', location:'Assigned Rig',  status:'Active',      value:310000, acquisition_date:'2022-07-01', serial:'BOP-3K-005', inspection_type:'Pressure Test', last_inspection:'2024-10-05', cert_link:'', notes:'6-ram configuration' },
-          { asset_id:'AST-006', name:'Wellhead Christmas Tree (5000 PSI)',category:'Well Head Equipment', rig_name:'Rig Alpha-2',  location:'Assigned Rig',  status:'Active',      value:275000, acquisition_date:'2021-09-18', serial:'WT-5K-002', inspection_type:'Pressure Test', last_inspection:'2024-07-22', cert_link:'', notes:'API 6A compliant' },
-          { asset_id:'AST-007', name:'Rotary Table (27.5")',              category:'Handling Tools',       rig_name:'Rig Bravo-1',  location:'Assigned Rig',  status:'Active',      value:88000,  acquisition_date:'2023-03-05', serial:'RT-275-003', inspection_type:'Cat III', last_inspection:'2024-09-30', cert_link:'', notes:'' },
-          { asset_id:'AST-008', name:'8" Drill Collar (Slick)',           category:'Tubular',              rig_name:'Rig Charlie',  location:'Assigned Rig',  status:'Active',      value:52000,  acquisition_date:'2022-12-01', serial:'DC-8-SL-008', inspection_type:'Tubular Inspection DS1', last_inspection:'2024-05-14', cert_link:'', notes:'Qty: 18 joints' },
-          { asset_id:'AST-009', name:'4¾" Drill Collar (Slick)',          category:'Tubular',              rig_name:'Rig Charlie',  location:'Assigned Rig',  status:'Active',      value:38000,  acquisition_date:'2023-06-20', serial:'DC-475-SL-009', inspection_type:'Tubular Inspection DS1', last_inspection:'2024-04-08', cert_link:'', notes:'Qty: 12 joints' },
-          { asset_id:'AST-010', name:'Annular BOP (Shaffer 13⅝")',        category:'Well Control Equipment',rig_name:'Rig Alpha-2', location:'Assigned Rig',  status:'Active',      value:195000, acquisition_date:'2021-04-10', serial:'ABOP-135-010', inspection_type:'Pressure Test', last_inspection:'2024-11-01', cert_link:'', notes:'' },
-          { asset_id:'AST-011', name:'Stabbing Valve (5" FH)',            category:'Well Control Equipment',rig_name:'Rig Alpha-1', location:'Assigned Rig',  status:'Active',      value:18500,  acquisition_date:'2024-01-15', serial:'SV-5FH-011', inspection_type:'Pressure Test', last_inspection:'2024-10-20', cert_link:'', notes:'' },
-          { asset_id:'AST-012', name:'Travelling Block (500T)',           category:'Handling Tools',       rig_name:'Rig Bravo-1',  location:'Assigned Rig',  status:'Active',      value:135000, acquisition_date:'2020-10-08', serial:'TB-500-012', inspection_type:'Cat IV', last_inspection:'2024-08-15', cert_link:'', notes:'' },
-          { asset_id:'AST-013', name:'Swivel (500T)',                     category:'Handling Tools',       rig_name:'Rig Alpha-1',  location:'Assigned Rig',  status:'Active',      value:72000,  acquisition_date:'2021-06-30', serial:'SW-500-013', inspection_type:'Cat IV', last_inspection:'2024-03-10', cert_link:'', notes:'' },
-          { asset_id:'AST-014', name:'Tubing Tong Set (4½")',             category:'Handling Tools',       rig_name:'Rig Alpha-2',  location:'Assigned Rig',  status:'Contracted',  value:29000,  acquisition_date:'2022-08-22', serial:'TT-45-014', inspection_type:'Cat III', last_inspection:'2024-09-05', cert_link:'', notes:'' },
-          { asset_id:'AST-015', name:'Choke Manifold (5000 PSI)',         category:'Well Control Equipment',rig_name:'Rig Bravo-1', location:'Assigned Rig',  status:'Active',      value:88000,  acquisition_date:'2022-02-14', serial:'CM-5K-015', inspection_type:'Pressure Test', last_inspection:'2024-06-01', cert_link:'', notes:'4-wing gate valve' },
-          { asset_id:'AST-016', name:'Shaker Screen Set (API 120)',       category:'Handling Tools',       rig_name:'Rig Charlie',  location:'Assigned Rig',  status:'Active',      value:14000,  acquisition_date:'2024-03-01', serial:'SS-120-016', inspection_type:'', last_inspection:'', cert_link:'', notes:'Qty: 50 screens' },
-          { asset_id:'AST-017', name:'5" HWDP (Range 2)',                 category:'Tubular',              rig_name:'Rig Bravo-1',  location:'Assigned Rig',  status:'Active',      value:67000,  acquisition_date:'2023-09-15', serial:'HWDP-5-R2-017', inspection_type:'Tubular Inspection DS1', last_inspection:'2024-10-15', cert_link:'', notes:'Qty: 30 joints' },
-          { asset_id:'AST-018', name:'Mud Pump (National 14-P-220)',      category:'Handling Tools',       rig_name:'Rig Alpha-1',  location:'Assigned Rig',  status:'Active',      value:420000, acquisition_date:'2021-01-20', serial:'MP-14P-018', inspection_type:'Calibration', last_inspection:'2024-07-01', cert_link:'', notes:'2200 HP triplex' },
-          { asset_id:'AST-019', name:'Casing Running Tool (9⅝")',         category:'Handling Tools',       rig_name:'Rig Alpha-2',  location:'Workshop',      status:'Maintenance', value:55000,  acquisition_date:'2022-05-11', serial:'CRT-958-019', inspection_type:'Cat III', last_inspection:'2024-04-20', cert_link:'', notes:'Sent to workshop for service' },
-          { asset_id:'AST-020', name:'4" Drill Pipe (Range 2)',           category:'Tubular',              rig_name:'',             location:'Sukhna Yard',   status:'Inactive',    value:72000,  acquisition_date:'2020-08-30', serial:'DP-4-R2-020', inspection_type:'Tubular Inspection DS1', last_inspection:'2023-11-01', cert_link:'', notes:'Awaiting redeployment' },
-          { asset_id:'AST-021', name:'Mud/Gas Separator',                 category:'Well Control Equipment',rig_name:'Rig Charlie', location:'Assigned Rig',  status:'Active',      value:48000,  acquisition_date:'2023-11-05', serial:'MGS-021', inspection_type:'Pressure Test', last_inspection:'2024-08-20', cert_link:'', notes:'' },
-          { asset_id:'AST-022', name:'Jar (Hydraulic – 4¾")',             category:'Handling Tools',       rig_name:'Rig Alpha-1',  location:'Assigned Rig',  status:'Active',      value:36000,  acquisition_date:'2024-02-10', serial:'JAR-H-475-022', inspection_type:'Cat III', last_inspection:'2024-09-25', cert_link:'', notes:'' },
-          { asset_id:'AST-023', name:'Wireline BOP',                     category:'Well Control Equipment',rig_name:'Rig Bravo-1', location:'Assigned Rig',  status:'Active',      value:62000,  acquisition_date:'2022-11-30', serial:'WBOP-023', inspection_type:'Pressure Test', last_inspection:'2024-05-30', cert_link:'', notes:'' },
-          { asset_id:'AST-024', name:'Hook (500T)',                       category:'Handling Tools',       rig_name:'Rig Alpha-2',  location:'Assigned Rig',  status:'Active',      value:41000,  acquisition_date:'2021-07-14', serial:'HK-500-024', inspection_type:'Cat IV', last_inspection:'2024-11-10', cert_link:'', notes:'' },
-          { asset_id:'AST-025', name:'Elevators (5" / 500T)',             category:'Handling Tools',       rig_name:'Rig Charlie',  location:'Assigned Rig',  status:'Active',      value:27500,  acquisition_date:'2023-04-18', serial:'EL-5-500-025', inspection_type:'Cat III', last_inspection:'2024-07-05', cert_link:'', notes:'' },
-        ];
-        const maintenance = [
-          { id:'MNT-001', asset_id:'AST-001', task:'DS-1 Tubular Inspection', type:'Inspection', status:'Scheduled',    last_done:'2024-09-10', next_due:'2025-03-10', alert_days:30, notes:'Full string inspection', rig_name:'Rig Alpha-1' },
-          { id:'MNT-002', asset_id:'AST-004', task:'Hydraulic Seal Replacement', type:'Repair',     status:'In Progress', last_done:'2024-10-01', next_due:'2025-01-15', alert_days:14, notes:'Crown & travelling block seals', rig_name:'Rig Bravo-1' },
-          { id:'MNT-003', asset_id:'AST-005', task:'BOP Pressure Test',       type:'Test',        status:'Scheduled',   last_done:'2024-10-05', next_due:'2025-01-05', alert_days:21, notes:'API 16A 3000 PSI test', rig_name:'Rig Alpha-1' },
-          { id:'MNT-004', asset_id:'AST-018', task:'Mud Pump Liner Change',   type:'Maintenance', status:'Overdue',     last_done:'2024-04-01', next_due:'2024-10-01', alert_days:14, notes:'Replace liners & pistons', rig_name:'Rig Alpha-1' },
-          { id:'MNT-005', asset_id:'AST-012', task:'Block & Hook Inspection', type:'Inspection',  status:'Scheduled',   last_done:'2024-08-15', next_due:'2025-02-15', alert_days:30, notes:'Cat IV full cert', rig_name:'Rig Bravo-1' },
-          { id:'MNT-006', asset_id:'AST-010', task:'Annular BOP Seal Test',   type:'Test',        status:'Completed',   last_done:'2024-11-01', next_due:'2025-05-01', alert_days:21, notes:'API 16A passed', rig_name:'Rig Alpha-2' },
-          { id:'MNT-007', asset_id:'AST-015', task:'Choke Manifold Valve Service', type:'Maintenance', status:'Scheduled', last_done:'2024-06-01', next_due:'2025-02-28', alert_days:30, notes:'Gate valve packing replacement', rig_name:'Rig Bravo-1' },
-          { id:'MNT-008', asset_id:'AST-019', task:'CRT Full Overhaul',       type:'Repair',      status:'In Progress', last_done:'2024-04-20', next_due:'2025-01-20', alert_days:14, notes:'In workshop – awaiting parts', rig_name:'' },
-        ];
-        const transfers = [
-          { id:'TR-001', asset_id:'AST-019', asset_name:'Casing Running Tool (9⅝")', current_loc:'Rig Alpha-2', destination:'Al-Rashid Workshop', status:'Completed',   priority:'High',   type:'For Repair',        request_date:'2024-10-15', required_date:'2024-11-15', reason:'Mechanical failure – slips not engaging', requested_by:'Ahmed Hassan', dest_rig:'', vendor_name:'Al-Rashid Oilfield Services', vendor_type:'Workshop', po_number:'PO-2024-1042', return_date:'2025-01-20', vendor_contact:'Eng. Karim – 012-345-6789', instructions:'Handle with care – thread protectors on', ops_action:'approve', ops_approved_by:'Omar Farouk', ops_approved_date:'2024-10-16', ops_comment:'Approved – urgent repair needed', mgr_action:'approve', mgr_approved_by:'Tarek Nabil', mgr_approved_date:'2024-10-17', mgr_comment:'Approved' },
-          { id:'TR-002', asset_id:'AST-020', asset_name:'4" Drill Pipe (Range 2)', current_loc:'Sukhna Yard', destination:'Rig Bravo-1', status:'Ops Approved', priority:'Normal', type:'Warehouse to Field', request_date:'2024-11-05', required_date:'2024-12-01', reason:'Rig Bravo-1 requires additional drill string for upcoming well', requested_by:'Mohamed Salah', dest_rig:'Rig Bravo-1', vendor_name:'', vendor_type:'', po_number:'', return_date:'', vendor_contact:'', instructions:'Verify thread condition before despatch', ops_action:'approve', ops_approved_by:'Omar Farouk', ops_approved_date:'2024-11-06', ops_comment:'Approved – priority movement', mgr_action:'', mgr_approved_by:'', mgr_approved_date:'', mgr_comment:'' },
-          { id:'TR-003', asset_id:'AST-014', asset_name:'Tubing Tong Set (4½")', current_loc:'Rig Alpha-2', destination:'Rig Charlie', status:'Pending',      priority:'Normal', type:'Rig to Rig',        request_date:'2024-11-12', required_date:'2024-11-25', reason:'Rig Charlie requires tong set for production tubing workover', requested_by:'Khaled Ibrahim', dest_rig:'Rig Charlie', vendor_name:'', vendor_type:'', po_number:'', return_date:'', vendor_contact:'', instructions:'', ops_action:'', ops_approved_by:'', ops_approved_date:'', ops_comment:'', mgr_action:'', mgr_approved_by:'', mgr_approved_date:'', mgr_comment:'' },
-          { id:'TR-004', asset_id:'AST-004', asset_name:'Top Drive Unit (500T)', current_loc:'Rig Bravo-1', destination:'NOV Service Center', status:'Pending',      priority:'Critical', type:'For Repair',      request_date:'2024-11-18', required_date:'2024-11-30', reason:'Critical hydraulic failure – main motor seized', requested_by:'Ahmed Hassan', dest_rig:'', vendor_name:'National Oilwell Varco', vendor_type:'OEM', po_number:'', return_date:'2025-02-28', vendor_contact:'NOV Egypt Service – 010-987-6543', instructions:'Requires OEM technician sign-off before return', ops_action:'', ops_approved_by:'', ops_approved_date:'', ops_comment:'', mgr_action:'', mgr_approved_by:'', mgr_approved_date:'', mgr_comment:'' },
-          { id:'TR-005', asset_id:'AST-016', asset_name:'Shaker Screen Set (API 120)', current_loc:'Rig Charlie', destination:'Sukhna Yard', status:'Completed',   priority:'Low',    type:'Field to Warehouse', request_date:'2024-10-01', required_date:'2024-10-15', reason:'End of well – screens to be returned to yard for storage', requested_by:'Sara Ahmed', dest_rig:'', vendor_name:'', vendor_type:'', po_number:'', return_date:'', vendor_contact:'', instructions:'', ops_action:'approve', ops_approved_by:'Omar Farouk', ops_approved_date:'2024-10-02', ops_comment:'', mgr_action:'approve', mgr_approved_by:'Tarek Nabil', mgr_approved_date:'2024-10-03', mgr_comment:'' },
-        ];
-        const certificates = [
-          { cert_id:'CERT-001', asset_id:'AST-001', asset_name:'5" Drill Pipe', inspection_type:'Tubular Inspection DS1', last_inspection:'2024-09-10', next_inspection:'2025-03-10', validity_days:182, alert_days:30, rig_name:'Rig Alpha-1', cert_link:'' },
-          { cert_id:'CERT-002', asset_id:'AST-003', asset_name:'Kelly Bushing Assembly', inspection_type:'Cat III', last_inspection:'2024-06-15', next_inspection:'2025-06-15', validity_days:365, alert_days:30, rig_name:'Rig Alpha-1', cert_link:'' },
-          { cert_id:'CERT-003', asset_id:'AST-005', asset_name:'BOP Stack (3000 PSI)', inspection_type:'Pressure Test', last_inspection:'2024-10-05', next_inspection:'2025-01-05', validity_days:92, alert_days:21, rig_name:'Rig Alpha-1', cert_link:'' },
-          { cert_id:'CERT-004', asset_id:'AST-010', asset_name:'Annular BOP', inspection_type:'Pressure Test', last_inspection:'2024-11-01', next_inspection:'2025-05-01', validity_days:182, alert_days:21, rig_name:'Rig Alpha-2', cert_link:'' },
-          { cert_id:'CERT-005', asset_id:'AST-012', asset_name:'Travelling Block (500T)', inspection_type:'Cat IV', last_inspection:'2024-08-15', next_inspection:'2025-02-15', validity_days:184, alert_days:30, rig_name:'Rig Bravo-1', cert_link:'' },
-          { cert_id:'CERT-006', asset_id:'AST-013', asset_name:'Swivel (500T)', inspection_type:'Cat IV', last_inspection:'2024-03-10', next_inspection:'2025-03-10', validity_days:365, alert_days:30, rig_name:'Rig Alpha-1', cert_link:'' },
-          { cert_id:'CERT-007', asset_id:'AST-015', asset_name:'Choke Manifold (5000 PSI)', inspection_type:'Pressure Test', last_inspection:'2024-06-01', next_inspection:'2025-03-01', validity_days:273, alert_days:30, rig_name:'Rig Bravo-1', cert_link:'' },
-          { cert_id:'CERT-008', asset_id:'AST-018', asset_name:'Mud Pump', inspection_type:'Calibration', last_inspection:'2024-07-01', next_inspection:'2025-01-01', validity_days:184, alert_days:21, rig_name:'Rig Alpha-1', cert_link:'' },
-          { cert_id:'CERT-009', asset_id:'AST-004', asset_name:'Top Drive Unit (500T)', inspection_type:'Cat IV', last_inspection:'2024-02-20', next_inspection:'2024-08-20', validity_days:182, alert_days:30, rig_name:'Rig Bravo-1', cert_link:'' },
-          { cert_id:'CERT-010', asset_id:'AST-006', asset_name:'Wellhead Christmas Tree', inspection_type:'Pressure Test', last_inspection:'2024-07-22', next_inspection:'2025-07-22', validity_days:365, alert_days:30, rig_name:'Rig Alpha-2', cert_link:'' },
-        ];
-        const users = [
-          { id:'USR-001', name:'Ahmed Hassan',   role:'Asset Manager',        dept:'Operations', email:'a.hassan@rigco.com',    initials:'AH', color:'#0070F2' },
-          { id:'USR-002', name:'Omar Farouk',    role:'Operations Manager',   dept:'Drilling',   email:'o.farouk@rigco.com',    initials:'OF', color:'#107E3E' },
-          { id:'USR-003', name:'Tarek Nabil',    role:'Asset Manager',        dept:'Assets',     email:'t.nabil@rigco.com',     initials:'TN', color:'#6D28D9' },
-          { id:'USR-004', name:'Mohamed Salah',  role:'Field Engineer',       dept:'Operations', email:'m.salah@rigco.com',     initials:'MS', color:'#E9730C' },
-          { id:'USR-005', name:'Sara Ahmed',     role:'Logistics Coordinator',dept:'Logistics',  email:'s.ahmed@rigco.com',     initials:'SA', color:'#B00' },
-          { id:'USR-006', name:'Khaled Ibrahim', role:'Warehouse Supervisor', dept:'Warehouse',  email:'k.ibrahim@rigco.com',   initials:'KI', color:'#354A5E' },
-        ];
-        const notifications = [
-          { id:'N-001', icon:'fas fa-exclamation-triangle', type:'ni-orange', title:'Overdue Maintenance', desc:'Mud Pump (AST-018) – liner change overdue 45 days', time:'2 hrs ago', read:false },
-          { id:'N-002', icon:'fas fa-exchange-alt',          type:'ni-blue',   title:'Transfer Pending Approval', desc:'TR-003 awaiting Drilling Manager review', time:'4 hrs ago', read:false },
-          { id:'N-003', icon:'fas fa-certificate',           type:'ni-red',    title:'Certificate Expired', desc:'Top Drive Unit (AST-004) – Cat IV cert expired', time:'1 day ago', read:false },
-          { id:'N-004', icon:'fas fa-check-circle',          type:'ni-green',  title:'Transfer Approved', desc:'TR-001 Casing Running Tool approved and dispatched', time:'2 days ago', read:true },
-        ];
-
-        refill(ASSETS, assets.map(normA));
-        refill(RIGS, rigs);
-        refill(CONTRACTS, contracts);
-        refill(MAINT_SCHEDULES, maintenance.map(normM));
-        refill(TRANSFERS, transfers.map(normT));
-        refill(CERTIFICATES, certificates.map(normC));
-        refill(USERS, users);
-        refill(NOTIFICATIONS, notifications);
-        rerenderAll();
-        showToast('Demo data loaded — ' + ASSETS.length + ' assets, ' + RIGS.length + ' rigs', 'info');
-        console.log('[Demo] Data loaded');
-      }
-
       async function bootstrap() {
         try {
           showToast('Connecting to database…', 'info');
-          const [aR, rR, conR, mR, tR, cR, bR, uR, nR] = await Promise.all([
+
+          const [aR, rR, coR, conR, mR, tR, cR, bR, uR, nR] = await Promise.all([
             GET('/assets', { limit: 500 }),
             GET('/rigs'),
+            GET('/companies'),
             GET('/contracts', { limit: 200 }),
             GET('/maintenance', { limit: 500 }),
             GET('/transfers', { limit: 200 }),
@@ -8134,10 +7738,14 @@ Instructions:
             GET('/users'),
             GET('/notifications'),
           ]);
+
+          // Mutate arrays in place — render functions always see live DB data
           refill(ASSETS, (aR.data || []).map(normA));
           refill(RIGS, rR.data || []);
+          refill(COMPANIES, coR.data || []);
           refill(CONTRACTS, (conR.data || []).map(c => ({
-            ...c, start: c.start_date, end: c.end_date, assetCount: c.asset_count || 0
+            ...c,
+            start: c.start_date, end: c.end_date, assetCount: c.asset_count || 0
           })));
           refill(MAINT_SCHEDULES, (mR.data || []).map(normM));
           refill(TRANSFERS, (tR.data || []).map(normT));
@@ -8147,11 +7755,13 @@ Instructions:
           refill(NOTIFICATIONS, (nR.data || []).map(n => ({
             ...n, type: 'ni-' + n.kind, desc: n.description, read: n.is_read
           })));
+
           rerenderAll();
           showToast('Database connected ✓  (' + ASSETS.length + ' assets loaded)', 'success');
+          console.log('[AssetAPI] Bootstrap complete');
         } catch (e) {
-          console.warn('[AssetAPI] No backend detected – loading demo data:', e.message);
-          loadDemoData();
+          console.error('[AssetAPI] Bootstrap failed:', e);
+          showToast('⚠ Database error: ' + e.message, 'error');
         }
       }
 
@@ -8169,6 +7779,7 @@ Instructions:
           name,
           category: document.getElementById('f_category').value,
           status: document.getElementById('f_status').value,
+          company: document.getElementById('f_company').value,
           rig_name: document.getElementById('f_rig').value,
           location: document.getElementById('f_location').value,
           value: Number(document.getElementById('f_value').value) || 0,
@@ -8385,42 +7996,6 @@ Instructions:
       };
 
       // ══════════════════════════════════════════════════════════════════════════
-      // ── OVERRIDE: saveTspEdit (API layer) ───────────────────────────
-      const _origSaveTspEdit = window.saveTspEdit;
-      window.saveTspEdit = async function() {
-        const destination = document.getElementById('tsp_destination').value.trim();
-        const reason = document.getElementById('tsp_reason').value.trim();
-        if (!destination) { showToast('Destination is required.', 'error'); return; }
-        if (!reason) { showToast('Reason is required.', 'error'); return; }
-        const id = _tspId;
-        const payload = {
-          destination,
-          dest_rig:       document.getElementById('tsp_destRig').value || null,
-          priority:       document.getElementById('tsp_priority').value,
-          type:           document.getElementById('tsp_type').value,
-          required_date:  document.getElementById('tsp_requiredDate').value || null,
-          reason,
-          instructions:   document.getElementById('tsp_instructions').value,
-          vendor_name:    document.getElementById('tsp_vendorName').value.trim() || null,
-          vendor_type:    document.getElementById('tsp_vendorType').value || null,
-          po_number:      document.getElementById('tsp_poNumber').value.trim() || null,
-          return_date:    document.getElementById('tsp_returnDate').value || null,
-          vendor_contact: document.getElementById('tsp_vendorContact').value.trim() || null,
-        };
-        Object.keys(payload).forEach(k => { if (payload[k] === null) delete payload[k]; });
-        try {
-          const r = await PATCH(\`/transfers/\${id}\`, payload);
-          const idx = TRANSFERS.findIndex(t => t.id === id);
-          if (idx >= 0) TRANSFERS[idx] = normT(r.data);
-          renderTransfers();
-          showToast(\`Transfer \${id} updated ✓\`, 'success');
-          openTransferDetail(id);
-        } catch(e) {
-          // fallback to local-only save
-          _origSaveTspEdit && _origSaveTspEdit();
-        }
-      };
-
       //  OVERRIDE: submitTransferRequest()
       // ══════════════════════════════════════════════════════════════════════════
       window.submitTransferRequest = async function () {
@@ -8655,6 +8230,7 @@ Instructions:
               asset_id,
               name: r['Name'] || r['Asset Name'] || 'Imported Asset',
               category: r['Category'] || 'Other',
+              company: r['Company'] || '',
               rig_name: r['Rig'] || r['Rig Name'] || '',
               location: r['Location'] || '',
               status: r['Status'] || 'Active',
@@ -8701,6 +8277,7 @@ Instructions:
             if (!id) { skipped++; continue; }
             const payload = {
               id,
+              company: r['Company'] || '',
               rig: r['Rig'] || '',
               value: Number(r['Value'] || r['Value (USD)'] || 0) || 0,
               start_date: r['Start Date'] || null,
@@ -8740,6 +8317,7 @@ Instructions:
               id,
               name: r['Rig Name'] || r['Name'] || id,
               type: r['Type'] || '',
+              company: r['Company'] || '',
               location: r['Location'] || '',
               depth: r['Depth'] || '',
               hp: Number(r['HP'] || 0) || 0,
