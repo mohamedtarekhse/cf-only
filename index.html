@@ -2750,6 +2750,7 @@
     <button class="nav-tab" onclick="switchTab('maintenance', this)" id="tab-maintenance"><i class="fas fa-tools"></i>
       Maintenance <span id="maintAlertBadge"
         style="display:none;background:#B00;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:1px 6px;margin-left:4px">0</span></button>
+    <button class="nav-tab" onclick="switchTab('registers', this)" id="tab-registers"><i class="fas fa-book"></i> Registers</button>
   </div>
 
   <!-- NOTIFICATION PANEL -->
@@ -3656,6 +3657,396 @@
           <button class="btn btn-secondary" onclick="openEmailModal()"><i class="fas fa-envelope"
               style="color:var(--sap-blue)"></i> Email Report</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======= REGISTERS SECTION ======= -->
+  <div class="section" id="section-registers">
+    <div class="content">
+      <!-- Mini Tabs: Maintenance / Safety / Drilling -->
+      <div class="card" style="flex:1;display:flex;flex-direction:column">
+        <div class="card-header" style="flex-wrap:nowrap;gap:0;padding:0 0 0 0;border-bottom:none">
+          <div style="display:flex;border-bottom:2px solid var(--sap-border);width:100%">
+            <button class="reg-mini-tab active" id="regtab-maintenance" onclick="switchRegTab('maintenance',this)" style="height:38px;padding:0 20px;border:none;background:none;font-family:inherit;font-size:13.5px;color:var(--sap-text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;display:flex;align-items:center;gap:6px;white-space:nowrap;font-weight:500;transition:all .15s"><i class="fas fa-tools"></i> Maintenance</button>
+            <button class="reg-mini-tab" id="regtab-safety" onclick="switchRegTab('safety',this)" style="height:38px;padding:0 20px;border:none;background:none;font-family:inherit;font-size:13.5px;color:var(--sap-text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;display:flex;align-items:center;gap:6px;white-space:nowrap;font-weight:500;transition:all .15s"><i class="fas fa-hard-hat"></i> Safety</button>
+            <button class="reg-mini-tab" id="regtab-drilling" onclick="switchRegTab('drilling',this)" style="height:38px;padding:0 20px;border:none;background:none;font-family:inherit;font-size:13.5px;color:var(--sap-text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;display:flex;align-items:center;gap:6px;white-space:nowrap;font-weight:500;transition:all .15s"><i class="fas fa-oil-well"></i> Drilling</button>
+          </div>
+        </div>
+
+        <!-- MAINTENANCE REGISTER PANEL -->
+        <div class="reg-panel active" id="regpanel-maintenance" style="flex:1;display:flex;flex-direction:column;padding:24px">
+          <div style="color:var(--sap-text-muted);font-size:14px;display:flex;align-items:center;gap:8px"><i class="fas fa-tools" style="font-size:20px;color:var(--sap-blue)"></i> Maintenance Register — coming soon.</div>
+        </div>
+
+        <!-- SAFETY REGISTER PANEL -->
+        <div class="reg-panel" id="regpanel-safety" style="flex:1;display:none;flex-direction:column;padding:24px">
+          <div style="color:var(--sap-text-muted);font-size:14px;display:flex;align-items:center;gap:8px"><i class="fas fa-hard-hat" style="font-size:20px;color:var(--sap-warning)"></i> Safety Register — coming soon.</div>
+        </div>
+
+        <!-- DRILLING REGISTER PANEL -->
+        <div class="reg-panel" id="regpanel-drilling" style="flex:1;display:none;flex-direction:column">
+          <!-- Drilling Sub-tabs -->
+          <div style="display:flex;border-bottom:1px solid var(--sap-border);background:#FAFBFC;padding:0 12px">
+            <button class="drill-sub-tab active" id="drilltab-bop" onclick="switchDrillTab('bop',this)" style="height:34px;padding:0 16px;border:none;background:none;font-family:inherit;font-size:12.5px;color:var(--sap-text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;display:flex;align-items:center;gap:5px;white-space:nowrap;font-weight:500;transition:all .15s"><i class="fas fa-circle-notch"></i> BOP Register</button>
+            <button class="drill-sub-tab" id="drilltab-wellhead" onclick="switchDrillTab('wellhead',this)" style="height:34px;padding:0 16px;border:none;background:none;font-family:inherit;font-size:12.5px;color:var(--sap-text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;display:flex;align-items:center;gap:5px;white-space:nowrap;font-weight:500;transition:all .15s"><i class="fas fa-ring"></i> Well Head Register</button>
+            <button class="drill-sub-tab" id="drilltab-wellcontrol" onclick="switchDrillTab('wellcontrol',this)" style="height:34px;padding:0 16px;border:none;background:none;font-family:inherit;font-size:12.5px;color:var(--sap-text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;display:flex;align-items:center;gap:5px;white-space:nowrap;font-weight:500;transition:all .15s"><i class="fas fa-sliders-h"></i> Well Control Equipment</button>
+            <button class="drill-sub-tab" id="drilltab-tubular" onclick="switchDrillTab('tubular',this)" style="height:34px;padding:0 16px;border:none;background:none;font-family:inherit;font-size:12.5px;color:var(--sap-text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;display:flex;align-items:center;gap:5px;white-space:nowrap;font-weight:500;transition:all .15s"><i class="fas fa-grip-lines"></i> Tubular</button>
+          </div>
+
+          <!-- BOP REGISTER -->
+          <div class="drill-panel active" id="drillpanel-bop" style="flex:1;display:flex;flex-direction:column">
+            <div class="card-header" style="background:#FAFBFC">
+              <span class="card-title"><i class="fas fa-circle-notch" style="color:var(--sap-blue);margin-right:4px"></i> BOP Register <span class="record-count" id="bopCount"></span></span>
+              <button class="btn btn-primary" onclick="openBopModal()"><i class="fas fa-plus"></i> Add Entry</button>
+              <button class="btn btn-secondary" onclick="exportBopRegister()"><i class="fas fa-file-excel"></i> Export</button>
+            </div>
+            <div class="filter-bar">
+              <div class="filter-group search-wrap">
+                <label class="filter-label">Search</label>
+                <i class="search-icon fas fa-search"></i>
+                <input class="filter-input" id="bopSearch" placeholder="Asset, serial, location..." oninput="renderBopTable()">
+              </div>
+              <div class="filter-group">
+                <label class="filter-label">Rig</label>
+                <select class="filter-select" id="bopRigFilter" onchange="renderBopTable()">
+                  <option value="">All Rigs</option>
+                  <option>Rig 1</option><option>Rig 2</option><option>Rig 3</option><option>Rig 4</option>
+                  <option>Rig 5</option><option>Rig 6</option><option>Rig 7</option><option>Rig 8</option>
+                  <option>Rig 9</option><option>Rig 10</option><option>Rig 11</option><option>Rig 12</option>
+                  <option>Rig 13</option><option>Rig 14</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label class="filter-label">Inspection Status</label>
+                <select class="filter-select" id="bopInspFilter" onchange="renderBopTable()">
+                  <option value="">All</option>
+                  <option value="valid">Valid</option>
+                  <option value="expiring">Expiring Soon</option>
+                  <option value="expired">Expired</option>
+                </select>
+              </div>
+              <div class="filter-group" style="margin-left:auto">
+                <label class="filter-label">&nbsp;</label>
+                <button class="btn btn-ghost" onclick="clearBopFilters()"><i class="fas fa-times"></i> Clear</button>
+              </div>
+            </div>
+            <div class="table-wrap" style="flex:1">
+              <table id="bopTable">
+                <thead>
+                  <tr>
+                    <th>Asset</th>
+                    <th>Serial Number</th>
+                    <th>Date of Last Inspection</th>
+                    <th>Expiry of Inspection</th>
+                    <th>Assigned Location</th>
+                    <th>Rig</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="bopTbody">
+                  <tr><td colspan="8" style="text-align:center;padding:32px;color:var(--sap-text-muted)"><i class="fas fa-circle-notch" style="margin-right:8px;color:#ccc"></i>No BOP records found. Click <strong>Add Entry</strong> to begin.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- WELL HEAD REGISTER -->
+          <div class="drill-panel" id="drillpanel-wellhead" style="flex:1;display:none;flex-direction:column">
+            <div class="card-header" style="background:#FAFBFC">
+              <span class="card-title"><i class="fas fa-ring" style="color:var(--sap-blue);margin-right:4px"></i> Well Head Register <span class="record-count" id="wellheadCount"></span></span>
+              <button class="btn btn-primary" onclick="openWellheadModal()"><i class="fas fa-plus"></i> Add Entry</button>
+              <button class="btn btn-secondary" onclick="exportWellheadRegister()"><i class="fas fa-file-excel"></i> Export</button>
+            </div>
+            <div class="filter-bar">
+              <div class="filter-group search-wrap">
+                <label class="filter-label">Search</label>
+                <i class="search-icon fas fa-search"></i>
+                <input class="filter-input" id="wellheadSearch" placeholder="Asset, serial, location..." oninput="renderWellheadTable()">
+              </div>
+              <div class="filter-group">
+                <label class="filter-label">Rig</label>
+                <select class="filter-select" id="wellheadRigFilter" onchange="renderWellheadTable()">
+                  <option value="">All Rigs</option>
+                  <option>Rig 1</option><option>Rig 2</option><option>Rig 3</option><option>Rig 4</option>
+                  <option>Rig 5</option><option>Rig 6</option><option>Rig 7</option><option>Rig 8</option>
+                  <option>Rig 9</option><option>Rig 10</option><option>Rig 11</option><option>Rig 12</option>
+                  <option>Rig 13</option><option>Rig 14</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label class="filter-label">Inspection Status</label>
+                <select class="filter-select" id="wellheadInspFilter" onchange="renderWellheadTable()">
+                  <option value="">All</option>
+                  <option value="valid">Valid</option>
+                  <option value="expiring">Expiring Soon</option>
+                  <option value="expired">Expired</option>
+                </select>
+              </div>
+              <div class="filter-group" style="margin-left:auto">
+                <label class="filter-label">&nbsp;</label>
+                <button class="btn btn-ghost" onclick="clearWellheadFilters()"><i class="fas fa-times"></i> Clear</button>
+              </div>
+            </div>
+            <div class="table-wrap" style="flex:1">
+              <table id="wellheadTable">
+                <thead>
+                  <tr>
+                    <th>Asset</th>
+                    <th>Serial Number</th>
+                    <th>Date of Last Inspection</th>
+                    <th>Expiry of Inspection</th>
+                    <th>Assigned Location</th>
+                    <th>Rig</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="wellheadTbody">
+                  <tr><td colspan="8" style="text-align:center;padding:32px;color:var(--sap-text-muted)"><i class="fas fa-ring" style="margin-right:8px;color:#ccc"></i>No Well Head records found. Click <strong>Add Entry</strong> to begin.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- WELL CONTROL EQUIPMENT REGISTER -->
+          <div class="drill-panel" id="drillpanel-wellcontrol" style="flex:1;display:none;flex-direction:column">
+            <div class="card-header" style="background:#FAFBFC">
+              <span class="card-title"><i class="fas fa-sliders-h" style="color:var(--sap-warning);margin-right:4px"></i> Well Control Equipment Register <span class="record-count" id="wellcontrolCount"></span></span>
+              <button class="btn btn-primary" onclick="openWellcontrolModal()"><i class="fas fa-plus"></i> Add Entry</button>
+              <button class="btn btn-secondary" onclick="exportWellcontrolRegister()"><i class="fas fa-file-excel"></i> Export</button>
+            </div>
+            <div class="filter-bar">
+              <div class="filter-group search-wrap">
+                <label class="filter-label">Search</label>
+                <i class="search-icon fas fa-search"></i>
+                <input class="filter-input" id="wellcontrolSearch" placeholder="Asset, serial, location..." oninput="renderWellcontrolTable()">
+              </div>
+              <div class="filter-group">
+                <label class="filter-label">Rig</label>
+                <select class="filter-select" id="wellcontrolRigFilter" onchange="renderWellcontrolTable()">
+                  <option value="">All Rigs</option>
+                  <option>Rig 1</option><option>Rig 2</option><option>Rig 3</option><option>Rig 4</option>
+                  <option>Rig 5</option><option>Rig 6</option><option>Rig 7</option><option>Rig 8</option>
+                  <option>Rig 9</option><option>Rig 10</option><option>Rig 11</option><option>Rig 12</option>
+                  <option>Rig 13</option><option>Rig 14</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label class="filter-label">Inspection Status</label>
+                <select class="filter-select" id="wellcontrolInspFilter" onchange="renderWellcontrolTable()">
+                  <option value="">All</option>
+                  <option value="valid">Valid</option>
+                  <option value="expiring">Expiring Soon</option>
+                  <option value="expired">Expired</option>
+                </select>
+              </div>
+              <div class="filter-group" style="margin-left:auto">
+                <label class="filter-label">&nbsp;</label>
+                <button class="btn btn-ghost" onclick="clearWellcontrolFilters()"><i class="fas fa-times"></i> Clear</button>
+              </div>
+            </div>
+            <div class="table-wrap" style="flex:1">
+              <table id="wellcontrolTable">
+                <thead>
+                  <tr>
+                    <th>Asset</th>
+                    <th>Serial Number</th>
+                    <th>Date of Last Inspection</th>
+                    <th>Expiry of Inspection</th>
+                    <th>Assigned Location</th>
+                    <th>Rig</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="wellcontrolTbody">
+                  <tr><td colspan="8" style="text-align:center;padding:32px;color:var(--sap-text-muted)"><i class="fas fa-sliders-h" style="margin-right:8px;color:#ccc"></i>No Well Control Equipment records found. Click <strong>Add Entry</strong> to begin.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- TUBULAR -->
+          <div class="drill-panel" id="drillpanel-tubular" style="flex:1;display:none;flex-direction:column;padding:24px">
+            <div style="color:var(--sap-text-muted);font-size:14px;display:flex;align-items:center;gap:8px"><i class="fas fa-grip-lines" style="font-size:20px;color:var(--sap-text-muted)"></i> Tubular Register — coming soon.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOP ENTRY MODAL -->
+  <div class="modal-overlay" id="bopModal">
+    <div class="modal" style="width:640px;max-width:95vw">
+      <div class="modal-header">
+        <i class="fas fa-circle-notch" style="color:var(--sap-blue);font-size:18px"></i>
+        <h2 id="bopModalTitle">Add BOP Register Entry</h2>
+        <button class="shell-btn" style="color:var(--sap-text-muted)" onclick="closeModal('bopModal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="bop_editId">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Asset <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="bop_asset" placeholder="e.g. BOP Stack 13-5/8 5000 PSI">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Serial Number <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="bop_serial" placeholder="e.g. SN-2024-001">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Date of Last Inspection <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="bop_lastInspection" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Expiry of Inspection <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="bop_expiryInspection" type="date">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Assigned Location</label>
+            <input class="form-input" id="bop_location" placeholder="e.g. Cellar Deck, Rig Floor...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Rig</label>
+            <select class="form-select" id="bop_rig">
+              <option value="">— Select Rig —</option>
+              <option>Rig 1</option><option>Rig 2</option><option>Rig 3</option><option>Rig 4</option>
+              <option>Rig 5</option><option>Rig 6</option><option>Rig 7</option><option>Rig 8</option>
+              <option>Rig 9</option><option>Rig 10</option><option>Rig 11</option><option>Rig 12</option>
+              <option>Rig 13</option><option>Rig 14</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea class="form-textarea" id="bop_notes" rows="2" placeholder="Additional notes..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('bopModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveBopEntry()"><i class="fas fa-save"></i> Save Entry</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WELL HEAD ENTRY MODAL -->
+  <div class="modal-overlay" id="wellheadModal">
+    <div class="modal" style="width:640px;max-width:95vw">
+      <div class="modal-header">
+        <i class="fas fa-ring" style="color:var(--sap-blue);font-size:18px"></i>
+        <h2 id="wellheadModalTitle">Add Well Head Register Entry</h2>
+        <button class="shell-btn" style="color:var(--sap-text-muted)" onclick="closeModal('wellheadModal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="wellhead_editId">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Asset <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="wellhead_asset" placeholder="e.g. Casing Head 13-3/8">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Serial Number <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="wellhead_serial" placeholder="e.g. SN-WH-2024-001">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Date of Last Inspection <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="wellhead_lastInspection" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Expiry of Inspection <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="wellhead_expiryInspection" type="date">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Assigned Location</label>
+            <input class="form-input" id="wellhead_location" placeholder="e.g. Cellar Deck, Well Centre...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Rig</label>
+            <select class="form-select" id="wellhead_rig">
+              <option value="">— Select Rig —</option>
+              <option>Rig 1</option><option>Rig 2</option><option>Rig 3</option><option>Rig 4</option>
+              <option>Rig 5</option><option>Rig 6</option><option>Rig 7</option><option>Rig 8</option>
+              <option>Rig 9</option><option>Rig 10</option><option>Rig 11</option><option>Rig 12</option>
+              <option>Rig 13</option><option>Rig 14</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea class="form-textarea" id="wellhead_notes" rows="2" placeholder="Additional notes..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('wellheadModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveWellheadEntry()"><i class="fas fa-save"></i> Save Entry</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WELL CONTROL EQUIPMENT ENTRY MODAL -->
+  <div class="modal-overlay" id="wellcontrolModal">
+    <div class="modal" style="width:640px;max-width:95vw">
+      <div class="modal-header">
+        <i class="fas fa-sliders-h" style="color:var(--sap-warning);font-size:18px"></i>
+        <h2 id="wellcontrolModalTitle">Add Well Control Equipment Entry</h2>
+        <button class="shell-btn" style="color:var(--sap-text-muted)" onclick="closeModal('wellcontrolModal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="wellcontrol_editId">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Asset <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="wellcontrol_asset" placeholder="e.g. Choke Manifold 3000 PSI">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Serial Number <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="wellcontrol_serial" placeholder="e.g. SN-WC-2024-001">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Date of Last Inspection <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="wellcontrol_lastInspection" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Expiry of Inspection <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="wellcontrol_expiryInspection" type="date">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Assigned Location</label>
+            <input class="form-input" id="wellcontrol_location" placeholder="e.g. Doghouse, Rig Floor...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Rig</label>
+            <select class="form-select" id="wellcontrol_rig">
+              <option value="">— Select Rig —</option>
+              <option>Rig 1</option><option>Rig 2</option><option>Rig 3</option><option>Rig 4</option>
+              <option>Rig 5</option><option>Rig 6</option><option>Rig 7</option><option>Rig 8</option>
+              <option>Rig 9</option><option>Rig 10</option><option>Rig 11</option><option>Rig 12</option>
+              <option>Rig 13</option><option>Rig 14</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea class="form-textarea" id="wellcontrol_notes" rows="2" placeholder="Additional notes..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('wellcontrolModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveWellcontrolEntry()"><i class="fas fa-save"></i> Save Entry</button>
       </div>
     </div>
   </div>
@@ -9634,6 +10025,390 @@ Instructions:
           showToast(`${added} transfer(s) imported to database.${skipped ? ' ' + skipped + ' skipped.' : ''}`, 'success');
         } catch (err) { showToast('Import failed: ' + err.message, 'error'); }
       }
+
+      // ══════════════════════════════════════════
+      //  REGISTERS MODULE
+      // ══════════════════════════════════════════
+
+      // ── Tab switching ──
+      window.switchRegTab = function(tab, el) {
+        document.querySelectorAll('.reg-mini-tab').forEach(t => {
+          t.style.color = 'var(--sap-text-muted)';
+          t.style.borderBottomColor = 'transparent';
+          t.style.fontWeight = '500';
+        });
+        el.style.color = 'var(--sap-blue)';
+        el.style.borderBottomColor = 'var(--sap-blue)';
+        el.style.fontWeight = '600';
+        document.querySelectorAll('.reg-panel').forEach(p => { p.style.display = 'none'; });
+        const panel = document.getElementById('regpanel-' + tab);
+        if (panel) panel.style.display = 'flex';
+      };
+
+      window.switchDrillTab = function(tab, el) {
+        document.querySelectorAll('.drill-sub-tab').forEach(t => {
+          t.style.color = 'var(--sap-text-muted)';
+          t.style.borderBottomColor = 'transparent';
+          t.style.fontWeight = '500';
+        });
+        el.style.color = 'var(--sap-blue)';
+        el.style.borderBottomColor = 'var(--sap-blue)';
+        el.style.fontWeight = '600';
+        document.querySelectorAll('.drill-panel').forEach(p => { p.style.display = 'none'; });
+        const panel = document.getElementById('drillpanel-' + tab);
+        if (panel) panel.style.display = 'flex';
+      };
+
+      // ── BOP Register Data (in-memory) ──
+      let BOP_RECORDS = [];
+      let bopEditId = null;
+
+      window.openBopModal = function(id) {
+        bopEditId = id || null;
+        document.getElementById('bopModalTitle').textContent = id ? 'Edit BOP Register Entry' : 'Add BOP Register Entry';
+        if (id) {
+          const r = BOP_RECORDS.find(x => x.id === id);
+          if (r) {
+            document.getElementById('bop_editId').value = r.id;
+            document.getElementById('bop_asset').value = r.asset || '';
+            document.getElementById('bop_serial').value = r.serial || '';
+            document.getElementById('bop_lastInspection').value = r.lastInspection || '';
+            document.getElementById('bop_expiryInspection').value = r.expiryInspection || '';
+            document.getElementById('bop_location').value = r.location || '';
+            document.getElementById('bop_rig').value = r.rig || '';
+            document.getElementById('bop_notes').value = r.notes || '';
+          }
+        } else {
+          ['bop_editId','bop_asset','bop_serial','bop_lastInspection','bop_expiryInspection','bop_location','bop_notes'].forEach(id => document.getElementById(id).value = '');
+          document.getElementById('bop_rig').value = '';
+        }
+        document.getElementById('bopModal').classList.add('active');
+      };
+
+      window.saveBopEntry = function() {
+        const asset = document.getElementById('bop_asset').value.trim();
+        const serial = document.getElementById('bop_serial').value.trim();
+        const lastInsp = document.getElementById('bop_lastInspection').value;
+        const expiry = document.getElementById('bop_expiryInspection').value;
+        if (!asset || !serial) { showToast('Asset and Serial Number are required.', 'error'); return; }
+        if (bopEditId) {
+          const idx = BOP_RECORDS.findIndex(r => r.id === bopEditId);
+          if (idx >= 0) {
+            BOP_RECORDS[idx] = { ...BOP_RECORDS[idx], asset, serial, lastInspection: lastInsp, expiryInspection: expiry,
+              location: document.getElementById('bop_location').value.trim(),
+              rig: document.getElementById('bop_rig').value,
+              notes: document.getElementById('bop_notes').value.trim() };
+          }
+        } else {
+          BOP_RECORDS.push({ id: 'BOP-' + Date.now(), asset, serial, lastInspection: lastInsp, expiryInspection: expiry,
+            location: document.getElementById('bop_location').value.trim(),
+            rig: document.getElementById('bop_rig').value,
+            notes: document.getElementById('bop_notes').value.trim() });
+        }
+        closeModal('bopModal');
+        renderBopTable();
+        showToast('BOP entry saved.', 'success');
+      };
+
+      window.deleteBopEntry = function(id) {
+        if (!confirm('Delete this BOP register entry?')) return;
+        BOP_RECORDS = BOP_RECORDS.filter(r => r.id !== id);
+        renderBopTable();
+        showToast('Entry deleted.', 'success');
+      };
+
+      function bopInspStatus(expiry) {
+        if (!expiry) return { label: 'Unknown', cls: 'status-maintenance' };
+        const days = Math.ceil((new Date(expiry) - new Date()) / 86400000);
+        if (days < 0) return { label: 'Expired', cls: 'status-inactive' };
+        if (days <= 30) return { label: 'Expiring Soon', cls: 'status-contracted' };
+        return { label: 'Valid', cls: 'status-active' };
+      }
+
+      window.renderBopTable = function() {
+        const search = (document.getElementById('bopSearch')?.value || '').toLowerCase();
+        const rigF = document.getElementById('bopRigFilter')?.value || '';
+        const inspF = document.getElementById('bopInspFilter')?.value || '';
+
+        let rows = BOP_RECORDS.filter(r => {
+          const matchSearch = !search || [r.asset, r.serial, r.location, r.rig].some(v => (v||'').toLowerCase().includes(search));
+          const matchRig = !rigF || r.rig === rigF;
+          const st = bopInspStatus(r.expiryInspection);
+          const matchInsp = !inspF || (inspF === 'valid' && st.label === 'Valid') || (inspF === 'expiring' && st.label === 'Expiring Soon') || (inspF === 'expired' && st.label === 'Expired');
+          return matchSearch && matchRig && matchInsp;
+        });
+
+        const tbody = document.getElementById('bopTbody');
+        const countEl = document.getElementById('bopCount');
+        if (countEl) countEl.textContent = '(' + rows.length + ')';
+
+        if (!rows.length) {
+          tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--sap-text-muted)"><i class="fas fa-circle-notch" style="margin-right:8px;color:#ccc"></i>No BOP records match the current filters.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = rows.map(r => {
+          const st = bopInspStatus(r.expiryInspection);
+          return `<tr>
+            <td><strong>${r.asset || '—'}</strong></td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${r.serial || '—'}</td>
+            <td>${r.lastInspection ? new Date(r.lastInspection).toLocaleDateString('en-GB') : '—'}</td>
+            <td>${r.expiryInspection ? new Date(r.expiryInspection).toLocaleDateString('en-GB') : '—'}</td>
+            <td>${r.location || '—'}</td>
+            <td>${r.rig || '—'}</td>
+            <td><span class="status-badge ${st.cls}">${st.label}</span></td>
+            <td>
+              <button class="btn btn-ghost" style="height:24px;padding:0 8px;font-size:11px" onclick="openBopModal('${r.id}')"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-danger" style="height:24px;padding:0 8px;font-size:11px" onclick="deleteBopEntry('${r.id}')"><i class="fas fa-trash"></i></button>
+            </td>
+          </tr>`;
+        }).join('');
+      };
+
+      window.clearBopFilters = function() {
+        document.getElementById('bopSearch').value = '';
+        document.getElementById('bopRigFilter').value = '';
+        document.getElementById('bopInspFilter').value = '';
+        renderBopTable();
+      };
+
+      window.exportBopRegister = function() {
+        if (!BOP_RECORDS.length) { showToast('No BOP data to export.', 'warning'); return; }
+        const ws_data = [['Asset','Serial Number','Date of Last Inspection','Expiry of Inspection','Assigned Location','Rig','Status','Notes'],
+          ...BOP_RECORDS.map(r => [r.asset, r.serial, r.lastInspection, r.expiryInspection, r.location, r.rig, bopInspStatus(r.expiryInspection).label, r.notes])];
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(ws_data);
+        XLSX.utils.book_append_sheet(wb, ws, 'BOP Register');
+        XLSX.writeFile(wb, 'BOP_Register.xlsx');
+        showToast('BOP Register exported.', 'success');
+      };
+
+      // ══════════════════════════════════════════
+      //  WELL HEAD REGISTER MODULE
+      // ══════════════════════════════════════════
+      let WELLHEAD_RECORDS = [];
+      let wellheadEditId = null;
+
+      window.openWellheadModal = function(id) {
+        wellheadEditId = id || null;
+        document.getElementById('wellheadModalTitle').textContent = id ? 'Edit Well Head Register Entry' : 'Add Well Head Register Entry';
+        if (id) {
+          const r = WELLHEAD_RECORDS.find(x => x.id === id);
+          if (r) {
+            document.getElementById('wellhead_editId').value = r.id;
+            document.getElementById('wellhead_asset').value = r.asset || '';
+            document.getElementById('wellhead_serial').value = r.serial || '';
+            document.getElementById('wellhead_lastInspection').value = r.lastInspection || '';
+            document.getElementById('wellhead_expiryInspection').value = r.expiryInspection || '';
+            document.getElementById('wellhead_location').value = r.location || '';
+            document.getElementById('wellhead_rig').value = r.rig || '';
+            document.getElementById('wellhead_notes').value = r.notes || '';
+          }
+        } else {
+          ['wellhead_editId','wellhead_asset','wellhead_serial','wellhead_lastInspection','wellhead_expiryInspection','wellhead_location','wellhead_notes'].forEach(fid => document.getElementById(fid).value = '');
+          document.getElementById('wellhead_rig').value = '';
+        }
+        document.getElementById('wellheadModal').classList.add('active');
+      };
+
+      window.saveWellheadEntry = function() {
+        const asset = document.getElementById('wellhead_asset').value.trim();
+        const serial = document.getElementById('wellhead_serial').value.trim();
+        if (!asset || !serial) { showToast('Asset and Serial Number are required.', 'error'); return; }
+        const entry = {
+          asset, serial,
+          lastInspection: document.getElementById('wellhead_lastInspection').value,
+          expiryInspection: document.getElementById('wellhead_expiryInspection').value,
+          location: document.getElementById('wellhead_location').value.trim(),
+          rig: document.getElementById('wellhead_rig').value,
+          notes: document.getElementById('wellhead_notes').value.trim()
+        };
+        if (wellheadEditId) {
+          const idx = WELLHEAD_RECORDS.findIndex(r => r.id === wellheadEditId);
+          if (idx >= 0) WELLHEAD_RECORDS[idx] = { ...WELLHEAD_RECORDS[idx], ...entry };
+        } else {
+          WELLHEAD_RECORDS.push({ id: 'WH-' + Date.now(), ...entry });
+        }
+        closeModal('wellheadModal');
+        renderWellheadTable();
+        showToast('Well Head entry saved.', 'success');
+      };
+
+      window.deleteWellheadEntry = function(id) {
+        if (!confirm('Delete this Well Head register entry?')) return;
+        WELLHEAD_RECORDS = WELLHEAD_RECORDS.filter(r => r.id !== id);
+        renderWellheadTable();
+        showToast('Entry deleted.', 'success');
+      };
+
+      window.renderWellheadTable = function() {
+        const search = (document.getElementById('wellheadSearch')?.value || '').toLowerCase();
+        const rigF = document.getElementById('wellheadRigFilter')?.value || '';
+        const inspF = document.getElementById('wellheadInspFilter')?.value || '';
+        let rows = WELLHEAD_RECORDS.filter(r => {
+          const matchSearch = !search || [r.asset, r.serial, r.location, r.rig].some(v => (v||'').toLowerCase().includes(search));
+          const matchRig = !rigF || r.rig === rigF;
+          const st = bopInspStatus(r.expiryInspection);
+          const matchInsp = !inspF || (inspF === 'valid' && st.label === 'Valid') || (inspF === 'expiring' && st.label === 'Expiring Soon') || (inspF === 'expired' && st.label === 'Expired');
+          return matchSearch && matchRig && matchInsp;
+        });
+        const tbody = document.getElementById('wellheadTbody');
+        const countEl = document.getElementById('wellheadCount');
+        if (countEl) countEl.textContent = '(' + rows.length + ')';
+        if (!rows.length) {
+          tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--sap-text-muted)"><i class="fas fa-ring" style="margin-right:8px;color:#ccc"></i>No Well Head records match the current filters.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = rows.map(r => {
+          const st = bopInspStatus(r.expiryInspection);
+          return `<tr>
+            <td><strong>${r.asset || '—'}</strong></td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${r.serial || '—'}</td>
+            <td>${r.lastInspection ? new Date(r.lastInspection).toLocaleDateString('en-GB') : '—'}</td>
+            <td>${r.expiryInspection ? new Date(r.expiryInspection).toLocaleDateString('en-GB') : '—'}</td>
+            <td>${r.location || '—'}</td>
+            <td>${r.rig || '—'}</td>
+            <td><span class="status-badge ${st.cls}">${st.label}</span></td>
+            <td>
+              <button class="btn btn-ghost" style="height:24px;padding:0 8px;font-size:11px" onclick="openWellheadModal('${r.id}')"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-danger" style="height:24px;padding:0 8px;font-size:11px" onclick="deleteWellheadEntry('${r.id}')"><i class="fas fa-trash"></i></button>
+            </td>
+          </tr>`;
+        }).join('');
+      };
+
+      window.clearWellheadFilters = function() {
+        document.getElementById('wellheadSearch').value = '';
+        document.getElementById('wellheadRigFilter').value = '';
+        document.getElementById('wellheadInspFilter').value = '';
+        renderWellheadTable();
+      };
+
+      window.exportWellheadRegister = function() {
+        if (!WELLHEAD_RECORDS.length) { showToast('No Well Head data to export.', 'warning'); return; }
+        const ws_data = [['Asset','Serial Number','Date of Last Inspection','Expiry of Inspection','Assigned Location','Rig','Status','Notes'],
+          ...WELLHEAD_RECORDS.map(r => [r.asset, r.serial, r.lastInspection, r.expiryInspection, r.location, r.rig, bopInspStatus(r.expiryInspection).label, r.notes])];
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(ws_data);
+        XLSX.utils.book_append_sheet(wb, ws, 'Well Head Register');
+        XLSX.writeFile(wb, 'WellHead_Register.xlsx');
+        showToast('Well Head Register exported.', 'success');
+      };
+
+      // ══════════════════════════════════════════
+      //  WELL CONTROL EQUIPMENT REGISTER MODULE
+      // ══════════════════════════════════════════
+      let WELLCONTROL_RECORDS = [];
+      let wellcontrolEditId = null;
+
+      window.openWellcontrolModal = function(id) {
+        wellcontrolEditId = id || null;
+        document.getElementById('wellcontrolModalTitle').textContent = id ? 'Edit Well Control Equipment Entry' : 'Add Well Control Equipment Entry';
+        if (id) {
+          const r = WELLCONTROL_RECORDS.find(x => x.id === id);
+          if (r) {
+            document.getElementById('wellcontrol_editId').value = r.id;
+            document.getElementById('wellcontrol_asset').value = r.asset || '';
+            document.getElementById('wellcontrol_serial').value = r.serial || '';
+            document.getElementById('wellcontrol_lastInspection').value = r.lastInspection || '';
+            document.getElementById('wellcontrol_expiryInspection').value = r.expiryInspection || '';
+            document.getElementById('wellcontrol_location').value = r.location || '';
+            document.getElementById('wellcontrol_rig').value = r.rig || '';
+            document.getElementById('wellcontrol_notes').value = r.notes || '';
+          }
+        } else {
+          ['wellcontrol_editId','wellcontrol_asset','wellcontrol_serial','wellcontrol_lastInspection','wellcontrol_expiryInspection','wellcontrol_location','wellcontrol_notes'].forEach(fid => document.getElementById(fid).value = '');
+          document.getElementById('wellcontrol_rig').value = '';
+        }
+        document.getElementById('wellcontrolModal').classList.add('active');
+      };
+
+      window.saveWellcontrolEntry = function() {
+        const asset = document.getElementById('wellcontrol_asset').value.trim();
+        const serial = document.getElementById('wellcontrol_serial').value.trim();
+        if (!asset || !serial) { showToast('Asset and Serial Number are required.', 'error'); return; }
+        const entry = {
+          asset, serial,
+          lastInspection: document.getElementById('wellcontrol_lastInspection').value,
+          expiryInspection: document.getElementById('wellcontrol_expiryInspection').value,
+          location: document.getElementById('wellcontrol_location').value.trim(),
+          rig: document.getElementById('wellcontrol_rig').value,
+          notes: document.getElementById('wellcontrol_notes').value.trim()
+        };
+        if (wellcontrolEditId) {
+          const idx = WELLCONTROL_RECORDS.findIndex(r => r.id === wellcontrolEditId);
+          if (idx >= 0) WELLCONTROL_RECORDS[idx] = { ...WELLCONTROL_RECORDS[idx], ...entry };
+        } else {
+          WELLCONTROL_RECORDS.push({ id: 'WCE-' + Date.now(), ...entry });
+        }
+        closeModal('wellcontrolModal');
+        renderWellcontrolTable();
+        showToast('Well Control Equipment entry saved.', 'success');
+      };
+
+      window.deleteWellcontrolEntry = function(id) {
+        if (!confirm('Delete this Well Control Equipment register entry?')) return;
+        WELLCONTROL_RECORDS = WELLCONTROL_RECORDS.filter(r => r.id !== id);
+        renderWellcontrolTable();
+        showToast('Entry deleted.', 'success');
+      };
+
+      window.renderWellcontrolTable = function() {
+        const search = (document.getElementById('wellcontrolSearch')?.value || '').toLowerCase();
+        const rigF = document.getElementById('wellcontrolRigFilter')?.value || '';
+        const inspF = document.getElementById('wellcontrolInspFilter')?.value || '';
+        let rows = WELLCONTROL_RECORDS.filter(r => {
+          const matchSearch = !search || [r.asset, r.serial, r.location, r.rig].some(v => (v||'').toLowerCase().includes(search));
+          const matchRig = !rigF || r.rig === rigF;
+          const st = bopInspStatus(r.expiryInspection);
+          const matchInsp = !inspF || (inspF === 'valid' && st.label === 'Valid') || (inspF === 'expiring' && st.label === 'Expiring Soon') || (inspF === 'expired' && st.label === 'Expired');
+          return matchSearch && matchRig && matchInsp;
+        });
+        const tbody = document.getElementById('wellcontrolTbody');
+        const countEl = document.getElementById('wellcontrolCount');
+        if (countEl) countEl.textContent = '(' + rows.length + ')';
+        if (!rows.length) {
+          tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--sap-text-muted)"><i class="fas fa-sliders-h" style="margin-right:8px;color:#ccc"></i>No Well Control Equipment records match the current filters.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = rows.map(r => {
+          const st = bopInspStatus(r.expiryInspection);
+          return `<tr>
+            <td><strong>${r.asset || '—'}</strong></td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${r.serial || '—'}</td>
+            <td>${r.lastInspection ? new Date(r.lastInspection).toLocaleDateString('en-GB') : '—'}</td>
+            <td>${r.expiryInspection ? new Date(r.expiryInspection).toLocaleDateString('en-GB') : '—'}</td>
+            <td>${r.location || '—'}</td>
+            <td>${r.rig || '—'}</td>
+            <td><span class="status-badge ${st.cls}">${st.label}</span></td>
+            <td>
+              <button class="btn btn-ghost" style="height:24px;padding:0 8px;font-size:11px" onclick="openWellcontrolModal('${r.id}')"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-danger" style="height:24px;padding:0 8px;font-size:11px" onclick="deleteWellcontrolEntry('${r.id}')"><i class="fas fa-trash"></i></button>
+            </td>
+          </tr>`;
+        }).join('');
+      };
+
+      window.clearWellcontrolFilters = function() {
+        document.getElementById('wellcontrolSearch').value = '';
+        document.getElementById('wellcontrolRigFilter').value = '';
+        document.getElementById('wellcontrolInspFilter').value = '';
+        renderWellcontrolTable();
+      };
+
+      window.exportWellcontrolRegister = function() {
+        if (!WELLCONTROL_RECORDS.length) { showToast('No Well Control Equipment data to export.', 'warning'); return; }
+        const ws_data = [['Asset','Serial Number','Date of Last Inspection','Expiry of Inspection','Assigned Location','Rig','Status','Notes'],
+          ...WELLCONTROL_RECORDS.map(r => [r.asset, r.serial, r.lastInspection, r.expiryInspection, r.location, r.rig, bopInspStatus(r.expiryInspection).label, r.notes])];
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(ws_data);
+        XLSX.utils.book_append_sheet(wb, ws, 'Well Control Equipment');
+        XLSX.writeFile(wb, 'WellControl_Register.xlsx');
+        showToast('Well Control Equipment Register exported.', 'success');
+      };
+
+      // ══════════════════════════════════════════
+      //  END REGISTERS MODULE
+      // ══════════════════════════════════════════
 
       window.importMaintenance = async function importMaintenance(event) {
         if (!canImport()) { showToast('Only Admins can import data.', 'error'); return; }
