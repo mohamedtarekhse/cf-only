@@ -4201,14 +4201,25 @@
       </div>
       <div class="modal-body">
         <input type="hidden" id="wellhead_editId">
+        <div class="form-group">
+          <label class="form-label">Asset <span style="color:var(--sap-error)">*</span>
+            <span style="color:var(--sap-text-muted);font-size:11px;font-weight:400;margin-left:6px">— Well Head Equipment only</span>
+          </label>
+          <select class="form-select" id="wellhead_asset" onchange="onWellheadAssetChange()" style="font-size:13px">
+            <option value="">— Select Asset —</option>
+          </select>
+          <div id="wellhead_asset_none" style="display:none;font-size:12px;color:var(--sap-warning);margin-top:4px">
+            <i class="fas fa-exclamation-triangle"></i> No assets found with category "Well Head Equipment". Add assets first in the Assets tab.
+          </div>
+        </div>
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Asset <span style="color:var(--sap-error)">*</span></label>
-            <input class="form-input" id="wellhead_asset" placeholder="e.g. Casing Head 13-3/8">
+            <label class="form-label">Serial Number <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="wellhead_serial" placeholder="Auto-filled from asset or enter manually">
           </div>
           <div class="form-group">
-            <label class="form-label">Serial Number <span style="color:var(--sap-error)">*</span></label>
-            <input class="form-input" id="wellhead_serial" placeholder="e.g. SN-WH-2024-001">
+            <label class="form-label">Assigned Location</label>
+            <input class="form-input" id="wellhead_location" placeholder="Auto-filled from asset or enter manually">
           </div>
         </div>
         <div class="form-row">
@@ -4223,23 +4234,13 @@
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Assigned Location</label>
-            <input class="form-input" id="wellhead_location" placeholder="e.g. Cellar Deck, Well Centre...">
+            <label class="form-label">Rig</label>
+            <input class="form-input" id="wellhead_rig" placeholder="Auto-filled from asset or enter manually">
           </div>
           <div class="form-group">
-            <label class="form-label">Rig</label>
-            <select class="form-select" id="wellhead_rig">
-              <option value="">— Select Rig —</option>
-              <option>Rig 1</option><option>Rig 2</option><option>Rig 3</option><option>Rig 4</option>
-              <option>Rig 5</option><option>Rig 6</option><option>Rig 7</option><option>Rig 8</option>
-              <option>Rig 9</option><option>Rig 10</option><option>Rig 11</option><option>Rig 12</option>
-              <option>Rig 13</option><option>Rig 14</option>
-            </select>
+            <label class="form-label">Notes</label>
+            <textarea class="form-textarea" id="wellhead_notes" rows="1" placeholder="Additional notes..."></textarea>
           </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Notes</label>
-          <textarea class="form-textarea" id="wellhead_notes" rows="2" placeholder="Additional notes..."></textarea>
         </div>
       </div>
       <div class="modal-footer">
@@ -4259,14 +4260,25 @@
       </div>
       <div class="modal-body">
         <input type="hidden" id="wellcontrol_editId">
+        <div class="form-group">
+          <label class="form-label">Asset <span style="color:var(--sap-error)">*</span>
+            <span style="color:var(--sap-text-muted);font-size:11px;font-weight:400;margin-left:6px">— Well Control Equipment only</span>
+          </label>
+          <select class="form-select" id="wellcontrol_asset" onchange="onWellcontrolAssetChange()" style="font-size:13px">
+            <option value="">— Select Asset —</option>
+          </select>
+          <div id="wellcontrol_asset_none" style="display:none;font-size:12px;color:var(--sap-warning);margin-top:4px">
+            <i class="fas fa-exclamation-triangle"></i> No assets found with category "Well Control Equipment". Add assets first in the Assets tab.
+          </div>
+        </div>
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Asset <span style="color:var(--sap-error)">*</span></label>
-            <input class="form-input" id="wellcontrol_asset" placeholder="e.g. Choke Manifold 3000 PSI">
+            <label class="form-label">Serial Number <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="wellcontrol_serial" placeholder="Auto-filled from asset or enter manually">
           </div>
           <div class="form-group">
-            <label class="form-label">Serial Number <span style="color:var(--sap-error)">*</span></label>
-            <input class="form-input" id="wellcontrol_serial" placeholder="e.g. SN-WC-2024-001">
+            <label class="form-label">Assigned Location</label>
+            <input class="form-input" id="wellcontrol_location" placeholder="Auto-filled from asset or enter manually">
           </div>
         </div>
         <div class="form-row">
@@ -4281,23 +4293,13 @@
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Assigned Location</label>
-            <input class="form-input" id="wellcontrol_location" placeholder="e.g. Doghouse, Rig Floor...">
+            <label class="form-label">Rig</label>
+            <input class="form-input" id="wellcontrol_rig" placeholder="Auto-filled from asset or enter manually">
           </div>
           <div class="form-group">
-            <label class="form-label">Rig</label>
-            <select class="form-select" id="wellcontrol_rig">
-              <option value="">— Select Rig —</option>
-              <option>Rig 1</option><option>Rig 2</option><option>Rig 3</option><option>Rig 4</option>
-              <option>Rig 5</option><option>Rig 6</option><option>Rig 7</option><option>Rig 8</option>
-              <option>Rig 9</option><option>Rig 10</option><option>Rig 11</option><option>Rig 12</option>
-              <option>Rig 13</option><option>Rig 14</option>
-            </select>
+            <label class="form-label">Notes</label>
+            <textarea class="form-textarea" id="wellcontrol_notes" rows="1" placeholder="Additional notes..."></textarea>
           </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Notes</label>
-          <textarea class="form-textarea" id="wellcontrol_notes" rows="2" placeholder="Additional notes..."></textarea>
         </div>
       </div>
       <div class="modal-footer">
@@ -10548,38 +10550,77 @@ Instructions:
         } catch(e) { console.warn('[WellHead] load failed:', e.message); }
       }
 
+      // Populate Well Head asset dropdown from ASSETS filtered by category
+      function populateWellheadAssetDropdown(selectValue) {
+        const sel = document.getElementById('wellhead_asset');
+        const noneMsg = document.getElementById('wellhead_asset_none');
+        const filtered = ASSETS.filter(a => a.category === 'Well Head Equipment');
+        sel.innerHTML = '<option value="">— Select Asset —</option>';
+        filtered.forEach(a => {
+          const opt = document.createElement('option');
+          opt.value = a.name;
+          opt.dataset.serial   = a.serial   || '';
+          opt.dataset.location = a.location || '';
+          opt.dataset.rig      = a.rigName  || '';
+          opt.textContent = a.assetId + ' — ' + a.name + (a.serial ? ' (' + a.serial + ')' : '');
+          if (a.name === selectValue) opt.selected = true;
+          sel.appendChild(opt);
+        });
+        noneMsg.style.display = filtered.length === 0 ? 'block' : 'none';
+      }
+
+      // Auto-fill serial / location / rig when asset is picked
+      window.onWellheadAssetChange = function() {
+        const sel = document.getElementById('wellhead_asset');
+        const opt = sel.options[sel.selectedIndex];
+        if (opt && opt.value) {
+          const s = document.getElementById('wellhead_serial');
+          const l = document.getElementById('wellhead_location');
+          const r = document.getElementById('wellhead_rig');
+          if (!s.value) s.value = opt.dataset.serial   || '';
+          if (!l.value) l.value = opt.dataset.location || '';
+          if (!r.value) r.value = opt.dataset.rig      || '';
+        }
+      };
+
       window.openWellheadModal = function(id) {
         wellheadEditId = id || null;
         document.getElementById('wellheadModalTitle').textContent = id ? 'Edit Well Head Entry' : 'Add Well Head Register Entry';
+        // Reset all fields first
+        ['wellhead_editId','wellhead_serial','wellhead_lastInspection',
+         'wellhead_expiryInspection','wellhead_location','wellhead_rig','wellhead_notes']
+          .forEach(fid => document.getElementById(fid).value = '');
+        // Build asset dropdown (filtered to Well Head Equipment)
+        populateWellheadAssetDropdown('');
         if (id) {
           const r = WELLHEAD_RECORDS.find(x => x.id === id);
           if (r) {
-            document.getElementById('wellhead_editId').value          = r.id;
-            document.getElementById('wellhead_asset').value           = r.asset || '';
-            document.getElementById('wellhead_serial').value          = r.serial || '';
-            document.getElementById('wellhead_lastInspection').value  = r.lastInspection || '';
-            document.getElementById('wellhead_expiryInspection').value= r.expiryInspection || '';
-            document.getElementById('wellhead_location').value        = r.location || '';
-            document.getElementById('wellhead_rig').value             = r.rig || '';
-            document.getElementById('wellhead_notes').value           = r.notes || '';
+            document.getElementById('wellhead_editId').value           = r.id;
+            document.getElementById('wellhead_serial').value           = r.serial || '';
+            document.getElementById('wellhead_lastInspection').value   = r.lastInspection || '';
+            document.getElementById('wellhead_expiryInspection').value = r.expiryInspection || '';
+            document.getElementById('wellhead_location').value         = r.location || '';
+            document.getElementById('wellhead_rig').value              = r.rig || '';
+            document.getElementById('wellhead_notes').value            = r.notes || '';
+            // Re-populate dropdown with the saved asset pre-selected
+            populateWellheadAssetDropdown(r.asset || '');
           }
-        } else {
-          ['wellhead_editId','wellhead_asset','wellhead_serial','wellhead_lastInspection','wellhead_expiryInspection','wellhead_location','wellhead_notes'].forEach(fid => document.getElementById(fid).value = '');
-          document.getElementById('wellhead_rig').value = '';
         }
         openModal('wellheadModal');
       };
 
       window.saveWellheadEntry = async function() {
-        const asset  = document.getElementById('wellhead_asset').value.trim();
+        const sel    = document.getElementById('wellhead_asset');
+        const asset  = sel.value.trim();
         const serial = document.getElementById('wellhead_serial').value.trim();
-        if (!asset || !serial) { showToast('Asset and Serial Number are required.', 'error'); return; }
+        if (!asset)  { showToast('Please select an asset.', 'error'); return; }
+        if (!serial) { showToast('Serial Number is required.', 'error'); return; }
         const payload = regPayload({
           asset, serial,
           lastInspection:   document.getElementById('wellhead_lastInspection').value,
           expiryInspection: document.getElementById('wellhead_expiryInspection').value,
           location:         document.getElementById('wellhead_location').value.trim(),
-          rig:              document.getElementById('wellhead_rig').value,
+          rig:              document.getElementById('wellhead_rig').value.trim(),
           notes:            document.getElementById('wellhead_notes').value.trim(),
         });
         try {
@@ -10646,38 +10687,77 @@ Instructions:
         } catch(e) { console.warn('[WellControl] load failed:', e.message); }
       }
 
+      // Populate Well Control asset dropdown from ASSETS filtered by category
+      function populateWellcontrolAssetDropdown(selectValue) {
+        const sel = document.getElementById('wellcontrol_asset');
+        const noneMsg = document.getElementById('wellcontrol_asset_none');
+        const filtered = ASSETS.filter(a => a.category === 'Well Control Equipment');
+        sel.innerHTML = '<option value="">— Select Asset —</option>';
+        filtered.forEach(a => {
+          const opt = document.createElement('option');
+          opt.value = a.name;
+          opt.dataset.serial   = a.serial   || '';
+          opt.dataset.location = a.location || '';
+          opt.dataset.rig      = a.rigName  || '';
+          opt.textContent = a.assetId + ' — ' + a.name + (a.serial ? ' (' + a.serial + ')' : '');
+          if (a.name === selectValue) opt.selected = true;
+          sel.appendChild(opt);
+        });
+        noneMsg.style.display = filtered.length === 0 ? 'block' : 'none';
+      }
+
+      // Auto-fill serial / location / rig when asset is picked
+      window.onWellcontrolAssetChange = function() {
+        const sel = document.getElementById('wellcontrol_asset');
+        const opt = sel.options[sel.selectedIndex];
+        if (opt && opt.value) {
+          const s = document.getElementById('wellcontrol_serial');
+          const l = document.getElementById('wellcontrol_location');
+          const r = document.getElementById('wellcontrol_rig');
+          if (!s.value) s.value = opt.dataset.serial   || '';
+          if (!l.value) l.value = opt.dataset.location || '';
+          if (!r.value) r.value = opt.dataset.rig      || '';
+        }
+      };
+
       window.openWellcontrolModal = function(id) {
         wellcontrolEditId = id || null;
         document.getElementById('wellcontrolModalTitle').textContent = id ? 'Edit Well Control Entry' : 'Add Well Control Equipment Entry';
+        // Reset all fields first
+        ['wellcontrol_editId','wellcontrol_serial','wellcontrol_lastInspection',
+         'wellcontrol_expiryInspection','wellcontrol_location','wellcontrol_rig','wellcontrol_notes']
+          .forEach(fid => document.getElementById(fid).value = '');
+        // Build asset dropdown (filtered to Well Control Equipment)
+        populateWellcontrolAssetDropdown('');
         if (id) {
           const r = WELLCONTROL_RECORDS.find(x => x.id === id);
           if (r) {
-            document.getElementById('wellcontrol_editId').value          = r.id;
-            document.getElementById('wellcontrol_asset').value           = r.asset || '';
-            document.getElementById('wellcontrol_serial').value          = r.serial || '';
-            document.getElementById('wellcontrol_lastInspection').value  = r.lastInspection || '';
-            document.getElementById('wellcontrol_expiryInspection').value= r.expiryInspection || '';
-            document.getElementById('wellcontrol_location').value        = r.location || '';
-            document.getElementById('wellcontrol_rig').value             = r.rig || '';
-            document.getElementById('wellcontrol_notes').value           = r.notes || '';
+            document.getElementById('wellcontrol_editId').value           = r.id;
+            document.getElementById('wellcontrol_serial').value           = r.serial || '';
+            document.getElementById('wellcontrol_lastInspection').value   = r.lastInspection || '';
+            document.getElementById('wellcontrol_expiryInspection').value = r.expiryInspection || '';
+            document.getElementById('wellcontrol_location').value         = r.location || '';
+            document.getElementById('wellcontrol_rig').value              = r.rig || '';
+            document.getElementById('wellcontrol_notes').value            = r.notes || '';
+            // Re-populate dropdown with the saved asset pre-selected
+            populateWellcontrolAssetDropdown(r.asset || '');
           }
-        } else {
-          ['wellcontrol_editId','wellcontrol_asset','wellcontrol_serial','wellcontrol_lastInspection','wellcontrol_expiryInspection','wellcontrol_location','wellcontrol_notes'].forEach(fid => document.getElementById(fid).value = '');
-          document.getElementById('wellcontrol_rig').value = '';
         }
         openModal('wellcontrolModal');
       };
 
       window.saveWellcontrolEntry = async function() {
-        const asset  = document.getElementById('wellcontrol_asset').value.trim();
+        const sel    = document.getElementById('wellcontrol_asset');
+        const asset  = sel.value.trim();
         const serial = document.getElementById('wellcontrol_serial').value.trim();
-        if (!asset || !serial) { showToast('Asset and Serial Number are required.', 'error'); return; }
+        if (!asset)  { showToast('Please select an asset.', 'error'); return; }
+        if (!serial) { showToast('Serial Number is required.', 'error'); return; }
         const payload = regPayload({
           asset, serial,
           lastInspection:   document.getElementById('wellcontrol_lastInspection').value,
           expiryInspection: document.getElementById('wellcontrol_expiryInspection').value,
           location:         document.getElementById('wellcontrol_location').value.trim(),
-          rig:              document.getElementById('wellcontrol_rig').value,
+          rig:              document.getElementById('wellcontrol_rig').value.trim(),
           notes:            document.getElementById('wellcontrol_notes').value.trim(),
         });
         try {
