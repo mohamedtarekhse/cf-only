@@ -371,6 +371,89 @@
       border-color: var(--sap-warning);
     }
 
+    /* ── BULK ACTION BAR ── */
+    .bulk-bar {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 14px;
+      background: linear-gradient(90deg, #0040B0 0%, #0070F2 100%);
+      color: #fff;
+      border-bottom: 2px solid #003090;
+      animation: bulkSlideIn .18s ease;
+    }
+    .bulk-bar.visible { display: flex; }
+    @keyframes bulkSlideIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .bulk-count {
+      font-weight: 700;
+      font-size: 13.5px;
+      background: rgba(255,255,255,.18);
+      border-radius: 12px;
+      padding: 2px 12px;
+      white-space: nowrap;
+    }
+    .bulk-label {
+      font-size: 13px;
+      opacity: .9;
+      white-space: nowrap;
+    }
+    .bulk-sep { width: 1px; height: 22px; background: rgba(255,255,255,.25); margin: 0 4px; }
+    .bulk-btn {
+      height: 30px;
+      padding: 0 14px;
+      border-radius: var(--radius);
+      border: 1.5px solid rgba(255,255,255,.35);
+      background: rgba(255,255,255,.12);
+      color: #fff;
+      font-family: inherit;
+      font-size: 12.5px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background .15s, border-color .15s;
+      white-space: nowrap;
+    }
+    .bulk-btn:hover { background: rgba(255,255,255,.25); border-color: rgba(255,255,255,.6); }
+    .bulk-btn.danger { border-color: #ff8080; background: rgba(180,0,0,.35); }
+    .bulk-btn.danger:hover { background: rgba(220,0,0,.55); }
+    .bulk-spacer { flex: 1; }
+    .bulk-close {
+      background: none; border: none; color: rgba(255,255,255,.7);
+      cursor: pointer; font-size: 16px; padding: 2px 4px; line-height: 1;
+      transition: color .15s;
+    }
+    .bulk-close:hover { color: #fff; }
+
+    /* ── MASS EDIT MODAL SPECIFICS ── */
+    .mass-edit-field {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 6px;
+      border: 1.5px solid var(--sap-border);
+      margin-bottom: 10px;
+      background: #fafbfc;
+      transition: border-color .15s, background .15s;
+    }
+    .mass-edit-field.active {
+      border-color: var(--sap-blue);
+      background: var(--sap-blue-light);
+    }
+    .mass-edit-field input[type=checkbox] {
+      width: 16px; height: 16px; cursor: pointer; accent-color: var(--sap-blue);
+      flex-shrink: 0;
+    }
+    .mass-edit-field label { font-size: 12.5px; font-weight: 600; color: var(--sap-text-muted); min-width: 110px; flex-shrink: 0; }
+    .mass-edit-field .field-ctrl { flex: 1; }
+    .mass-edit-field .field-ctrl select,
+    .mass-edit-field .field-ctrl input { width: 100%; }
+
     /* ── COLUMN PICKER ── */
     .col-picker-wrap { position: relative; display: inline-flex; }
     .col-picker-btn {
@@ -2922,6 +3005,18 @@
               <button class="btn btn-ghost" onclick="clearFilters()"><i class="fas fa-times"></i> Clear</button>
             </div>
           </div>
+
+          <!-- Bulk Action Bar (hidden until items selected) -->
+          <div class="bulk-bar" id="assetBulkBar">
+            <span class="bulk-count" id="bulkCount">0</span>
+            <span class="bulk-label">assets selected</span>
+            <div class="bulk-sep"></div>
+            <button class="bulk-btn" onclick="openMassEditModal()"><i class="fas fa-edit"></i> Edit Selected</button>
+            <button class="bulk-btn danger" onclick="bulkDeleteAssets()"><i class="fas fa-trash"></i> Delete Selected</button>
+            <div class="bulk-spacer"></div>
+            <button class="bulk-close" title="Clear selection" onclick="clearAssetSelection()"><i class="fas fa-times"></i></button>
+          </div>
+
           <div class="table-wrap" style="flex:1">
             <table id="assetTable">
               <thead id="assetThead">
@@ -3848,6 +3943,114 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeModal('addContractModal')">Cancel</button>
         <button class="btn btn-primary" onclick="saveContractEntry()"><i class="fas fa-save"></i> Save Contract</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MASS EDIT MODAL -->
+  <div class="modal-overlay" id="massEditModal">
+    <div class="modal" style="width:560px;max-width:96vw">
+      <div class="modal-header">
+        <i class="fas fa-edit" style="color:var(--sap-blue);font-size:18px"></i>
+        <h2>Edit Selected Assets</h2>
+        <button class="shell-btn" style="color:var(--sap-text-muted)" onclick="closeModal('massEditModal')">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div style="background:var(--sap-blue-light);border:1px solid #B3D4FF;border-radius:6px;padding:10px 14px;margin-bottom:18px;display:flex;align-items:center;gap:10px;">
+          <i class="fas fa-info-circle" style="color:var(--sap-blue);font-size:16px;flex-shrink:0"></i>
+          <span style="font-size:13px;color:#0040B0">Check the fields you want to change. Only checked fields will be updated across <strong id="massEditCount">0</strong> selected asset(s).</span>
+        </div>
+
+        <!-- Status -->
+        <div class="mass-edit-field" id="mef-status">
+          <input type="checkbox" id="mef_status_chk" onchange="toggleMassField('status')">
+          <label for="mef_status_chk">Status</label>
+          <div class="field-ctrl">
+            <select class="form-control" id="mef_status" disabled>
+              <option value="">— Select —</option>
+              <option>Active</option>
+              <option>Maintenance</option>
+              <option>Inactive</option>
+              <option>Contracted</option>
+              <option>Retired</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Rig -->
+        <div class="mass-edit-field" id="mef-rig">
+          <input type="checkbox" id="mef_rig_chk" onchange="toggleMassField('rig')">
+          <label for="mef_rig_chk">Rig</label>
+          <div class="field-ctrl">
+            <select class="form-control" id="mef_rig" disabled>
+              <option value="">— Select / Clear —</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Location -->
+        <div class="mass-edit-field" id="mef-location">
+          <input type="checkbox" id="mef_location_chk" onchange="toggleMassField('location')">
+          <label for="mef_location_chk">Location</label>
+          <div class="field-ctrl">
+            <input class="form-control" id="mef_location" placeholder="New location value..." disabled>
+          </div>
+        </div>
+
+        <!-- Company -->
+        <div class="mass-edit-field" id="mef-company">
+          <input type="checkbox" id="mef_company_chk" onchange="toggleMassField('company')">
+          <label for="mef_company_chk">Company</label>
+          <div class="field-ctrl">
+            <select class="form-control" id="mef_company" disabled>
+              <option value="">— Select —</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Category -->
+        <div class="mass-edit-field" id="mef-category">
+          <input type="checkbox" id="mef_category_chk" onchange="toggleMassField('category')">
+          <label for="mef_category_chk">Category</label>
+          <div class="field-ctrl">
+            <select class="form-control" id="mef_category" disabled>
+              <option value="">— Select —</option>
+              <option>Tubular</option>
+              <option>Handling Tools</option>
+              <option>Well Head Equipment</option>
+              <option>Well Control Equipment</option>
+              <option>Safety Equipment</option>
+              <option>Generators</option>
+              <option>Agitators</option>
+              <option>Compressors</option>
+              <option>Engines</option>
+              <option>AC Motors</option>
+              <option>Centrifugal Pumps</option>
+              <option>Drilling Equipment</option>
+              <option>Hoisting Equipment</option>
+              <option>Winches</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Inspection Type -->
+        <div class="mass-edit-field" id="mef-inspectionType">
+          <input type="checkbox" id="mef_inspectionType_chk" onchange="toggleMassField('inspectionType')">
+          <label for="mef_inspectionType_chk">Inspection Type</label>
+          <div class="field-ctrl">
+            <input class="form-control" id="mef_inspectionType" placeholder="e.g. Annual, 6-Monthly..." disabled>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer" style="justify-content:space-between">
+        <span style="font-size:12px;color:var(--sap-text-muted)" id="massEditProgress"></span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" onclick="closeModal('massEditModal')">Cancel</button>
+          <button class="btn btn-primary" onclick="applyMassEdit()"><i class="fas fa-check"></i> Apply Changes</button>
+        </div>
       </div>
     </div>
   </div>
@@ -5307,8 +5510,8 @@ Asset Management System</textarea>
               default:           return `<td>—</td>`;
             }
           }).join('');
-          return `<tr id="row-${a.assetId}" onclick="handleRowClick(event,'${a.assetId}')">
-            <td class="checkbox-cell"><input type="checkbox" onclick="e => e.stopPropagation()"></td>
+          return `<tr id="row-${a.assetId}" onclick="handleRowClick(event,'${a.assetId}')" ${_selectedAssets.has(a.assetId) ? 'class="selected"' : ''}>
+            <td class="checkbox-cell"><input type="checkbox" data-asset-id="${a.assetId}" ${_selectedAssets.has(a.assetId) ? 'checked' : ''} onclick="event.stopPropagation();onAssetCheckChange(this,'${a.assetId}')"></td>
             ${dataCells}
             <td onclick="event.stopPropagation()">
               <button class="btn btn-ghost btn-icon" title="View" onclick="openAssetDetail('${a.assetId}')"><i class="fas fa-eye"></i></button>
@@ -5323,6 +5526,7 @@ Asset Management System</textarea>
       document.getElementById('assetCount').textContent = `(${total} records)`;
       renderPagination(total, start, end);
       updateKPIs();
+      syncBulkBar();
     }
 
     function handleRowClick(e, id) {
@@ -5358,10 +5562,229 @@ Asset Management System</textarea>
     function changePageSize() { pageSize = parseInt(document.getElementById('pageSize').value); currentPage = 1; renderAssets(); }
 
     // ══════════════════════════════════
-    //  SELECT ALL
+    //  SELECTION TRACKING
     // ══════════════════════════════════
+    const _selectedAssets = new Set();
+
+    function getSelectedAssetIds() { return [..._selectedAssets]; }
+
+    function onAssetCheckChange(cb, assetId) {
+      if (cb.checked) _selectedAssets.add(assetId);
+      else _selectedAssets.delete(assetId);
+      syncBulkBar();
+    }
+
     function toggleSelectAll(cb) {
-      document.querySelectorAll('#assetTbody input[type=checkbox]').forEach(c => c.checked = cb.checked);
+      document.querySelectorAll('#assetTbody input[type=checkbox]').forEach(c => {
+        c.checked = cb.checked;
+        const id = c.dataset.assetId;
+        if (id) {
+          if (cb.checked) _selectedAssets.add(id);
+          else _selectedAssets.delete(id);
+        }
+      });
+      syncBulkBar();
+    }
+
+    function syncBulkBar() {
+      const n = _selectedAssets.size;
+      const bar = document.getElementById('assetBulkBar');
+      const cnt = document.getElementById('bulkCount');
+      if (bar) { bar.classList.toggle('visible', n > 0); }
+      if (cnt) cnt.textContent = n;
+      // Sync the header checkbox state
+      const allCbs = document.querySelectorAll('#assetTbody input[type=checkbox]');
+      const hdr = document.getElementById('selectAll');
+      if (hdr && allCbs.length > 0) {
+        const checkedCount = [...allCbs].filter(c => c.checked).length;
+        hdr.checked = checkedCount === allCbs.length;
+        hdr.indeterminate = checkedCount > 0 && checkedCount < allCbs.length;
+      }
+    }
+
+    function clearAssetSelection() {
+      _selectedAssets.clear();
+      document.querySelectorAll('#assetTbody input[type=checkbox]').forEach(c => c.checked = false);
+      const hdr = document.getElementById('selectAll');
+      if (hdr) { hdr.checked = false; hdr.indeterminate = false; }
+      syncBulkBar();
+    }
+
+    // ══════════════════════════════════
+    //  BULK DELETE
+    // ══════════════════════════════════
+    async function bulkDeleteAssets() {
+      const ids = getSelectedAssetIds();
+      if (!ids.length) return;
+      if (!confirm(`Delete ${ids.length} selected asset(s)? This cannot be undone.`)) return;
+
+      let deleted = 0, failed = 0;
+      showToast(`Deleting ${ids.length} asset(s)…`, 'info');
+
+      for (const id of ids) {
+        try {
+          await window.deleteAsset ? window.deleteAsset(id, true) : (() => {
+            ASSETS = ASSETS.filter(a => a.assetId !== id);
+            filteredAssets = filteredAssets.filter(a => a.assetId !== id);
+          })();
+          deleted++;
+        } catch(e) { failed++; }
+      }
+
+      // If API version is available it handles each delete; otherwise do batch cleanup
+      if (typeof DELETE !== 'undefined') {
+        // API bulk path — delete in parallel
+        const results = await Promise.allSettled(ids.map(id => DELETE(`/assets/${id}`)));
+        deleted = results.filter(r => r.status === 'fulfilled').length;
+        failed  = results.filter(r => r.status === 'rejected').length;
+        ids.forEach(id => {
+          ASSETS = ASSETS.filter(a => a.assetId !== id);
+          filteredAssets = filteredAssets.filter(a => a.assetId !== id);
+        });
+      }
+
+      _selectedAssets.clear();
+      renderAssets();
+      updateKPIs();
+      const msg = failed ? `Deleted ${deleted}, ${failed} failed.` : `${deleted} asset(s) deleted ✓`;
+      showToast(msg, failed ? 'warning' : 'success');
+    }
+
+    // ══════════════════════════════════
+    //  MASS EDIT MODAL
+    // ══════════════════════════════════
+    function openMassEditModal() {
+      const ids = getSelectedAssetIds();
+      if (!ids.length) return;
+
+      document.getElementById('massEditCount').textContent = ids.length;
+      document.getElementById('massEditProgress').textContent = '';
+
+      // Reset all checkboxes + disable all controls
+      ['status','rig','location','company','category','inspectionType'].forEach(f => {
+        const chk = document.getElementById(`mef_${f}_chk`);
+        const ctrl = document.getElementById(`mef_${f}`);
+        const row = document.getElementById(`mef-${f}`);
+        if (chk) chk.checked = false;
+        if (ctrl) { ctrl.disabled = true; ctrl.value = ctrl.tagName === 'SELECT' ? '' : ''; }
+        if (row) row.classList.remove('active');
+      });
+
+      // Populate dropdowns with live data
+      const rigSel = document.getElementById('mef_rig');
+      rigSel.innerHTML = '<option value="">— Select / Clear —</option>';
+      RIGS.forEach(r => rigSel.appendChild(new Option(r.name, r.name)));
+
+      const coSel = document.getElementById('mef_company');
+      coSel.innerHTML = '<option value="">— Select —</option>';
+      COMPANIES.forEach(c => coSel.appendChild(new Option(c.name, c.name)));
+
+      openModal('massEditModal');
+    }
+
+    function toggleMassField(field) {
+      const chk  = document.getElementById(`mef_${field}_chk`);
+      const ctrl = document.getElementById(`mef_${field}`);
+      const row  = document.getElementById(`mef-${field}`);
+      const on   = chk.checked;
+      if (ctrl) ctrl.disabled = !on;
+      if (row)  row.classList.toggle('active', on);
+      if (on && ctrl) ctrl.focus();
+    }
+
+    async function applyMassEdit() {
+      const ids = getSelectedAssetIds();
+      if (!ids.length) { showToast('No assets selected.', 'warning'); return; }
+
+      // Collect which fields are enabled
+      const fields = ['status','rig','location','company','category','inspectionType'];
+      const changes = {};
+      fields.forEach(f => {
+        const chk = document.getElementById(`mef_${f}_chk`);
+        const ctrl = document.getElementById(`mef_${f}`);
+        if (chk?.checked && ctrl) {
+          const val = ctrl.value;
+          if (f === 'rig')            changes.rig_name = val;
+          else if (f === 'inspectionType') changes.inspection_type = val;
+          else                        changes[f] = val;
+        }
+      });
+
+      if (!Object.keys(changes).length) {
+        showToast('Check at least one field to update.', 'warning'); return;
+      }
+
+      const prog = document.getElementById('massEditProgress');
+      prog.textContent = 'Applying…';
+
+      let updated = 0, failed = 0;
+
+      if (typeof PUT !== 'undefined') {
+        // API path — update in parallel
+        const results = await Promise.allSettled(ids.map(async id => {
+          const asset = ASSETS.find(a => a.assetId === id);
+          if (!asset) throw new Error('Not found');
+          // Build full payload (PUT requires all fields)
+          const payload = {
+            asset_id: asset.assetId,
+            name: asset.name,
+            category: changes.category || asset.category,
+            status: changes.status || asset.status,
+            company: changes.company || asset.company,
+            rig_name: changes.rig_name !== undefined ? changes.rig_name : asset.rigName,
+            location: changes.location || asset.location,
+            value: asset.value,
+            acquisition_date: asset.acquisitionDate || null,
+            serial: asset.serial || '',
+            notes: asset.notes || '',
+            last_inspection: asset.lastInspection || null,
+            inspection_type: changes.inspection_type !== undefined ? changes.inspection_type : (asset.inspectionType || ''),
+            cert_link: asset.certLink || '',
+          };
+          const res = await PUT(`/assets/${id}`, payload);
+          // Update local state
+          const idx = ASSETS.findIndex(a => a.assetId === id);
+          if (idx >= 0) {
+            if (typeof normA === 'function') ASSETS[idx] = normA(res.data);
+            else Object.assign(ASSETS[idx], {
+              category: payload.category, status: payload.status,
+              company: payload.company, rigName: payload.rig_name,
+              location: payload.location, inspectionType: payload.inspection_type,
+            });
+          }
+        }));
+        updated = results.filter(r => r.status === 'fulfilled').length;
+        failed  = results.filter(r => r.status === 'rejected').length;
+      } else {
+        // Local-only fallback
+        ids.forEach(id => {
+          const idx = ASSETS.findIndex(a => a.assetId === id);
+          if (idx < 0) { failed++; return; }
+          if (changes.status)          ASSETS[idx].status = changes.status;
+          if (changes.rig_name !== undefined) ASSETS[idx].rigName = changes.rig_name;
+          if (changes.location)        ASSETS[idx].location = changes.location;
+          if (changes.company)         ASSETS[idx].company = changes.company;
+          if (changes.category)        ASSETS[idx].category = changes.category;
+          if (changes.inspection_type !== undefined) ASSETS[idx].inspectionType = changes.inspection_type;
+          updated++;
+        });
+      }
+
+      filteredAssets = [...ASSETS];
+      _selectedAssets.clear();
+      closeModal('massEditModal');
+      renderAssets();
+      updateKPIs();
+
+      const changeList = Object.keys(changes).map(k => ({
+        rig_name: 'Rig', status: 'Status', location: 'Location',
+        company: 'Company', category: 'Category', inspection_type: 'Inspection Type'
+      }[k] || k)).join(', ');
+
+      const msg = failed
+        ? `Updated ${updated} asset(s), ${failed} failed. Fields: ${changeList}`
+        : `${updated} asset(s) updated ✓  (${changeList})`;
+      showToast(msg, failed ? 'warning' : 'success');
     }
 
     // ══════════════════════════════════
@@ -5534,12 +5957,13 @@ Asset Management System</textarea>
       applyFilters();
     }
 
-    function deleteAsset(id) {
-      if (!confirm('Delete asset ' + id + '?')) return;
+    function deleteAsset(id, silent) {
+      if (!silent && !confirm('Delete asset ' + id + '?')) return;
       ASSETS = ASSETS.filter(a => a.assetId !== id);
       filteredAssets = filteredAssets.filter(a => a.assetId !== id);
+      _selectedAssets.delete(id);
       renderAssets();
-      showToast('Asset ' + id + ' deleted.', 'warning');
+      if (!silent) showToast('Asset ' + id + ' deleted.', 'warning');
     }
 
     // ══════════════════════════════════
@@ -5574,7 +5998,7 @@ Asset Management System</textarea>
       <td>${c.end}</td>
       <td style="font-family:'IBM Plex Mono',monospace;font-size:12.5px">$${Number(c.value).toLocaleString()}</td>
       <td>${statusBadge(c.status)}</td>
-      <td><button class="btn btn-ghost btn-icon" onclick="openContractDetail('${c.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-ghost btn-icon"><i class="fas fa-edit"></i></button></td>
+      <td><button class="btn btn-ghost btn-icon" onclick="openContractDetail('${c.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-ghost btn-icon" onclick="openAddContractModal(CONTRACTS.find(x=>x.id==='${c.id}'))"><i class="fas fa-edit"></i></button></td>
     </tr>`).join('');
     }
 
@@ -5592,7 +6016,7 @@ Asset Management System</textarea>
       <td>${r.depth}</td>
       <td>${statusBadge(r.status)}</td>
       <td>${ASSETS.filter(a => a.rigName === r.name).length}</td>
-      <td><button class="btn btn-ghost btn-icon" onclick="openRigDetail('${r.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-ghost btn-icon"><i class="fas fa-edit"></i></button></td>
+      <td><button class="btn btn-ghost btn-icon" onclick="openRigDetail('${r.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-ghost btn-icon" onclick="openAddRigModal(RIGS.find(x=>x.id==='${r.id}'))"><i class="fas fa-edit"></i></button></td>
     </tr>`).join('');
     }
 
