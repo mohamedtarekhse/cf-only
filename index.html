@@ -136,6 +136,8 @@
     .shell-btn:hover {
       background: rgba(255, 255, 255, 0.15);
     }
+    #refreshBtn:disabled { opacity: .6; cursor: not-allowed; }
+    #refreshBtn:disabled:hover { background: none; }
 
     .badge {
       position: absolute;
@@ -2828,7 +2830,9 @@
     <span class="shell-app-title">Asset Management — Land Rig & Contracting</span>
     <div class="shell-spacer"></div>
     <div class="shell-actions">
-      <button class="shell-btn" onclick="toggleNotif()" title="Notifications">
+      <button class="shell-btn" id="refreshBtn" onclick="refreshDatabase()" title="Refresh Database" style="position:relative">
+        <i class="fas fa-sync-alt" id="refreshIcon"></i>
+      </button>
         <i class="fas fa-bell"></i>
         <span class="badge" id="notifBadge">4</span>
       </button>
@@ -5998,7 +6002,7 @@ Asset Management System</textarea>
       <td>${c.end}</td>
       <td style="font-family:'IBM Plex Mono',monospace;font-size:12.5px">$${Number(c.value).toLocaleString()}</td>
       <td>${statusBadge(c.status)}</td>
-      <td><button class="btn btn-ghost btn-icon" onclick="openContractDetail('${c.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-ghost btn-icon" onclick="openAddContractModal(CONTRACTS.find(x=>x.id==='${c.id}'))"><i class="fas fa-edit"></i></button></td>
+      <td><button class="btn btn-ghost btn-icon" onclick="openContractDetail('${c.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-ghost btn-icon" onclick="openAddContractModal(CONTRACTS.find(x=>x.id==='${c.id}'))"><i class="fas fa-edit"></i></button><button class="btn btn-ghost btn-icon" title="Delete" style="color:var(--sap-error)" onclick="deleteContract('${c.id}')"><i class="fas fa-trash"></i></button></td>
     </tr>`).join('');
     }
 
@@ -6016,7 +6020,7 @@ Asset Management System</textarea>
       <td>${r.depth}</td>
       <td>${statusBadge(r.status)}</td>
       <td>${ASSETS.filter(a => a.rigName === r.name).length}</td>
-      <td><button class="btn btn-ghost btn-icon" onclick="openRigDetail('${r.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-ghost btn-icon" onclick="openAddRigModal(RIGS.find(x=>x.id==='${r.id}'))"><i class="fas fa-edit"></i></button></td>
+      <td><button class="btn btn-ghost btn-icon" onclick="openRigDetail('${r.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-ghost btn-icon" onclick="openAddRigModal(RIGS.find(x=>x.id==='${r.id}'))"><i class="fas fa-edit"></i></button><button class="btn btn-ghost btn-icon" title="Delete" style="color:var(--sap-error)" onclick="deleteRig('${r.id}')"><i class="fas fa-trash"></i></button></td>
     </tr>`).join('');
     }
 
@@ -6136,6 +6140,78 @@ Asset Management System</textarea>
       const c = currentContract;
       closeModal('contractDetailModal');
       openAddContractModal(c);
+    }
+
+    // ══════════════════════════════════
+    //  REFRESH DATABASE
+    // ══════════════════════════════════
+    async function refreshDatabase() {
+      const icon = document.getElementById('refreshIcon');
+      const btn  = document.getElementById('refreshBtn');
+      if (btn.disabled) return;
+      btn.disabled = true;
+      icon.style.transition = 'transform 0.6s linear';
+      icon.style.transform  = 'rotate(360deg)';
+      // Spin continuously while loading
+      let spinning = true;
+      let angle = 0;
+      const spinInterval = setInterval(() => {
+        angle += 8;
+        icon.style.transform = `rotate(${angle}deg)`;
+      }, 30);
+
+      try {
+        if (typeof bootstrap === 'function') {
+          await bootstrap();
+        } else {
+          // Fallback: re-render with existing data
+          rerenderAll();
+          showToast('View refreshed ✓', 'success');
+        }
+      } catch(e) {
+        showToast('Refresh failed: ' + e.message, 'error');
+      } finally {
+        clearInterval(spinInterval);
+        icon.style.transition = 'transform 0.3s ease';
+        icon.style.transform  = 'rotate(0deg)';
+        btn.disabled = false;
+      }
+    }
+
+    // ══════════════════════════════════
+    //  DELETE CONTRACT
+    // ══════════════════════════════════
+    async function deleteContract(id) {
+      const c = CONTRACTS.find(x => x.id === id);
+      if (!c) return;
+      if (!confirm(`Delete contract "${id}" (${c.company || ''})?  This cannot be undone.`)) return;
+      try {
+        if (typeof DELETE !== 'undefined') {
+          await DELETE(`/contracts/${id}`);
+        }
+        CONTRACTS.splice(CONTRACTS.findIndex(x => x.id === id), 1);
+        applyContractFilters();
+        showToast(`Contract ${id} deleted ✓`, 'warning');
+      } catch(e) { showToast('Delete failed: ' + e.message, 'error'); }
+    }
+
+    // ══════════════════════════════════
+    //  DELETE RIG
+    // ══════════════════════════════════
+    async function deleteRig(id) {
+      const r = RIGS.find(x => x.id === id);
+      if (!r) return;
+      const assetCount = ASSETS.filter(a => a.rigName === r.name).length;
+      const warning = assetCount > 0 ? `\n⚠ ${assetCount} asset(s) are assigned to this rig.` : '';
+      if (!confirm(`Delete rig "${r.name}"?${warning}\n\nThis cannot be undone.`)) return;
+      try {
+        if (typeof DELETE !== 'undefined') {
+          await DELETE(`/rigs/${id}`);
+        }
+        RIGS.splice(RIGS.findIndex(x => x.id === id), 1);
+        renderRigs();
+        showToast(`Rig "${r.name}" deleted ✓`, 'warning');
+      } catch(e) { showToast('Delete failed: ' + e.message, 'error'); }
     }
 
     // ══════════════════════════════════
@@ -10109,6 +10185,9 @@ Instructions:
           showToast('⚠ Database error: ' + e.message, 'error');
         }
       }
+
+      // Expose so shell-bar Refresh button can call it
+      window.bootstrap = bootstrap;
 
       // ══════════════════════════════════════════════════════════════════════════
       //  OVERRIDE: saveAsset()

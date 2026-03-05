@@ -142,6 +142,7 @@ async function router(path, method, url, request, SB, KEY) {
     }
     if(method==='POST') return ok(await sbPost(SB,KEY,'contracts',body));
     if(method==='PUT'){ const {id:_,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'contracts',{id:`eq.${id}`},u)); }
+    if(method==='DELETE'){const r=await sbDelete(SB,KEY,'contracts',{id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
   }
 
   // BOM
