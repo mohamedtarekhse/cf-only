@@ -2750,7 +2750,7 @@
     <button class="nav-tab" onclick="switchTab('maintenance', this)" id="tab-maintenance"><i class="fas fa-tools"></i>
       Maintenance <span id="maintAlertBadge"
         style="display:none;background:#B00;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:1px 6px;margin-left:4px">0</span></button>
-    <button class="nav-tab" onclick="switchTab('reports', this)" id="tab-reports"><i class="fas fa-chart-line"></i> Reports</button>
+    <button class="nav-tab" onclick="switchTab('registers', this)" id="tab-registers"><i class="fas fa-book"></i> Registers</button>
   </div>
 
   <!-- NOTIFICATION PANEL -->
@@ -3626,109 +3626,53 @@
     </div>
   </div>
 
-    <!-- ======= REPORTS ======= -->
+  <!-- ======= REPORTS ======= -->
   <div class="section" id="section-reports">
     <div class="content">
       <div class="kpi-row">
         <div class="kpi-card blue">
           <div class="kpi-icon"><i class="fas fa-dollar-sign"></i></div>
           <div class="kpi-label">Total Asset Value</div>
-          <div class="kpi-value" id="rptValue">�</div>
+          <div class="kpi-value" id="rptValue">—</div>
           <div class="kpi-sub">USD</div>
         </div>
         <div class="kpi-card green">
           <div class="kpi-icon"><i class="fas fa-file-contract"></i></div>
           <div class="kpi-label">Active Contracts</div>
-          <div class="kpi-value" id="rptContracts">�</div>
+          <div class="kpi-value" id="rptContracts">—</div>
           <div class="kpi-sub">Current</div>
         </div>
         <div class="kpi-card orange">
           <div class="kpi-icon"><i class="fas fa-oil-well"></i></div>
           <div class="kpi-label">Rigs Active</div>
-          <div class="kpi-value" id="rptRigs">�</div>
+          <div class="kpi-value" id="rptRigs">—</div>
           <div class="kpi-sub">Operational</div>
         </div>
         <div class="kpi-card red">
           <div class="kpi-icon"><i class="fas fa-exclamation-triangle"></i></div>
           <div class="kpi-label">Expiring Soon</div>
-          <div class="kpi-value" id="rptExpiring">�</div>
+          <div class="kpi-value" id="rptExpiring">2</div>
           <div class="kpi-sub">Within 30 days</div>
         </div>
       </div>
-
-      <div class="card" style="padding:20px;margin-top:18px">
-        <div class="card-header" style="padding:0 0 12px 0;align-items:center">
-          <span class="card-title" style="font-size:16px">Custom Reports</span>
-          <div style="margin-left:auto;display:flex;gap:10px;flex-wrap:wrap">
-            <button class="btn btn-secondary" onclick="exportReportExcel()"><i class="fas fa-file-excel" style="color:var(--sap-success)"></i> Export Excel</button>
-            <button class="btn btn-secondary" onclick="exportReportPDF()"><i class="fas fa-file-pdf" style="color:var(--sap-error)"></i> Export PDF</button>
-          </div>
-        </div>
-
-        <div class="filter-bar" style="margin-top:6px;flex-wrap:wrap">
-          <div class="filter-group search-wrap" style="min-width:220px">
-            <label class="filter-label">Search</label>
-            <i class="search-icon fas fa-search"></i>
-            <input class="filter-input" id="rpt_search" placeholder="Asset ID, name, serial..." oninput="renderReportTable()">
-          </div>
-          <div class="filter-group">
-            <label class="filter-label">Category</label>
-            <select class="filter-select" id="rpt_category" onchange="renderReportTable()">
-              <option value="">All</option>
-            </select>
-          </div>
-          <div class="filter-group">
-            <label class="filter-label">Status</label>
-            <select class="filter-select" id="rpt_status" onchange="renderReportTable()">
-              <option value="">All</option>
-            </select>
-          </div>
-          <div class="filter-group">
-            <label class="filter-label">Company</label>
-            <select class="filter-select" id="rpt_company" onchange="renderReportTable()">
-              <option value="">All</option>
-            </select>
-          </div>
-          <div class="filter-group">
-            <label class="filter-label">Rig</label>
-            <select class="filter-select" id="rpt_rig" onchange="renderReportTable()">
-              <option value="">All</option>
-            </select>
-          </div>
-          <div class="filter-group" style="margin-left:auto">
-            <label class="filter-label">&nbsp;</label>
-            <div style="display:flex;gap:8px">
-              <button class="btn btn-secondary" onclick="renderReportTable()"><i class="fas fa-filter"></i> Apply</button>
-              <button class="btn btn-ghost" onclick="resetReportFilters()"><i class="fas fa-times"></i> Clear</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="table-wrap" style="margin-top:12px">
-          <table id="reportTable">
-            <thead>
-              <tr>
-                <th>Asset ID</th>
-                <th>Name</th>
-                <th>Category</th>
-                <th>Status</th>
-                <th>Company</th>
-                <th>Rig</th>
-                <th>Location</th>
-                <th>Value (USD)</th>
-              </tr>
-            </thead>
-            <tbody id="reportTbody">
-              <tr><td colspan="8" style="text-align:center;padding:28px;color:var(--sap-text-muted)">No data yet.</td></tr>
-            </tbody>
-          </table>
+      <div class="card" style="padding:20px">
+        <div class="card-title">Export Reports</div>
+        <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-secondary" onclick="exportAssets()"><i class="fas fa-file-excel"
+              style="color:var(--sap-success)"></i> Assets Report</button>
+          <button class="btn btn-secondary" onclick="exportContracts()"><i class="fas fa-file-excel"
+              style="color:var(--sap-success)"></i> Contracts Report</button>
+          <button class="btn btn-secondary"><i class="fas fa-file-pdf" style="color:var(--sap-error)"></i> Asset Summary
+            PDF</button>
+          <button class="btn btn-secondary" onclick="openEmailModal()"><i class="fas fa-envelope"
+              style="color:var(--sap-blue)"></i> Email Report</button>
         </div>
       </div>
     </div>
   </div>
 
   <!-- ======= REGISTERS SECTION ======= -->
-  <div class="section" id="section-registers" style="display:none">
+  <div class="section" id="section-registers">
     <div class="content">
       <!-- Mini Tabs: Maintenance / Safety / Drilling -->
       <div class="card" style="flex:1;display:flex;flex-direction:column">
@@ -5740,107 +5684,6 @@ Asset Management System</textarea>
       document.getElementById('rptValue').textContent = '$' + (total / 1000000).toFixed(1) + 'M';
       document.getElementById('rptContracts').textContent = CONTRACTS.filter(c => c.status === 'Active').length;
       document.getElementById('rptRigs').textContent = RIGS.filter(r => r.status === 'Active').length;
-      const today = new Date(); today.setHours(0,0,0,0); const expiring = CERTIFICATES.filter(c => c.next_inspection && (new Date(c.next_inspection) - today) / 86400000 <= 30).length; document.getElementById('rptExpiring').textContent = expiring;
-    }
-
-    function initReportFilters() {
-      const cloneOptions = (sourceId, targetId) => {
-        const src = document.getElementById(sourceId);
-        const tgt = document.getElementById(targetId);
-        if (!src || !tgt) return;
-        tgt.innerHTML = src.innerHTML;
-        if (!tgt.querySelector('option[value=""]')) {
-          const opt = document.createElement('option');
-          opt.value = '';
-          opt.textContent = 'All';
-          tgt.insertBefore(opt, tgt.firstChild);
-        }
-        tgt.value = '';
-      };
-      cloneOptions('f_category', 'rpt_category');
-      cloneOptions('f_status', 'rpt_status');
-      cloneOptions('f_company', 'rpt_company');
-      cloneOptions('f_rig', 'rpt_rig');
-    }
-
-    function getReportRows() {
-      const search = (document.getElementById('rpt_search').value || '').toLowerCase();
-      const cat = document.getElementById('rpt_category').value;
-      const status = document.getElementById('rpt_status').value;
-      const company = document.getElementById('rpt_company').value;
-      const rig = document.getElementById('rpt_rig').value;
-      return ASSETS.filter(a => {
-        if (cat && a.category !== cat) return false;
-        if (status && a.status !== status) return false;
-        if (company && (a.company || '') !== company) return false;
-        if (rig && (a.rigName || '') !== rig) return false;
-        if (search) {
-          const blob = `${a.assetId}|${a.name}|${a.serial||''}|${a.rigName||''}|${a.location||''}`.toLowerCase();
-          if (!blob.includes(search)) return false;
-        }
-        return true;
-      });
-    }
-
-    function renderReportTable() {
-      const rows = getReportRows();
-      const tbody = document.getElementById('reportTbody');
-      if (!tbody) return;
-      if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:28px;color:var(--sap-text-muted)">No records match the selected filters.</td></tr>';
-        return;
-      }
-      tbody.innerHTML = rows.map(r => `
-        <tr>
-          <td>${r.assetId}</td>
-          <td>${r.name}</td>
-          <td>${r.category}</td>
-          <td>${r.status}</td>
-          <td>${r.company || '�'}</td>
-          <td>${r.rigName || '�'}</td>
-          <td>${r.location || '�'}</td>
-          <td>${Number(r.value||0).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0})}</td>
-        </tr>`).join('');
-    }
-
-    function resetReportFilters() {
-      ['rpt_search','rpt_category','rpt_status','rpt_company','rpt_rig'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = '';
-      });
-      renderReportTable();
-    }
-
-    function exportReportExcel() {
-      const rows = getReportRows();
-      if (!rows.length) { showToast('No data to export.', 'warning'); return; }
-      const data = rows.map(r => ({
-        'Asset ID': r.assetId,
-        Name: r.name,
-        Category: r.category,
-        Status: r.status,
-        Company: r.company || '',
-        Rig: r.rigName || '',
-        Location: r.location || '',
-        'Value (USD)': Number(r.value||0)
-      }));
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(data);
-      XLSX.utils.book_append_sheet(wb, ws, 'Assets');
-      XLSX.writeFile(wb, `Assets_Report_${Date.now()}.xlsx`);
-      showToast(`Exported ${rows.length} records to Excel.`, 'success');
-    }
-
-    function exportReportPDF() {
-      const rows = getReportRows();
-      if (!rows.length) { showToast('No data to export.', 'warning'); return; }
-      const htmlRows = rows.map(r => `<tr><td>${r.assetId}</td><td>${r.name}</td><td>${r.category}</td><td>${r.status}</td><td>${r.company||'�'}</td><td>${r.rigName||'�'}</td><td>${r.location||'�'}</td><td>${Number(r.value||0).toLocaleString()}</td></tr>`).join('');
-      const win = window.open('', '_blank');
-      win.document.write(`<html><head><title>Assets Report</title><style>table{width:100%;border-collapse:collapse;font-family:Arial;font-size:12px}th,td{border:1px solid #ccc;padding:6px;text-align:left}th{background:#f4f6f8}</style></head><body><h3>Assets Report</h3><table><thead><tr><th>Asset ID</th><th>Name</th><th>Category</th><th>Status</th><th>Company</th><th>Rig</th><th>Location</th><th>Value (USD)</th></tr></thead><tbody>${htmlRows}</tbody></table></body></html>`);
-      win.document.close();
-      win.focus();
-      win.print();
-      win.close();
     }
 
     // ══════════════════════════════════
@@ -9647,7 +9490,7 @@ Instructions:
         rerender(
           'renderAssets', 'renderContracts', 'renderRigs', 'renderCompanies',
           'renderUsers', 'renderTransfers', 'renderMaintenance', 'renderCertificates',
-          'renderBOMSection', 'renderNotifications', 'updateKPIs', 'updateReportKPIs', 'renderReportTable',\r
+          'renderBOMSection', 'renderNotifications', 'updateKPIs', 'updateReportKPIs',
           'updateCertKPIs', 'updateMaintKPIs', 'updateTransferKPIs', 'checkMaintAlerts',
           'populateBomSelects', 'populateFormSelects', 'populateCompanyFilters',
           'renderMaintRigSelector'
@@ -9692,11 +9535,11 @@ Instructions:
           })));
 
           rerenderAll();
-          initReportFilters();
-          renderReportTable();
-          updateReportKPIs();
           showToast('Database connected ✓  (' + ASSETS.length + ' assets loaded)', 'success');
           console.log('[AssetAPI] Bootstrap complete');
+
+          // Load register tables in background (non-blocking)
+          if (typeof loadAllRegisterData === 'function') loadAllRegisterData();
         } catch (e) {
           console.error('[AssetAPI] Bootstrap failed:', e);
           showToast('⚠ Database error: ' + e.message, 'error');
@@ -11312,9 +11155,3 @@ Instructions:
 </body>
 
 </html>
-
-
-
-
-
-

@@ -44,7 +44,7 @@ async function sbGet(base, key, table, { select='*', filters={}, order=null, lim
   if (order) u.searchParams.set('order', order);
   if (limit) u.searchParams.set('limit', String(limit));
   const h = authHeaders(key);
-  if (single) h['Accept'] = 'application/vnd.pgrst.object+json';
+  if (single) h['Accept'] = 'application/vnd.pgjson';
   const r = await fetch(u.toString(), { headers:h });
   return parseRes(r, single);
 }
@@ -83,7 +83,6 @@ async function sbCount(base, key, table) {
 async function parseRes(r, single) {
   const text = await r.text();
   let data; try{data=JSON.parse(text)}catch(_){data=null}
-  if (single && r.status===406) return { data:null, error:null };
   if (!r.ok) return { data:null, error:{ message: data?.message||data?.error||`HTTP ${r.status}: ${text.slice(0,300)}` }};
   if (single) return { data: Array.isArray(data)?(data[0]??null):data, error:null };
   return { data: data??[], error:null };
@@ -128,8 +127,7 @@ async function router(path, method, url, request, SB, KEY) {
 
   // COMPANIES
   if (res==='companies') {
-    if(method==='GET'&&!id) return ok(await sbGet(SB,KEY,'companies',{order:'name.asc'}));
-    if(method==='GET')    return ok(await sbGet(SB,KEY,'companies',{filters:{id:`eq.${id}`},single:true}));
+    if(method==='GET')    return ok(await sbGet(SB,KEY,'companies',{order:'name.asc'}));
     if(method==='POST')   return ok(await sbPost(SB,KEY,'companies',body));
     if(method==='PUT')  { const {id:_,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'companies',{id:`eq.${id}`},u)); }
     if(method==='DELETE'){const r=await sbDelete(SB,KEY,'companies',{id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
@@ -333,5 +331,3 @@ function respond(body, status=200) {
     'Access-Control-Allow-Headers':'Content-Type,x-api-key,x-user-role,x-user-name',
   }});
 }
-
-
