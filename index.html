@@ -2836,6 +2836,15 @@
                 <option>Handling Tools</option>
                 <option>Well Head Equipment</option>
                 <option>Well Control Equipment</option>
+                <option>Safety Equipment</option>
+                <option>Generators</option>
+                <option>Agitators</option>
+                <option>Compressors</option>
+                <option>Engines</option>
+                <option>AC Motors</option>
+                <option>Centrifugal Pumps</option>
+                <option>Drilling Equipment</option>
+                <option>Hoisting Equipment</option>
               </select>
             </div>
             <div class="filter-group">
@@ -3680,8 +3689,128 @@
         </div>
 
         <!-- SAFETY REGISTER PANEL -->
-        <div class="reg-panel" id="regpanel-safety" style="flex:1;display:none;flex-direction:column;padding:24px">
-          <div style="color:var(--sap-text-muted);font-size:14px;display:flex;align-items:center;gap:8px"><i class="fas fa-hard-hat" style="font-size:20px;color:var(--sap-warning)"></i> Safety Register — coming soon.</div>
+        <div class="reg-panel" id="regpanel-safety" style="flex:1;display:none;flex-direction:column">
+          <!-- Safety Sub-tabs -->
+          <div style="display:flex;border-bottom:1px solid var(--sap-border);background:#FAFBFC;padding:0 12px">
+            <button class="safety-sub-tab active" id="safetytab-fireext" onclick="switchSafetyTab('fireext',this)" style="height:34px;padding:0 16px;border:none;background:none;font-family:inherit;font-size:12.5px;color:var(--sap-text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;display:flex;align-items:center;gap:5px;white-space:nowrap;font-weight:500;transition:all .15s"><i class="fas fa-fire-extinguisher"></i> Fire Extinguishers</button>
+            <button class="safety-sub-tab" id="safetytab-scba" onclick="switchSafetyTab('scba',this)" style="height:34px;padding:0 16px;border:none;background:none;font-family:inherit;font-size:12.5px;color:var(--sap-text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;display:flex;align-items:center;gap:5px;white-space:nowrap;font-weight:500;transition:all .15s"><i class="fas fa-lungs"></i> SCBA</button>
+          </div>
+
+          <!-- FIRE EXTINGUISHERS -->
+          <div class="safety-panel active" id="safetypanel-fireext" style="flex:1;display:flex;flex-direction:column">
+            <div class="card-header" style="background:#FAFBFC">
+              <span class="card-title"><i class="fas fa-fire-extinguisher" style="color:#E9730C;margin-right:4px"></i> Fire Extinguisher Register <span class="record-count" id="fireextCount"></span></span>
+              <button class="btn btn-primary" onclick="openFireextModal()"><i class="fas fa-plus"></i> Add Entry</button>
+              <button class="btn btn-secondary" onclick="exportFireextRegister()"><i class="fas fa-file-excel"></i> Export</button>
+            </div>
+            <div class="filter-bar">
+              <div class="filter-group search-wrap">
+                <label class="filter-label">Search</label>
+                <i class="search-icon fas fa-search"></i>
+                <input class="filter-input" id="fireextSearch" placeholder="Asset, serial, location..." oninput="renderFireextTable()">
+              </div>
+              <div class="filter-group">
+                <label class="filter-label">Rig</label>
+                <select class="filter-select" id="fireextRigFilter" onchange="renderFireextTable()">
+                  <option value="">All Rigs</option>
+                  <option>Rig 1</option><option>Rig 2</option><option>Rig 3</option><option>Rig 4</option>
+                  <option>Rig 5</option><option>Rig 6</option><option>Rig 7</option><option>Rig 8</option>
+                  <option>Rig 9</option><option>Rig 10</option><option>Rig 11</option><option>Rig 12</option>
+                  <option>Rig 13</option><option>Rig 14</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label class="filter-label">Inspection Status</label>
+                <select class="filter-select" id="fireextInspFilter" onchange="renderFireextTable()">
+                  <option value="">All</option>
+                  <option value="valid">Valid</option>
+                  <option value="expiring">Expiring Soon</option>
+                  <option value="expired">Expired</option>
+                </select>
+              </div>
+              <div class="filter-group" style="margin-left:auto">
+                <label class="filter-label">&nbsp;</label>
+                <button class="btn btn-ghost" onclick="clearFireextFilters()"><i class="fas fa-times"></i> Clear</button>
+              </div>
+            </div>
+            <div class="table-wrap" style="flex:1">
+              <table id="fireextTable">
+                <thead>
+                  <tr>
+                    <th>Asset</th>
+                    <th>Serial Number</th>
+                    <th>Date of Last Inspection</th>
+                    <th>Expiry of Inspection</th>
+                    <th>Assigned Location</th>
+                    <th>Rig</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="fireextTbody">
+                  <tr><td colspan="8" style="text-align:center;padding:32px;color:var(--sap-text-muted)"><i class="fas fa-fire-extinguisher" style="margin-right:8px;color:#ccc"></i>No Fire Extinguisher records found. Click <strong>Add Entry</strong> to begin.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- SCBA -->
+          <div class="safety-panel" id="safetypanel-scba" style="flex:1;display:none;flex-direction:column">
+            <div class="card-header" style="background:#FAFBFC">
+              <span class="card-title"><i class="fas fa-lungs" style="color:var(--sap-blue);margin-right:4px"></i> SCBA Register <span class="record-count" id="scbaCount"></span></span>
+              <button class="btn btn-primary" onclick="openScbaModal()"><i class="fas fa-plus"></i> Add Entry</button>
+              <button class="btn btn-secondary" onclick="exportScbaRegister()"><i class="fas fa-file-excel"></i> Export</button>
+            </div>
+            <div class="filter-bar">
+              <div class="filter-group search-wrap">
+                <label class="filter-label">Search</label>
+                <i class="search-icon fas fa-search"></i>
+                <input class="filter-input" id="scbaSearch" placeholder="Asset, serial, location..." oninput="renderScbaTable()">
+              </div>
+              <div class="filter-group">
+                <label class="filter-label">Rig</label>
+                <select class="filter-select" id="scbaRigFilter" onchange="renderScbaTable()">
+                  <option value="">All Rigs</option>
+                  <option>Rig 1</option><option>Rig 2</option><option>Rig 3</option><option>Rig 4</option>
+                  <option>Rig 5</option><option>Rig 6</option><option>Rig 7</option><option>Rig 8</option>
+                  <option>Rig 9</option><option>Rig 10</option><option>Rig 11</option><option>Rig 12</option>
+                  <option>Rig 13</option><option>Rig 14</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label class="filter-label">Inspection Status</label>
+                <select class="filter-select" id="scbaInspFilter" onchange="renderScbaTable()">
+                  <option value="">All</option>
+                  <option value="valid">Valid</option>
+                  <option value="expiring">Expiring Soon</option>
+                  <option value="expired">Expired</option>
+                </select>
+              </div>
+              <div class="filter-group" style="margin-left:auto">
+                <label class="filter-label">&nbsp;</label>
+                <button class="btn btn-ghost" onclick="clearScbaFilters()"><i class="fas fa-times"></i> Clear</button>
+              </div>
+            </div>
+            <div class="table-wrap" style="flex:1">
+              <table id="scbaTable">
+                <thead>
+                  <tr>
+                    <th>Asset</th>
+                    <th>Serial Number</th>
+                    <th>Date of Last Inspection</th>
+                    <th>Expiry of Inspection</th>
+                    <th>Assigned Location</th>
+                    <th>Rig</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="scbaTbody">
+                  <tr><td colspan="8" style="text-align:center;padding:32px;color:var(--sap-text-muted)"><i class="fas fa-lungs" style="margin-right:8px;color:#ccc"></i>No SCBA records found. Click <strong>Add Entry</strong> to begin.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
         <!-- DRILLING REGISTER PANEL -->
@@ -3873,6 +4002,122 @@
             <div style="color:var(--sap-text-muted);font-size:14px;display:flex;align-items:center;gap:8px"><i class="fas fa-grip-lines" style="font-size:20px;color:var(--sap-text-muted)"></i> Tubular Register — coming soon.</div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FIRE EXTINGUISHER ENTRY MODAL -->
+  <div class="modal-overlay" id="fireextModal">
+    <div class="modal" style="width:640px;max-width:95vw">
+      <div class="modal-header">
+        <i class="fas fa-fire-extinguisher" style="color:#E9730C;font-size:18px"></i>
+        <h2 id="fireextModalTitle">Add Fire Extinguisher Entry</h2>
+        <button class="shell-btn" style="color:var(--sap-text-muted)" onclick="closeModal('fireextModal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="fireext_editId">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Asset <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="fireext_asset" placeholder="e.g. CO2 Fire Extinguisher 9kg">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Serial Number <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="fireext_serial" placeholder="e.g. SN-FE-2024-001">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Date of Last Inspection <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="fireext_lastInspection" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Expiry of Inspection <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="fireext_expiryInspection" type="date">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Assigned Location</label>
+            <input class="form-input" id="fireext_location" placeholder="e.g. Engine Room, Rig Floor...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Rig</label>
+            <select class="form-select" id="fireext_rig">
+              <option value="">— Select Rig —</option>
+              <option>Rig 1</option><option>Rig 2</option><option>Rig 3</option><option>Rig 4</option>
+              <option>Rig 5</option><option>Rig 6</option><option>Rig 7</option><option>Rig 8</option>
+              <option>Rig 9</option><option>Rig 10</option><option>Rig 11</option><option>Rig 12</option>
+              <option>Rig 13</option><option>Rig 14</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea class="form-textarea" id="fireext_notes" rows="2" placeholder="Additional notes..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('fireextModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveFireextEntry()"><i class="fas fa-save"></i> Save Entry</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCBA ENTRY MODAL -->
+  <div class="modal-overlay" id="scbaModal">
+    <div class="modal" style="width:640px;max-width:95vw">
+      <div class="modal-header">
+        <i class="fas fa-lungs" style="color:var(--sap-blue);font-size:18px"></i>
+        <h2 id="scbaModalTitle">Add SCBA Entry</h2>
+        <button class="shell-btn" style="color:var(--sap-text-muted)" onclick="closeModal('scbaModal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="scba_editId">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Asset <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="scba_asset" placeholder="e.g. SCBA Unit Scott Air-Pak">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Serial Number <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="scba_serial" placeholder="e.g. SN-SCBA-2024-001">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Date of Last Inspection <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="scba_lastInspection" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Expiry of Inspection <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="scba_expiryInspection" type="date">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Assigned Location</label>
+            <input class="form-input" id="scba_location" placeholder="e.g. Muster Station, Safety Locker...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Rig</label>
+            <select class="form-select" id="scba_rig">
+              <option value="">— Select Rig —</option>
+              <option>Rig 1</option><option>Rig 2</option><option>Rig 3</option><option>Rig 4</option>
+              <option>Rig 5</option><option>Rig 6</option><option>Rig 7</option><option>Rig 8</option>
+              <option>Rig 9</option><option>Rig 10</option><option>Rig 11</option><option>Rig 12</option>
+              <option>Rig 13</option><option>Rig 14</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea class="form-textarea" id="scba_notes" rows="2" placeholder="Additional notes..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('scbaModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveScbaEntry()"><i class="fas fa-save"></i> Save Entry</button>
       </div>
     </div>
   </div>
@@ -4135,6 +4380,15 @@ Asset Management System</textarea>
               <option>Handling Tools</option>
               <option>Well Head Equipment</option>
               <option>Well Control Equipment</option>
+              <option>Safety Equipment</option>
+              <option>Generators</option>
+              <option>Agitators</option>
+              <option>Compressors</option>
+              <option>Engines</option>
+              <option>AC Motors</option>
+              <option>Centrifugal Pumps</option>
+              <option>Drilling Equipment</option>
+              <option>Hoisting Equipment</option>
             </select>
           </div>
           <div class="form-group"><label class="form-label">Status</label>
@@ -10404,6 +10658,228 @@ Instructions:
         XLSX.utils.book_append_sheet(wb, ws, 'Well Control Equipment');
         XLSX.writeFile(wb, 'WellControl_Register.xlsx');
         showToast('Well Control Equipment Register exported.', 'success');
+      };
+
+      window.switchSafetyTab = function(tab, el) {
+        document.querySelectorAll('.safety-sub-tab').forEach(t => {
+          t.style.color = 'var(--sap-text-muted)';
+          t.style.borderBottomColor = 'transparent';
+          t.style.fontWeight = '500';
+        });
+        el.style.color = 'var(--sap-blue)';
+        el.style.borderBottomColor = 'var(--sap-blue)';
+        el.style.fontWeight = '600';
+        document.querySelectorAll('.safety-panel').forEach(p => { p.style.display = 'none'; });
+        const panel = document.getElementById('safetypanel-' + tab);
+        if (panel) panel.style.display = 'flex';
+      };
+
+      // ── FIRE EXTINGUISHER REGISTER ──
+      let FIREEXT_RECORDS = [];
+      let fireextEditId = null;
+
+      window.openFireextModal = function(id) {
+        fireextEditId = id || null;
+        document.getElementById('fireextModalTitle').textContent = id ? 'Edit Fire Extinguisher Entry' : 'Add Fire Extinguisher Entry';
+        if (id) {
+          const r = FIREEXT_RECORDS.find(x => x.id === id);
+          if (r) {
+            document.getElementById('fireext_editId').value = r.id;
+            document.getElementById('fireext_asset').value = r.asset || '';
+            document.getElementById('fireext_serial').value = r.serial || '';
+            document.getElementById('fireext_lastInspection').value = r.lastInspection || '';
+            document.getElementById('fireext_expiryInspection').value = r.expiryInspection || '';
+            document.getElementById('fireext_location').value = r.location || '';
+            document.getElementById('fireext_rig').value = r.rig || '';
+            document.getElementById('fireext_notes').value = r.notes || '';
+          }
+        } else {
+          ['fireext_editId','fireext_asset','fireext_serial','fireext_lastInspection','fireext_expiryInspection','fireext_location','fireext_notes'].forEach(fid => document.getElementById(fid).value = '');
+          document.getElementById('fireext_rig').value = '';
+        }
+        document.getElementById('fireextModal').classList.add('active');
+      };
+
+      window.saveFireextEntry = function() {
+        const asset = document.getElementById('fireext_asset').value.trim();
+        const serial = document.getElementById('fireext_serial').value.trim();
+        if (!asset || !serial) { showToast('Asset and Serial Number are required.', 'error'); return; }
+        const entry = { asset, serial,
+          lastInspection: document.getElementById('fireext_lastInspection').value,
+          expiryInspection: document.getElementById('fireext_expiryInspection').value,
+          location: document.getElementById('fireext_location').value.trim(),
+          rig: document.getElementById('fireext_rig').value,
+          notes: document.getElementById('fireext_notes').value.trim() };
+        if (fireextEditId) {
+          const idx = FIREEXT_RECORDS.findIndex(r => r.id === fireextEditId);
+          if (idx >= 0) FIREEXT_RECORDS[idx] = { ...FIREEXT_RECORDS[idx], ...entry };
+        } else {
+          FIREEXT_RECORDS.push({ id: 'FE-' + Date.now(), ...entry });
+        }
+        closeModal('fireextModal');
+        renderFireextTable();
+        showToast('Fire Extinguisher entry saved.', 'success');
+      };
+
+      window.deleteFireextEntry = function(id) {
+        if (!confirm('Delete this Fire Extinguisher entry?')) return;
+        FIREEXT_RECORDS = FIREEXT_RECORDS.filter(r => r.id !== id);
+        renderFireextTable();
+        showToast('Entry deleted.', 'success');
+      };
+
+      window.renderFireextTable = function() {
+        const search = (document.getElementById('fireextSearch')?.value || '').toLowerCase();
+        const rigF = document.getElementById('fireextRigFilter')?.value || '';
+        const inspF = document.getElementById('fireextInspFilter')?.value || '';
+        let rows = FIREEXT_RECORDS.filter(r => {
+          const matchSearch = !search || [r.asset,r.serial,r.location,r.rig].some(v=>(v||'').toLowerCase().includes(search));
+          const matchRig = !rigF || r.rig === rigF;
+          const st = bopInspStatus(r.expiryInspection);
+          const matchInsp = !inspF||(inspF==='valid'&&st.label==='Valid')||(inspF==='expiring'&&st.label==='Expiring Soon')||(inspF==='expired'&&st.label==='Expired');
+          return matchSearch && matchRig && matchInsp;
+        });
+        const tbody = document.getElementById('fireextTbody');
+        const countEl = document.getElementById('fireextCount');
+        if (countEl) countEl.textContent = '(' + rows.length + ')';
+        if (!rows.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--sap-text-muted)"><i class="fas fa-fire-extinguisher" style="margin-right:8px;color:#ccc"></i>No records match the current filters.</td></tr>'; return; }
+        tbody.innerHTML = rows.map(r => {
+          const st = bopInspStatus(r.expiryInspection);
+          return `<tr>
+            <td><strong>${r.asset||'—'}</strong></td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${r.serial||'—'}</td>
+            <td>${r.lastInspection?new Date(r.lastInspection).toLocaleDateString('en-GB'):'—'}</td>
+            <td>${r.expiryInspection?new Date(r.expiryInspection).toLocaleDateString('en-GB'):'—'}</td>
+            <td>${r.location||'—'}</td>
+            <td>${r.rig||'—'}</td>
+            <td><span class="status-badge ${st.cls}">${st.label}</span></td>
+            <td>
+              <button class="btn btn-ghost" style="height:24px;padding:0 8px;font-size:11px" onclick="openFireextModal('${r.id}')"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-danger" style="height:24px;padding:0 8px;font-size:11px" onclick="deleteFireextEntry('${r.id}')"><i class="fas fa-trash"></i></button>
+            </td>
+          </tr>`;
+        }).join('');
+      };
+
+      window.clearFireextFilters = function() {
+        document.getElementById('fireextSearch').value = '';
+        document.getElementById('fireextRigFilter').value = '';
+        document.getElementById('fireextInspFilter').value = '';
+        renderFireextTable();
+      };
+
+      window.exportFireextRegister = function() {
+        if (!FIREEXT_RECORDS.length) { showToast('No Fire Extinguisher data to export.', 'warning'); return; }
+        const ws_data = [['Asset','Serial Number','Date of Last Inspection','Expiry of Inspection','Assigned Location','Rig','Status','Notes'],
+          ...FIREEXT_RECORDS.map(r=>[r.asset,r.serial,r.lastInspection,r.expiryInspection,r.location,r.rig,bopInspStatus(r.expiryInspection).label,r.notes])];
+        const wb = XLSX.utils.book_new(); const ws = XLSX.utils.aoa_to_sheet(ws_data);
+        XLSX.utils.book_append_sheet(wb,ws,'Fire Extinguishers');
+        XLSX.writeFile(wb,'FireExtinguisher_Register.xlsx');
+        showToast('Fire Extinguisher Register exported.', 'success');
+      };
+
+      // ── SCBA REGISTER ──
+      let SCBA_RECORDS = [];
+      let scbaEditId = null;
+
+      window.openScbaModal = function(id) {
+        scbaEditId = id || null;
+        document.getElementById('scbaModalTitle').textContent = id ? 'Edit SCBA Entry' : 'Add SCBA Entry';
+        if (id) {
+          const r = SCBA_RECORDS.find(x => x.id === id);
+          if (r) {
+            document.getElementById('scba_editId').value = r.id;
+            document.getElementById('scba_asset').value = r.asset || '';
+            document.getElementById('scba_serial').value = r.serial || '';
+            document.getElementById('scba_lastInspection').value = r.lastInspection || '';
+            document.getElementById('scba_expiryInspection').value = r.expiryInspection || '';
+            document.getElementById('scba_location').value = r.location || '';
+            document.getElementById('scba_rig').value = r.rig || '';
+            document.getElementById('scba_notes').value = r.notes || '';
+          }
+        } else {
+          ['scba_editId','scba_asset','scba_serial','scba_lastInspection','scba_expiryInspection','scba_location','scba_notes'].forEach(fid => document.getElementById(fid).value = '');
+          document.getElementById('scba_rig').value = '';
+        }
+        document.getElementById('scbaModal').classList.add('active');
+      };
+
+      window.saveScbaEntry = function() {
+        const asset = document.getElementById('scba_asset').value.trim();
+        const serial = document.getElementById('scba_serial').value.trim();
+        if (!asset || !serial) { showToast('Asset and Serial Number are required.', 'error'); return; }
+        const entry = { asset, serial,
+          lastInspection: document.getElementById('scba_lastInspection').value,
+          expiryInspection: document.getElementById('scba_expiryInspection').value,
+          location: document.getElementById('scba_location').value.trim(),
+          rig: document.getElementById('scba_rig').value,
+          notes: document.getElementById('scba_notes').value.trim() };
+        if (scbaEditId) {
+          const idx = SCBA_RECORDS.findIndex(r => r.id === scbaEditId);
+          if (idx >= 0) SCBA_RECORDS[idx] = { ...SCBA_RECORDS[idx], ...entry };
+        } else {
+          SCBA_RECORDS.push({ id: 'SCBA-' + Date.now(), ...entry });
+        }
+        closeModal('scbaModal');
+        renderScbaTable();
+        showToast('SCBA entry saved.', 'success');
+      };
+
+      window.deleteScbaEntry = function(id) {
+        if (!confirm('Delete this SCBA entry?')) return;
+        SCBA_RECORDS = SCBA_RECORDS.filter(r => r.id !== id);
+        renderScbaTable();
+        showToast('Entry deleted.', 'success');
+      };
+
+      window.renderScbaTable = function() {
+        const search = (document.getElementById('scbaSearch')?.value || '').toLowerCase();
+        const rigF = document.getElementById('scbaRigFilter')?.value || '';
+        const inspF = document.getElementById('scbaInspFilter')?.value || '';
+        let rows = SCBA_RECORDS.filter(r => {
+          const matchSearch = !search || [r.asset,r.serial,r.location,r.rig].some(v=>(v||'').toLowerCase().includes(search));
+          const matchRig = !rigF || r.rig === rigF;
+          const st = bopInspStatus(r.expiryInspection);
+          const matchInsp = !inspF||(inspF==='valid'&&st.label==='Valid')||(inspF==='expiring'&&st.label==='Expiring Soon')||(inspF==='expired'&&st.label==='Expired');
+          return matchSearch && matchRig && matchInsp;
+        });
+        const tbody = document.getElementById('scbaTbody');
+        const countEl = document.getElementById('scbaCount');
+        if (countEl) countEl.textContent = '(' + rows.length + ')';
+        if (!rows.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--sap-text-muted)"><i class="fas fa-lungs" style="margin-right:8px;color:#ccc"></i>No records match the current filters.</td></tr>'; return; }
+        tbody.innerHTML = rows.map(r => {
+          const st = bopInspStatus(r.expiryInspection);
+          return `<tr>
+            <td><strong>${r.asset||'—'}</strong></td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${r.serial||'—'}</td>
+            <td>${r.lastInspection?new Date(r.lastInspection).toLocaleDateString('en-GB'):'—'}</td>
+            <td>${r.expiryInspection?new Date(r.expiryInspection).toLocaleDateString('en-GB'):'—'}</td>
+            <td>${r.location||'—'}</td>
+            <td>${r.rig||'—'}</td>
+            <td><span class="status-badge ${st.cls}">${st.label}</span></td>
+            <td>
+              <button class="btn btn-ghost" style="height:24px;padding:0 8px;font-size:11px" onclick="openScbaModal('${r.id}')"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-danger" style="height:24px;padding:0 8px;font-size:11px" onclick="deleteScbaEntry('${r.id}')"><i class="fas fa-trash"></i></button>
+            </td>
+          </tr>`;
+        }).join('');
+      };
+
+      window.clearScbaFilters = function() {
+        document.getElementById('scbaSearch').value = '';
+        document.getElementById('scbaRigFilter').value = '';
+        document.getElementById('scbaInspFilter').value = '';
+        renderScbaTable();
+      };
+
+      window.exportScbaRegister = function() {
+        if (!SCBA_RECORDS.length) { showToast('No SCBA data to export.', 'warning'); return; }
+        const ws_data = [['Asset','Serial Number','Date of Last Inspection','Expiry of Inspection','Assigned Location','Rig','Status','Notes'],
+          ...SCBA_RECORDS.map(r=>[r.asset,r.serial,r.lastInspection,r.expiryInspection,r.location,r.rig,bopInspStatus(r.expiryInspection).label,r.notes])];
+        const wb = XLSX.utils.book_new(); const ws = XLSX.utils.aoa_to_sheet(ws_data);
+        XLSX.utils.book_append_sheet(wb,ws,'SCBA Register');
+        XLSX.writeFile(wb,'SCBA_Register.xlsx');
+        showToast('SCBA Register exported.', 'success');
       };
 
       // ══════════════════════════════════════════
