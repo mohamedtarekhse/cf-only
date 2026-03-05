@@ -2925,9 +2925,9 @@
         <div class="card">
           <div class="card-header">
             <span class="card-title">Contracts</span>
-            <button id="btnNewContract" class="btn btn-primary"><i class="fas fa-plus"></i> New Contract</button>
-            <button class="btn btn-secondary" onclick="exportContracts()"><i class="fas fa-file-excel"></i>
-              Export</button>
+            <button id="btnNewContract" class="btn btn-primary" onclick="openAddContractModal()"><i class="fas fa-plus"></i> New Contract</button>
+            <button class="btn btn-secondary" onclick="exportContracts()"><i class="fas fa-file-excel"></i> Export Excel</button>
+            <button class="btn btn-secondary" onclick="exportContractsPDF()" style="background:#fff0f0;border-color:#c00;color:#c00"><i class="fas fa-file-pdf"></i> Export PDF</button>
             <button class="btn btn-secondary" onclick="document.getElementById('importFileContracts').click()"><i
                 class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileContracts" accept=".xlsx,.xls,.csv" style="display:none"
@@ -2978,7 +2978,9 @@
         <div class="card">
           <div class="card-header">
             <span class="card-title">Land Rigs</span>
-            <button id="btnNewRig" class="btn btn-primary"><i class="fas fa-plus"></i> New Rig</button>
+            <button id="btnNewRig" class="btn btn-primary" onclick="openAddRigModal()"><i class="fas fa-plus"></i> New Rig</button>
+            <button class="btn btn-secondary" onclick="exportRigs()"><i class="fas fa-file-excel"></i> Export Excel</button>
+            <button class="btn btn-secondary" onclick="exportRigsPDF()" style="background:#fff0f0;border-color:#c00;color:#c00"><i class="fas fa-file-pdf"></i> Export PDF</button>
             <button class="btn btn-secondary" onclick="document.getElementById('importFileRigs').click()"><i
                 class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileRigs" accept=".xlsx,.xls,.csv" style="display:none"
@@ -3062,8 +3064,8 @@
             <span class="card-title">Bill of Materials <span class="record-count" id="bomCount"></span></span>
             <button id="btnAddBOM" class="btn btn-primary" onclick="openBomModal()"><i class="fas fa-plus"></i> Add
               BOM</button>
-            <button class="btn btn-secondary" onclick="exportBOM()"><i class="fas fa-file-excel"></i> Export
-              BOM</button>
+            <button class="btn btn-secondary" onclick="exportBOM()"><i class="fas fa-file-excel"></i> Export Excel</button>
+            <button class="btn btn-secondary" onclick="exportBOMPDF()" style="background:#fff0f0;border-color:#c00;color:#c00"><i class="fas fa-file-pdf"></i> Export PDF</button>
             <button class="btn btn-secondary" onclick="document.getElementById('importFileBom').click()"><i
                 class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileBom" accept=".xlsx,.xls,.csv" style="display:none"
@@ -3149,8 +3151,8 @@
             <button id="btnNewTransfer" class="btn btn-primary" onclick="openTransferModal(null)"><i
                 class="fas fa-plus"></i> New Transfer
               Request</button>
-            <button class="btn btn-secondary" onclick="exportTransfers()"><i class="fas fa-file-excel"></i>
-              Export</button>
+            <button class="btn btn-secondary" onclick="exportTransfers()"><i class="fas fa-file-excel"></i> Export Excel</button>
+            <button class="btn btn-secondary" onclick="exportTransfersPDF()" style="background:#fff0f0;border-color:#c00;color:#c00"><i class="fas fa-file-pdf"></i> Export PDF</button>
             <button class="btn btn-secondary" onclick="document.getElementById('importFileTransfers').click()"><i
                 class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileTransfers" accept=".xlsx,.xls,.csv" style="display:none"
@@ -3294,8 +3296,8 @@
               Schedule <span class="record-count" id="mCount"></span></span>
             <button id="btnNewSchedule" class="btn btn-primary" onclick="openMaintModal()"><i class="fas fa-plus"></i>
               New Schedule</button>
-            <button class="btn btn-secondary" onclick="exportMaintenance()"><i class="fas fa-file-excel"></i>
-              Export</button>
+            <button class="btn btn-secondary" onclick="exportMaintenance()"><i class="fas fa-file-excel"></i> Export Excel</button>
+            <button class="btn btn-secondary" onclick="exportMaintenancePDF()" style="background:#fff0f0;border-color:#c00;color:#c00"><i class="fas fa-file-pdf"></i> Export PDF</button>
             <button class="btn btn-secondary" onclick="openMaintLogModal(null,'bulk')"><i class="fas fa-history"></i>
               Log Completion</button>
             <button class="btn btn-secondary" onclick="document.getElementById('importFileMaint').click()"><i
@@ -3435,8 +3437,8 @@
               Registry <span class="record-count" id="certCount"></span></span>
             <button id="btnNewCert" class="btn btn-primary" onclick="openAddCertModal()"><i class="fas fa-plus"></i> New
               Certificate</button>
-            <button class="btn btn-secondary" onclick="exportCertificates()"><i class="fas fa-file-excel"></i>
-              Export</button>
+            <button class="btn btn-secondary" onclick="exportCertificates()"><i class="fas fa-file-excel"></i> Export Excel</button>
+            <button class="btn btn-secondary" onclick="exportCertificatesPDF()" style="background:#fff0f0;border-color:#c00;color:#c00"><i class="fas fa-file-pdf"></i> Export PDF</button>
             <button class="btn btn-secondary" onclick="document.getElementById('importFileCerts').click()"><i
                 class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileCerts" accept=".xlsx,.xls,.csv" style="display:none"
@@ -3676,6 +3678,132 @@
   <!-- ══════════════════════════════════════════
      MODALS
 ═══════════════════════════════════════════ -->
+
+  <!-- ADD RIG MODAL -->
+  <div class="modal-overlay" id="addRigModal">
+    <div class="modal" style="width:600px;max-width:95vw">
+      <div class="modal-header">
+        <i class="fas fa-oil-well" style="color:var(--sap-blue);font-size:18px"></i>
+        <h2 id="addRigModalTitle">Add New Rig</h2>
+        <button class="shell-btn" style="color:var(--sap-text-muted)" onclick="closeModal('addRigModal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="rig_editId">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="form-group">
+            <label class="form-label">Rig Name <span style="color:#b00">*</span></label>
+            <input class="form-control" id="rig_name" placeholder="e.g. Rig 15">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Rig Type</label>
+            <select class="form-control" id="rig_type">
+              <option value="">— Select —</option>
+              <option>Land Rig</option>
+              <option>Workover Rig</option>
+              <option>Drilling Rig</option>
+              <option>Service Rig</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Company</label>
+            <select class="form-control" id="rig_company">
+              <option value="">— Select —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Location</label>
+            <input class="form-control" id="rig_location" placeholder="e.g. Field A, Block 3">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Max Depth (ft)</label>
+            <input class="form-control" id="rig_depth" type="number" placeholder="e.g. 20000">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Horsepower (HP)</label>
+            <input class="form-control" id="rig_hp" type="number" placeholder="e.g. 1500">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-control" id="rig_status">
+              <option>Active</option>
+              <option>Idle</option>
+              <option>Maintenance</option>
+              <option>Retired</option>
+            </select>
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label class="form-label">Notes</label>
+            <textarea class="form-control" id="rig_notes" rows="2" placeholder="Optional notes..."></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('addRigModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveRigEntry()"><i class="fas fa-save"></i> Save Rig</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD CONTRACT MODAL -->
+  <div class="modal-overlay" id="addContractModal">
+    <div class="modal" style="width:600px;max-width:95vw">
+      <div class="modal-header">
+        <i class="fas fa-file-contract" style="color:var(--sap-blue);font-size:18px"></i>
+        <h2 id="addContractModalTitle">Add New Contract</h2>
+        <button class="shell-btn" style="color:var(--sap-text-muted)" onclick="closeModal('addContractModal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="contract_editId">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="form-group">
+            <label class="form-label">Contract ID <span style="color:#b00">*</span></label>
+            <input class="form-control" id="contract_id" placeholder="e.g. CTR-2025-001">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Company <span style="color:#b00">*</span></label>
+            <select class="form-control" id="contract_company">
+              <option value="">— Select —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Rig</label>
+            <select class="form-control" id="contract_rig">
+              <option value="">— Select —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Value (USD)</label>
+            <input class="form-control" id="contract_value" type="number" placeholder="e.g. 500000">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Start Date</label>
+            <input class="form-control" id="contract_start" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">End Date</label>
+            <input class="form-control" id="contract_end" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-control" id="contract_status_field">
+              <option>Pending</option>
+              <option>Active</option>
+              <option>Expired</option>
+              <option>Terminated</option>
+            </select>
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label class="form-label">Notes</label>
+            <textarea class="form-control" id="contract_notes" rows="2" placeholder="Optional notes..."></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('addContractModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveContractEntry()"><i class="fas fa-save"></i> Save Contract</button>
+      </div>
+    </div>
+  </div>
 
   <!-- EMAIL ALERT MODAL -->
   <div class="modal-overlay" id="emailModal">
@@ -4935,14 +5063,7 @@ Asset Management System</textarea>
     }
 
     function applyContractFilters() {
-      const q = document.getElementById('contractSearch').value.toLowerCase();
-      const status = document.getElementById('contractStatus').value;
-      const filtered = CONTRACTS.filter(c => {
-        const mq = !q || c.id.toLowerCase().includes(q) || c.company.toLowerCase().includes(q);
-        const ms = !status || c.status === status;
-        return mq && ms;
-      });
-      renderContractRows(filtered);
+      renderContractRows(getFilteredContracts());
     }
 
     // ══════════════════════════════════
@@ -5329,7 +5450,9 @@ Asset Management System</textarea>
     }
 
     function editCurrentRig() {
-      showToast('Rig editing coming soon.', 'info');
+      if (!currentRig) return;
+      closeModal('rigDetailModal');
+      openAddRigModal(currentRig);
     }
 
     // ══════════════════════════════════
@@ -5379,8 +5502,183 @@ Asset Management System</textarea>
     }
 
     function editCurrentContract() {
-      showToast('Contract editing coming soon.', 'info');
+      if (!currentContract) return;
+      const c = currentContract;
+      closeModal('contractDetailModal');
+      openAddContractModal(c);
     }
+
+    // ══════════════════════════════════
+    //  EXPORT RIGS
+    // ══════════════════════════════════
+    function exportRigs() {
+      if (!RIGS.length) { showToast('No rigs to export.', 'warning'); return; }
+      const ws = XLSX.utils.json_to_sheet(RIGS.map(r => ({
+        'Rig ID': r.id, 'Rig Name': r.name, 'Type': r.type,
+        'Company': r.company, 'Location': r.location,
+        'Max Depth': r.depth, 'Horsepower (HP)': r.hp, 'Status': r.status
+      })));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Rigs');
+      XLSX.writeFile(wb, 'Rigs_Export.xlsx');
+      showToast(`Exported ${RIGS.length} rig(s) to Excel ✓`, 'success');
+    }
+
+    function exportRigsPDF() {
+      if (!RIGS.length) { showToast('No rigs to export.', 'warning'); return; }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+      doc.setFillColor(53, 74, 94); doc.rect(0, 0, doc.internal.pageSize.getWidth(), 36, 'F');
+      doc.setTextColor(255, 255, 255); doc.setFontSize(13); doc.setFont('helvetica', 'bold');
+      doc.text('Asset Management System — Land Rigs', 14, 24);
+      const now = new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+      doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(200, 200, 200);
+      doc.text(`Total: ${RIGS.length} rigs   |   Exported: ${now}`, 14, 32);
+      doc.autoTable({
+        startY: 46,
+        head: [['Rig ID', 'Rig Name', 'Type', 'Company', 'Location', 'Max Depth', 'HP', 'Assets', 'Status']],
+        body: RIGS.map(r => [r.id||'', r.name||'', r.type||'', r.company||'', r.location||'',
+          r.depth||'—', r.hp ? r.hp.toLocaleString() : '—',
+          ASSETS.filter(a => a.rigName === r.name).length, r.status||'']),
+        styles: { fontSize: 8, cellPadding: 4, font: 'helvetica', textColor: [50, 54, 58] },
+        headStyles: { fillColor: [0, 112, 242], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [245, 246, 247] },
+        columnStyles: { 7: { halign: 'center' } },
+        margin: { left: 14, right: 14 },
+        didDrawPage: () => {
+          const pg = doc.internal.getCurrentPageInfo().pageNumber;
+          const total = doc.internal.getNumberOfPages();
+          doc.setFontSize(7); doc.setTextColor(150);
+          doc.text(`Page ${pg} of ${total}`, doc.internal.pageSize.getWidth() - 14, doc.internal.pageSize.getHeight() - 8, { align: 'right' });
+        }
+      });
+      doc.save('Rigs_Export.pdf');
+      showToast(`Exported ${RIGS.length} rig(s) to PDF ✓`, 'success');
+    }
+
+    // ══════════════════════════════════
+    //  ADD / EDIT RIG MODAL
+    // ══════════════════════════════════
+    let rigEditId = null;
+
+    function openAddRigModal(rig) {
+      rigEditId = rig ? (rig.id || null) : null;
+      document.getElementById('addRigModalTitle').textContent = rigEditId ? 'Edit Rig' : 'Add New Rig';
+      // Populate company dropdown
+      const sel = document.getElementById('rig_company');
+      sel.innerHTML = '<option value="">— Select —</option>';
+      COMPANIES.forEach(c => sel.appendChild(new Option(c.name, c.name)));
+      if (rig) {
+        document.getElementById('rig_editId').value = rig.id || '';
+        document.getElementById('rig_name').value = rig.name || '';
+        document.getElementById('rig_type').value = rig.type || '';
+        document.getElementById('rig_company').value = rig.company || '';
+        document.getElementById('rig_location').value = rig.location || '';
+        document.getElementById('rig_depth').value = rig.depth || '';
+        document.getElementById('rig_hp').value = rig.hp || '';
+        document.getElementById('rig_status').value = rig.status || 'Active';
+        document.getElementById('rig_notes').value = rig.notes || '';
+      } else {
+        ['rig_editId','rig_name','rig_location','rig_depth','rig_hp','rig_notes'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('rig_type').value = '';
+        document.getElementById('rig_status').value = 'Active';
+      }
+      openModal('addRigModal');
+    }
+
+    window.saveRigEntry = async function() {
+      const name = document.getElementById('rig_name').value.trim();
+      if (!name) { showToast('Rig Name is required.', 'error'); return; }
+      const payload = {
+        name, type: document.getElementById('rig_type').value,
+        company: document.getElementById('rig_company').value,
+        location: document.getElementById('rig_location').value.trim(),
+        depth: document.getElementById('rig_depth').value || null,
+        hp: parseInt(document.getElementById('rig_hp').value) || null,
+        status: document.getElementById('rig_status').value,
+        notes: document.getElementById('rig_notes').value.trim(),
+      };
+      try {
+        if (rigEditId) {
+          const res = await PUT(`/rigs/${rigEditId}`, { id: rigEditId, ...payload });
+          const idx = RIGS.findIndex(r => r.id === rigEditId);
+          if (idx >= 0) RIGS[idx] = { ...RIGS[idx], ...res.data };
+          showToast('Rig updated ✓', 'success');
+        } else {
+          const res = await POST('/rigs', payload);
+          RIGS.push(res.data);
+          showToast('Rig added ✓', 'success');
+        }
+        closeModal('addRigModal');
+        renderRigs();
+        if (typeof populateFormSelects === 'function') populateFormSelects();
+      } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
+    };
+
+    // ══════════════════════════════════
+    //  ADD / EDIT CONTRACT MODAL
+    // ══════════════════════════════════
+    let contractEditId = null;
+
+    function openAddContractModal(contract) {
+      contractEditId = contract ? (contract.id || null) : null;
+      document.getElementById('addContractModalTitle').textContent = contractEditId ? 'Edit Contract' : 'Add New Contract';
+      // Populate dropdowns
+      const coSel = document.getElementById('contract_company');
+      coSel.innerHTML = '<option value="">— Select —</option>';
+      COMPANIES.forEach(c => coSel.appendChild(new Option(c.name, c.name)));
+      const rigSel = document.getElementById('contract_rig');
+      rigSel.innerHTML = '<option value="">— Select —</option>';
+      RIGS.forEach(r => rigSel.appendChild(new Option(r.name, r.name)));
+      if (contract) {
+        document.getElementById('contract_editId').value = contract.id || '';
+        document.getElementById('contract_id').value = contract.id || '';
+        document.getElementById('contract_id').disabled = !!contractEditId;
+        document.getElementById('contract_company').value = contract.company || '';
+        document.getElementById('contract_rig').value = contract.rig || '';
+        document.getElementById('contract_value').value = contract.value || '';
+        document.getElementById('contract_start').value = contract.start || '';
+        document.getElementById('contract_end').value = contract.end || '';
+        document.getElementById('contract_status_field').value = contract.status || 'Pending';
+        document.getElementById('contract_notes').value = contract.notes || '';
+      } else {
+        document.getElementById('contract_editId').value = '';
+        document.getElementById('contract_id').value = '';
+        document.getElementById('contract_id').disabled = false;
+        ['contract_company','contract_rig','contract_value','contract_start','contract_end','contract_notes'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('contract_status_field').value = 'Pending';
+      }
+      openModal('addContractModal');
+    }
+
+    window.saveContractEntry = async function() {
+      const id = document.getElementById('contract_id').value.trim();
+      const company = document.getElementById('contract_company').value;
+      if (!id) { showToast('Contract ID is required.', 'error'); return; }
+      if (!company) { showToast('Company is required.', 'error'); return; }
+      const payload = {
+        id, company, rig: document.getElementById('contract_rig').value,
+        value: parseFloat(document.getElementById('contract_value').value) || 0,
+        start_date: document.getElementById('contract_start').value || null,
+        end_date: document.getElementById('contract_end').value || null,
+        status: document.getElementById('contract_status_field').value,
+        notes: document.getElementById('contract_notes').value.trim(),
+      };
+      try {
+        if (contractEditId) {
+          const res = await PUT(`/contracts/${contractEditId}`, payload);
+          const idx = CONTRACTS.findIndex(c => c.id === contractEditId);
+          if (idx >= 0) CONTRACTS[idx] = { ...CONTRACTS[idx], ...res.data };
+          showToast('Contract updated ✓', 'success');
+        } else {
+          const res = await POST('/contracts', payload);
+          CONTRACTS.push(res.data);
+          showToast('Contract added ✓', 'success');
+        }
+        closeModal('addContractModal');
+        applyContractFilters();
+      } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
+    };
 
     // ══════════════════════════════════
     //  RENDER USERS
@@ -5522,15 +5820,60 @@ Asset Management System</textarea>
       showToast(`Exported ${data.length} asset(s) to PDF ✓`, 'success');
     }
 
+    function getFilteredContracts() {
+      const q = (document.getElementById('contractSearch')?.value || '').toLowerCase();
+      const status = document.getElementById('contractStatus')?.value || '';
+      return CONTRACTS.filter(c => {
+        const mq = !q || c.id.toLowerCase().includes(q) || (c.company||'').toLowerCase().includes(q);
+        return mq && (!status || c.status === status);
+      });
+    }
+
     function exportContracts() {
-      const ws = XLSX.utils.json_to_sheet(CONTRACTS.map(c => ({
+      const data = getFilteredContracts();
+      const ws = XLSX.utils.json_to_sheet(data.map(c => ({
         'Contract ID': c.id, 'Company': c.company, 'Rig': c.rig, 'Assets': c.assetCount,
         'Start': c.start, 'End': c.end, 'Value': c.value, 'Status': c.status
       })));
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Contracts');
       XLSX.writeFile(wb, 'Contracts_Export.xlsx');
-      showToast('Contracts exported to Excel successfully.', 'success');
+      const label = data.length < CONTRACTS.length ? `${data.length} filtered` : `${data.length}`;
+      showToast(`Exported ${label} contract(s) to Excel ✓`, 'success');
+    }
+
+    function exportContractsPDF() {
+      const data = getFilteredContracts();
+      if (!data.length) { showToast('No contracts to export.', 'warning'); return; }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+      doc.setFillColor(53, 74, 94);
+      doc.rect(0, 0, doc.internal.pageSize.getWidth(), 36, 'F');
+      doc.setTextColor(255, 255, 255); doc.setFontSize(13); doc.setFont('helvetica', 'bold');
+      doc.text('Asset Management System — Contracts', 14, 24);
+      const now = new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+      const filterNote = data.length < CONTRACTS.length ? `Filtered: ${data.length} of ${CONTRACTS.length}` : `Total: ${CONTRACTS.length}`;
+      doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(200, 200, 200);
+      doc.text(`${filterNote}   |   Exported: ${now}`, 14, 32);
+      doc.autoTable({
+        startY: 46,
+        head: [['Contract ID', 'Company', 'Rig', 'Start Date', 'End Date', 'Value (USD)', 'Status']],
+        body: data.map(c => [c.id||'', c.company||'', c.rig||'', c.start||'', c.end||'',
+          c.value != null ? Number(c.value).toLocaleString() : '', c.status||'']),
+        styles: { fontSize: 8, cellPadding: 4, font: 'helvetica', textColor: [50, 54, 58] },
+        headStyles: { fillColor: [0, 112, 242], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [245, 246, 247] },
+        columnStyles: { 5: { halign: 'right' } },
+        margin: { left: 14, right: 14 },
+        didDrawPage: (d) => {
+          const pg = doc.internal.getCurrentPageInfo().pageNumber;
+          const total = doc.internal.getNumberOfPages();
+          doc.setFontSize(7); doc.setTextColor(150);
+          doc.text(`Page ${pg} of ${total}`, doc.internal.pageSize.getWidth() - 14, doc.internal.pageSize.getHeight() - 8, { align: 'right' });
+        }
+      });
+      doc.save(`Contracts_${data.length < CONTRACTS.length ? 'filtered_' + data.length : 'all'}.pdf`);
+      showToast(`Exported ${data.length} contract(s) to PDF ✓`, 'success');
     }
 
     function openModal(id) { document.getElementById(id).classList.add('open'); }
@@ -6080,6 +6423,47 @@ Asset Management System</textarea>
       XLSX.utils.book_append_sheet(wb, ws, 'BOM');
       XLSX.writeFile(wb, `BOM_Export_${Date.now()}.xlsx`);
       showToast(`BOM exported (${rows.length} components).`, 'success');
+    }
+
+    function exportBOMPDF() {
+      const assetFilter = document.getElementById('bomFilterAsset')?.value;
+      const typeFilter = document.getElementById('bomFilterType')?.value;
+      let items = BOM_ITEMS;
+      if (assetFilter) items = items.filter(b => b.assetId === assetFilter);
+      if (typeFilter) items = items.filter(b => b.type === typeFilter);
+      if (!items.length) { showToast('No BOM items to export.', 'warning'); return; }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+      doc.setFillColor(53, 74, 94); doc.rect(0, 0, doc.internal.pageSize.getWidth(), 36, 'F');
+      doc.setTextColor(255, 255, 255); doc.setFontSize(13); doc.setFont('helvetica', 'bold');
+      doc.text('Asset Management System — Bill of Materials', 14, 24);
+      const now = new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+      const filterNote = assetFilter ? `Asset: ${assetFilter}` : `All assets (${BOM_ITEMS.length} total items)`;
+      doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(200, 200, 200);
+      doc.text(`${filterNote}   |   Exported: ${now}`, 14, 32);
+      doc.autoTable({
+        startY: 46,
+        head: [['Asset ID', 'Component', 'Part No.', 'Type', 'Serial', 'Qty', 'UOM', 'Unit Cost', 'Total Cost', 'Status']],
+        body: items.map(b => {
+          const asset = ASSETS.find(a => a.assetId === b.assetId);
+          return [b.assetId||'', b.name||'', b.partNo||'', b.type||'', b.serial||'',
+            b.qty||0, b.uom||'', b.unitCost ? '$'+Number(b.unitCost).toLocaleString() : '$0',
+            b.unitCost ? '$'+((b.unitCost||0)*(b.qty||0)).toLocaleString() : '$0', b.status||''];
+        }),
+        styles: { fontSize: 7.5, cellPadding: 3, font: 'helvetica', textColor: [50, 54, 58] },
+        headStyles: { fillColor: [0, 112, 242], textColor: 255, fontStyle: 'bold', fontSize: 8 },
+        alternateRowStyles: { fillColor: [245, 246, 247] },
+        columnStyles: { 7: { halign: 'right' }, 8: { halign: 'right' } },
+        margin: { left: 14, right: 14 },
+        didDrawPage: () => {
+          const pg = doc.internal.getCurrentPageInfo().pageNumber;
+          const total = doc.internal.getNumberOfPages();
+          doc.setFontSize(7); doc.setTextColor(150);
+          doc.text(`Page ${pg} of ${total}`, doc.internal.pageSize.getWidth() - 14, doc.internal.pageSize.getHeight() - 8, { align: 'right' });
+        }
+      });
+      doc.save(`BOM_Export.pdf`);
+      showToast(`BOM exported to PDF (${items.length} items) ✓`, 'success');
     }
 
     function showToast(msg, type = 'info') {
@@ -6704,37 +7088,70 @@ Asset Management System</textarea>
 
 
     // ── EXPORT TRANSFERS ───────────────────────────────────────
+    function getFilteredTransfers() {
+      const q = (document.getElementById('trSearch')?.value || '').toLowerCase();
+      const fS = document.getElementById('trFilterStatus')?.value || '';
+      const fP = document.getElementById('trFilterPriority')?.value || '';
+      return TRANSFERS.filter(t => {
+        const mq = !q || t.id.toLowerCase().includes(q) || (t.assetName||'').toLowerCase().includes(q) ||
+          (t.currentLoc||'').toLowerCase().includes(q) || (t.destination||'').toLowerCase().includes(q);
+        return mq && (!fS || t.status === fS) && (!fP || t.priority === fP);
+      }).sort((a, b) => b.id.localeCompare(a.id));
+    }
+
     function exportTransfers() {
-      const rows = TRANSFERS.map(t => ({
-        'Request ID': t.id,
-        'Asset ID': t.assetId,
-        'Asset Name': t.assetName,
-        'Current Location': t.currentLoc,
-        'Destination': t.destination,
-        'Dest. Rig': t.destRig || '',
-        'Dest. Company': t.destCompany || '',
-        'Priority': t.priority,
-        'Type': t.type,
-        'Requested By': t.requestedBy,
-        'Request Date': t.requestDate,
-        'Required By': t.requiredDate || '',
-        'Reason': t.reason,
-        'Status': t.status,
-        'Ops Manager': t.opsApproval.by || '',
-        'Ops Action': t.opsApproval.action || '',
-        'Ops Date': t.opsApproval.date || '',
-        'Ops Comment': t.opsApproval.comment || '',
-        'Asset Mgr': t.mgrApproval.by || '',
-        'Mgr Action': t.mgrApproval.action || '',
-        'Mgr Date': t.mgrApproval.date || '',
-        'Mgr Comment': t.mgrApproval.comment || '',
+      const data = getFilteredTransfers();
+      const rows = data.map(t => ({
+        'Request ID': t.id, 'Asset ID': t.assetId, 'Asset Name': t.assetName,
+        'Current Location': t.currentLoc, 'Destination': t.destination,
+        'Dest. Rig': t.destRig || '', 'Dest. Company': t.destCompany || '',
+        'Priority': t.priority, 'Type': t.type, 'Requested By': t.requestedBy,
+        'Request Date': t.requestDate, 'Required By': t.requiredDate || '',
+        'Reason': t.reason, 'Status': t.status,
+        'Ops Manager': t.opsApproval.by || '', 'Ops Action': t.opsApproval.action || '',
+        'Ops Date': t.opsApproval.date || '', 'Ops Comment': t.opsApproval.comment || '',
+        'Asset Mgr': t.mgrApproval.by || '', 'Mgr Action': t.mgrApproval.action || '',
+        'Mgr Date': t.mgrApproval.date || '', 'Mgr Comment': t.mgrApproval.comment || '',
       }));
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.json_to_sheet(rows);
       ws['!cols'] = [10, 10, 25, 20, 20, 18, 20, 10, 16, 18, 12, 12, 40, 14, 16, 10, 12, 30, 16, 10, 12, 30].map(w => ({ wch: w }));
       XLSX.utils.book_append_sheet(wb, ws, 'Transfers');
       XLSX.writeFile(wb, `AssetTransfers_${Date.now()}.xlsx`);
-      showToast(`Exported ${rows.length} transfer records.`, 'success');
+      const label = data.length < TRANSFERS.length ? `${data.length} filtered` : `${data.length}`;
+      showToast(`Exported ${label} transfer records to Excel ✓`, 'success');
+    }
+
+    function exportTransfersPDF() {
+      const data = getFilteredTransfers();
+      if (!data.length) { showToast('No transfers to export.', 'warning'); return; }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+      doc.setFillColor(53, 74, 94); doc.rect(0, 0, doc.internal.pageSize.getWidth(), 36, 'F');
+      doc.setTextColor(255, 255, 255); doc.setFontSize(13); doc.setFont('helvetica', 'bold');
+      doc.text('Asset Management System — Transfer Requests', 14, 24);
+      const now = new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+      const filterNote = data.length < TRANSFERS.length ? `Filtered: ${data.length} of ${TRANSFERS.length}` : `Total: ${TRANSFERS.length}`;
+      doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(200, 200, 200);
+      doc.text(`${filterNote}   |   Exported: ${now}`, 14, 32);
+      doc.autoTable({
+        startY: 46,
+        head: [['Request ID', 'Asset', 'Asset ID', 'From', 'Destination', 'Priority', 'Type', 'Req. By', 'Date', 'Status']],
+        body: data.map(t => [t.id||'', t.assetName||'', t.assetId||'', t.currentLoc||'',
+          t.destination||'', t.priority||'', t.type||'', t.requestedBy||'', t.requestDate||'', t.status||'']),
+        styles: { fontSize: 7.5, cellPadding: 3, font: 'helvetica', textColor: [50, 54, 58] },
+        headStyles: { fillColor: [0, 112, 242], textColor: 255, fontStyle: 'bold', fontSize: 8 },
+        alternateRowStyles: { fillColor: [245, 246, 247] },
+        margin: { left: 14, right: 14 },
+        didDrawPage: () => {
+          const pg = doc.internal.getCurrentPageInfo().pageNumber;
+          const total = doc.internal.getNumberOfPages();
+          doc.setFontSize(7); doc.setTextColor(150);
+          doc.text(`Page ${pg} of ${total}`, doc.internal.pageSize.getWidth() - 14, doc.internal.pageSize.getHeight() - 8, { align: 'right' });
+        }
+      });
+      doc.save(`Transfers_${data.length < TRANSFERS.length ? 'filtered_' + data.length : 'all'}.pdf`);
+      showToast(`Exported ${data.length} transfer(s) to PDF ✓`, 'success');
     }
 
     // ── FILTER CLEAR ───────────────────────────────────────────
@@ -7251,29 +7668,38 @@ Asset Management System</textarea>
     }
 
     // ── EXPORT ────────────────────────────────────────────────────
+    function getFilteredMaintenance() {
+      const q = (document.getElementById('mSearch')?.value || '').toLowerCase();
+      const fS = document.getElementById('mFilterStatus')?.value || '';
+      const fT = document.getElementById('mFilterType')?.value || '';
+      const fA = document.getElementById('mFilterAsset')?.value || '';
+      const fP = document.getElementById('mFilterPriority')?.value || '';
+      const fR = document.getElementById('mFilterRig')?.value || activeMaintRig || '';
+      return MAINT_SCHEDULES.map(m => ({ ...m, _liveStatus: getMaintStatus(m) }))
+        .filter(m => {
+          const asset = ASSETS.find(a => a.assetId === m.assetId);
+          const mq = !q || m.task.toLowerCase().includes(q) || m.assetId.toLowerCase().includes(q) ||
+            (asset?.name||'').toLowerCase().includes(q) || (m.tech||'').toLowerCase().includes(q);
+          return mq && (!fS || m._liveStatus === fS) && (!fT || m.type === fT) &&
+            (!fA || m.assetId === fA) && (!fP || m.priority === fP) &&
+            (!fR || (asset && asset.rigName === fR));
+        });
+    }
+
     function exportMaintenance() {
-      const rows = MAINT_SCHEDULES.map(m => {
+      const data = getFilteredMaintenance();
+      const rows = data.map(m => {
         const asset = ASSETS.find(a => a.assetId === m.assetId);
         const live = getMaintStatus(m);
         const d = daysUntil(m.nextDue);
         return {
-          'Schedule ID': m.id,
-          'Asset ID': m.assetId,
-          'Asset Name': asset?.name || '',
-          'Task': m.task,
-          'Type': m.type,
-          'Frequency (days)': m.freq,
-          'Last Performed': m.lastDone || '',
-          'Next Due Date': m.nextDue || '',
-          'Days Until Due': d,
-          'Priority': m.priority,
-          'Status': live,
-          'Technician': m.tech || '',
-          'Est. Hours': m.hours || '',
-          'Est. Cost (USD)': m.cost || '',
-          'Alert Days': m.alertDays,
-          'Log Entries': (m.logs || []).length,
-          'Notes': m.notes || '',
+          'Schedule ID': m.id, 'Asset ID': m.assetId, 'Asset Name': asset?.name || '',
+          'Task': m.task, 'Type': m.type, 'Frequency (days)': m.freq,
+          'Last Performed': m.lastDone || '', 'Next Due Date': m.nextDue || '',
+          'Days Until Due': d, 'Priority': m.priority, 'Status': live,
+          'Technician': m.tech || '', 'Est. Hours': m.hours || '',
+          'Est. Cost (USD)': m.cost || '', 'Alert Days': m.alertDays,
+          'Log Entries': (m.logs || []).length, 'Notes': m.notes || '',
         };
       });
       const wb = XLSX.utils.book_new();
@@ -7281,7 +7707,45 @@ Asset Management System</textarea>
       ws['!cols'] = [11, 10, 28, 35, 18, 14, 14, 14, 12, 10, 12, 20, 10, 14, 10, 10, 40].map(w => ({ wch: w }));
       XLSX.utils.book_append_sheet(wb, ws, 'Maintenance');
       XLSX.writeFile(wb, `Maintenance_Schedule_${Date.now()}.xlsx`);
-      showToast(`Exported ${rows.length} maintenance schedules.`, 'success');
+      const label = data.length < MAINT_SCHEDULES.length ? `${data.length} filtered` : `${data.length}`;
+      showToast(`Exported ${label} maintenance schedules to Excel ✓`, 'success');
+    }
+
+    function exportMaintenancePDF() {
+      const data = getFilteredMaintenance();
+      if (!data.length) { showToast('No maintenance schedules to export.', 'warning'); return; }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+      doc.setFillColor(53, 74, 94); doc.rect(0, 0, doc.internal.pageSize.getWidth(), 36, 'F');
+      doc.setTextColor(255, 255, 255); doc.setFontSize(13); doc.setFont('helvetica', 'bold');
+      doc.text('Asset Management System — Maintenance Schedule', 14, 24);
+      const now = new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+      const filterNote = data.length < MAINT_SCHEDULES.length ? `Filtered: ${data.length} of ${MAINT_SCHEDULES.length}` : `Total: ${MAINT_SCHEDULES.length}`;
+      doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(200, 200, 200);
+      doc.text(`${filterNote}   |   Exported: ${now}`, 14, 32);
+      doc.autoTable({
+        startY: 46,
+        head: [['Schedule ID', 'Asset ID', 'Asset Name', 'Task', 'Type', 'Next Due', 'Days Left', 'Priority', 'Status', 'Technician']],
+        body: data.map(m => {
+          const asset = ASSETS.find(a => a.assetId === m.assetId);
+          const d = daysUntil(m.nextDue);
+          const dStr = m._liveStatus === 'Completed' ? 'Done' : d !== null ? `${d}d` : '—';
+          return [m.id||'', m.assetId||'', asset?.name||'', m.task||'', m.type||'',
+            m.nextDue||'', dStr, m.priority||'', m._liveStatus||getMaintStatus(m), m.tech||''];
+        }),
+        styles: { fontSize: 7.5, cellPadding: 3, font: 'helvetica', textColor: [50, 54, 58] },
+        headStyles: { fillColor: [0, 112, 242], textColor: 255, fontStyle: 'bold', fontSize: 8 },
+        alternateRowStyles: { fillColor: [245, 246, 247] },
+        margin: { left: 14, right: 14 },
+        didDrawPage: () => {
+          const pg = doc.internal.getCurrentPageInfo().pageNumber;
+          const total = doc.internal.getNumberOfPages();
+          doc.setFontSize(7); doc.setTextColor(150);
+          doc.text(`Page ${pg} of ${total}`, doc.internal.pageSize.getWidth() - 14, doc.internal.pageSize.getHeight() - 8, { align: 'right' });
+        }
+      });
+      doc.save(`Maintenance_${data.length < MAINT_SCHEDULES.length ? 'filtered_'+data.length : 'all'}.pdf`);
+      showToast(`Exported ${data.length} schedule(s) to PDF ✓`, 'success');
     }
 
     // initMaintenance is called from window.onload below
@@ -7657,31 +8121,75 @@ Asset Management System</textarea>
       showToast('Certificate deleted.', 'warning');
     }
 
-    function exportCertificates() {
+    function getFilteredCertificates() {
       if (!CERTIFICATES.length) initCertificates();
-      const rows = CERTIFICATES.map(c => ({
-        'Cert ID': c.certId,
-        'Asset ID': c.assetId,
-        'Asset Name': c.name,
-        'Serial Number': c.serial,
-        'Rig': c.rigName,
-        'Category': c.category,
-        'Inspection Type': c.inspectionType,
-        'Last Inspection': c.lastInspection,
-        'Next Inspection': c.nextInspection,
-        'Validity (days)': c.validityDays,
-        'Alert (days)': c.alertDays,
-        'Status': certStatus(c),
+      const q = (document.getElementById('certSearch')?.value || '').toLowerCase();
+      const rigF = document.getElementById('certFilterRig')?.value || '';
+      const typeF = document.getElementById('certFilterType')?.value || '';
+      const statusF = document.getElementById('certFilterStatus')?.value || '';
+      return CERTIFICATES.filter(c => {
+        const cs = certStatus(c);
+        const fields = [c.assetId, c.name, c.serial, c.rigName, c.inspectionType,
+          c.lastInspection, c.nextInspection, c.notes, c.certLink].join(' ').toLowerCase();
+        return (!q || fields.includes(q)) && (!rigF || c.rigName === rigF) &&
+          (!typeF || c.inspectionType === typeF) && (!statusF || cs === statusF);
+      });
+    }
+
+    function exportCertificates() {
+      const data = getFilteredCertificates();
+      const rows = data.map(c => ({
+        'Cert ID': c.certId, 'Asset ID': c.assetId, 'Asset Name': c.name,
+        'Serial Number': c.serial, 'Rig': c.rigName, 'Category': c.category,
+        'Inspection Type': c.inspectionType, 'Last Inspection': c.lastInspection,
+        'Next Inspection': c.nextInspection, 'Validity (days)': c.validityDays,
+        'Alert (days)': c.alertDays, 'Status': certStatus(c),
         'Days Until Due': daysUntilCert(c.nextInspection) ?? '',
-        'Certificate Link': c.certLink,
-        'Notes': c.notes,
+        'Certificate Link': c.certLink, 'Notes': c.notes,
       }));
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.json_to_sheet(rows);
       ws['!cols'] = [10, 10, 28, 14, 8, 22, 22, 14, 14, 14, 10, 14, 12, 40, 40].map(w => ({ wch: w }));
       XLSX.utils.book_append_sheet(wb, ws, 'Certificates');
       XLSX.writeFile(wb, `Certificates_${Date.now()}.xlsx`);
-      showToast(`Exported ${rows.length} certificate records.`, 'success');
+      const label = data.length < CERTIFICATES.length ? `${data.length} filtered` : `${data.length}`;
+      showToast(`Exported ${label} certificate(s) to Excel ✓`, 'success');
+    }
+
+    function exportCertificatesPDF() {
+      const data = getFilteredCertificates();
+      if (!data.length) { showToast('No certificates to export.', 'warning'); return; }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+      doc.setFillColor(53, 74, 94); doc.rect(0, 0, doc.internal.pageSize.getWidth(), 36, 'F');
+      doc.setTextColor(255, 255, 255); doc.setFontSize(13); doc.setFont('helvetica', 'bold');
+      doc.text('Asset Management System — Certificate Registry', 14, 24);
+      const now = new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+      const filterNote = data.length < CERTIFICATES.length ? `Filtered: ${data.length} of ${CERTIFICATES.length}` : `Total: ${CERTIFICATES.length}`;
+      doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(200, 200, 200);
+      doc.text(`${filterNote}   |   Exported: ${now}`, 14, 32);
+      doc.autoTable({
+        startY: 46,
+        head: [['Asset ID', 'Asset Name', 'Serial', 'Rig', 'Inspection Type', 'Last Inspection', 'Next Inspection', 'Days Left', 'Status']],
+        body: data.map(c => {
+          const d = daysUntilCert(c.nextInspection);
+          const dStr = d === null ? '—' : d < 0 ? `${Math.abs(d)}d overdue` : `${d}d`;
+          return [c.assetId||'', c.name||'', c.serial||'', c.rigName||'', c.inspectionType||'',
+            c.lastInspection||'—', c.nextInspection||'—', dStr, certStatus(c)];
+        }),
+        styles: { fontSize: 7.5, cellPadding: 3, font: 'helvetica', textColor: [50, 54, 58] },
+        headStyles: { fillColor: [0, 112, 242], textColor: 255, fontStyle: 'bold', fontSize: 8 },
+        alternateRowStyles: { fillColor: [245, 246, 247] },
+        margin: { left: 14, right: 14 },
+        didDrawPage: () => {
+          const pg = doc.internal.getCurrentPageInfo().pageNumber;
+          const total = doc.internal.getNumberOfPages();
+          doc.setFontSize(7); doc.setTextColor(150);
+          doc.text(`Page ${pg} of ${total}`, doc.internal.pageSize.getWidth() - 14, doc.internal.pageSize.getHeight() - 8, { align: 'right' });
+        }
+      });
+      doc.save(`Certificates_${data.length < CERTIFICATES.length ? 'filtered_'+data.length : 'all'}.pdf`);
+      showToast(`Exported ${data.length} certificate(s) to PDF ✓`, 'success');
     }
 
 
