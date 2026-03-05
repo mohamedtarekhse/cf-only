@@ -2,80 +2,72 @@
 --  ASSET MANAGEMENT SYSTEM â€” Supabase / PostgreSQL Schema
 --  Land Rig & Contracting
 --  
---  INCLUDES:
 --    1. Core tables (assets, rigs, companies, contracts, etc.)
 --    2. NEW category-specific equipment tables
 --    3. Trigger: auto-inserts into category table on asset save
---    4. Register tables (BOP, Well Head, Well Control, 
+--    4. Register tables (BOP, Well Head, Well Control,
 --       Fire Extinguisher, SCBA)
 -- ============================================================
 
--- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
---  EXTENSIONS
--- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- Extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
-
 -- ============================================================
---  SECTION 1 â€” CORE TABLES
+--  SECTION 1 — CORE TABLES
 -- ============================================================
 
--- â”€â”€ Companies â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- Companies €€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€
 CREATE TABLE IF NOT EXISTS companies (
-  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name          TEXT NOT NULL UNIQUE,
-  short_code    TEXT,
-  country       TEXT,
-  contact_name  TEXT,
-  contact_email TEXT,
-  contact_phone TEXT,
-  active        BOOLEAN DEFAULT TRUE,
-  created_at    TIMESTAMPTZ DEFAULT NOW(),
-  updated_at    TIMESTAMPTZ DEFAULT NOW()
+  id         TEXT PRIMARY KEY,
+  name       TEXT NOT NULL UNIQUE,
+  type       TEXT,
+  country    TEXT,
+  contact    TEXT,
+  email      TEXT,
+  status     TEXT DEFAULT 'Active' CHECK (status IN ('Active','Inactive')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- â”€â”€ Land Rigs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- €€ Land Rigs €€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€
 CREATE TABLE IF NOT EXISTS rigs (
-  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  rig_name      TEXT NOT NULL UNIQUE,
-  rig_type      TEXT,
-  company_id    UUID REFERENCES companies(id) ON DELETE SET NULL,
-  location      TEXT,
-  status        TEXT DEFAULT 'Active'
-                  CHECK (status IN ('Active','Idle','Maintenance','Retired')),
-  hp            INTEGER,
-  depth_rating  INTEGER,
-  notes         TEXT,
-  created_at    TIMESTAMPTZ DEFAULT NOW(),
-  updated_at    TIMESTAMPTZ DEFAULT NOW()
+  id         TEXT PRIMARY KEY,
+  name       TEXT NOT NULL UNIQUE,
+  type       TEXT,
+  company    TEXT,
+  location   TEXT,
+  depth      TEXT,
+  hp         INTEGER,
+  status     TEXT DEFAULT 'Active' CHECK (status IN ('Active','Idle','Maintenance','Standby','Retired')),
+  notes      TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- â”€â”€ Contracts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- €€ Contracts €€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€
 CREATE TABLE IF NOT EXISTS contracts (
-  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  contract_id   TEXT NOT NULL UNIQUE,
-  company_id    UUID REFERENCES companies(id) ON DELETE SET NULL,
-  rig_id        UUID REFERENCES rigs(id) ON DELETE SET NULL,
-  start_date    DATE,
-  end_date      DATE,
-  value         NUMERIC(14,2) DEFAULT 0,
-  status        TEXT DEFAULT 'Active'
-                  CHECK (status IN ('Active','Expired','Pending','Terminated')),
-  notes         TEXT,
-  created_at    TIMESTAMPTZ DEFAULT NOW(),
-  updated_at    TIMESTAMPTZ DEFAULT NOW()
+  id         TEXT PRIMARY KEY,
+  company    TEXT,
+  rig        TEXT,
+  start_date DATE,
+  end_date   DATE,
+  value      NUMERIC(14,2) DEFAULT 0,
+  status     TEXT DEFAULT 'Active' CHECK (status IN ('Active','Expired','Pending','Terminated')),
+  notes      TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- â”€â”€ Assets (master table) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- €€ Assets (master table) €€€€€€€€€€€€€€€€€€€€€€€€€€€€€€
 CREATE TABLE IF NOT EXISTS assets (
   id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   asset_id         TEXT NOT NULL UNIQUE,
   name             TEXT NOT NULL,
   category         TEXT NOT NULL,
   status           TEXT DEFAULT 'Active'
-                     CHECK (status IN ('Active','Maintenance','Inactive','Contracted','Retired')),
-  company_id       UUID REFERENCES companies(id) ON DELETE SET NULL,
+                     CHECK (status IN ('Active','Maintenance','Inactive','Contracted','Retired','Standby')),
+  company          TEXT,
   rig_name         TEXT,
   location         TEXT,
   serial           TEXT,
@@ -93,12 +85,19 @@ CREATE INDEX IF NOT EXISTS idx_assets_category ON assets(category);
 CREATE INDEX IF NOT EXISTS idx_assets_status   ON assets(status);
 CREATE INDEX IF NOT EXISTS idx_assets_rig_name ON assets(rig_name);
 
--- â”€â”€ Bill of Materials â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- €€ Contract ? Asset mapping €€€€€€€€€€€€€€€€€€€€€€€€€
+CREATE TABLE IF NOT EXISTS contract_assets (
+  contract_id TEXT NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
+  asset_id    TEXT NOT NULL REFERENCES assets(asset_id) ON DELETE CASCADE,
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (contract_id, asset_id)
+);
+
+-- €€ Bill of Materials €€€€€€€€€€€€€€€€€€€€€€€€€€€€€€
 CREATE TABLE IF NOT EXISTS bom_items (
-  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  bom_id       TEXT NOT NULL UNIQUE,
+  id           TEXT PRIMARY KEY,
   asset_id     TEXT NOT NULL REFERENCES assets(asset_id) ON DELETE CASCADE,
-  parent_id    TEXT,
+  parent_id    TEXT REFERENCES bom_items(id) ON DELETE SET NULL,
   name         TEXT NOT NULL,
   part_no      TEXT,
   type         TEXT DEFAULT 'Serialized',
@@ -110,32 +109,43 @@ CREATE TABLE IF NOT EXISTS bom_items (
   lead_time    INTEGER DEFAULT 0,
   status       TEXT DEFAULT 'Active',
   notes        TEXT,
-  created_at   TIMESTAMPTZ DEFAULT NOW()
+  created_at   TIMESTAMPTZ DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ DEFAULT NOW()
 );
 
--- â”€â”€ Maintenance Schedules â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-CREATE TABLE IF NOT EXISTS maintenance (
-  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  sched_id   TEXT NOT NULL UNIQUE,
+-- €€ Maintenance Schedules €€€€€€€€€€€€€€€€€€€€€€€€€€
+CREATE TABLE IF NOT EXISTS maintenance_schedules (
+  id         TEXT PRIMARY KEY,
   asset_id   TEXT NOT NULL REFERENCES assets(asset_id) ON DELETE CASCADE,
   task       TEXT NOT NULL,
   type       TEXT DEFAULT 'Inspection',
-  priority   TEXT DEFAULT 'Normal',
-  freq_days  INTEGER DEFAULT 90,
+  freq       INTEGER DEFAULT 90,
   last_done  DATE,
   next_due   DATE NOT NULL,
-  technician TEXT,
+  tech       TEXT,
   hours      NUMERIC(8,2),
   cost       NUMERIC(10,2),
-  status     TEXT DEFAULT 'Scheduled'
-               CHECK (status IN ('Scheduled','In Progress','Completed','Overdue','Cancelled')),
+  priority   TEXT DEFAULT 'Normal',
+  status     TEXT DEFAULT 'Scheduled' CHECK (status IN ('Scheduled','In Progress','Completed','Cancelled')),
   alert_days INTEGER DEFAULT 14,
   notes      TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- â”€â”€ Certificates â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+CREATE TABLE IF NOT EXISTS maintenance_logs (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  schedule_id     TEXT NOT NULL REFERENCES maintenance_schedules(id) ON DELETE CASCADE,
+  completion_date DATE NOT NULL,
+  performed_by    TEXT NOT NULL,
+  hours           NUMERIC(8,2),
+  cost            NUMERIC(10,2),
+  parts_used      TEXT,
+  notes           TEXT,
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- €€ Certificates €€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€
 CREATE TABLE IF NOT EXISTS certificates (
   id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   cert_id         TEXT NOT NULL UNIQUE,
@@ -151,31 +161,37 @@ CREATE TABLE IF NOT EXISTS certificates (
   updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
--- â”€â”€ Asset Transfers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- €€ Asset Transfers €€€€€€€€€€€€€€€€€€€€€€€€€€€€
 CREATE TABLE IF NOT EXISTS transfers (
-  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  transfer_id     TEXT NOT NULL UNIQUE,
-  asset_id        TEXT NOT NULL REFERENCES assets(asset_id) ON DELETE CASCADE,
-  asset_name      TEXT,
-  current_loc     TEXT,
-  destination     TEXT,
-  dest_rig        TEXT,
-  dest_company    TEXT,
-  priority        TEXT DEFAULT 'Normal',
-  type            TEXT DEFAULT 'Field to Field',
-  requested_by    TEXT,
-  request_date    DATE,
-  required_date   DATE,
-  reason          TEXT,
-  instructions    TEXT,
-  status          TEXT DEFAULT 'Pending'
-                    CHECK (status IN ('Pending','Approved','In Transit','Completed','Cancelled')),
-  created_at      TIMESTAMPTZ DEFAULT NOW(),
-  updated_at      TIMESTAMPTZ DEFAULT NOW()
+  id                TEXT PRIMARY KEY,
+  asset_id          TEXT NOT NULL REFERENCES assets(asset_id) ON DELETE CASCADE,
+  asset_name        TEXT,
+  current_loc       TEXT,
+  destination       TEXT,
+  dest_rig          TEXT,
+  dest_company      TEXT,
+  priority          TEXT DEFAULT 'Normal',
+  type              TEXT DEFAULT 'Field to Field',
+  requested_by      TEXT,
+  request_date      DATE,
+  required_date     DATE,
+  reason            TEXT,
+  instructions      TEXT,
+  status            TEXT DEFAULT 'Pending' CHECK (status IN ('Pending','Ops Approved','Completed','Rejected','On Hold','Cancelled')),
+  ops_approved_by   TEXT,
+  ops_approved_date DATE,
+  ops_action        TEXT,
+  ops_comment       TEXT,
+  mgr_approved_by   TEXT,
+  mgr_approved_date DATE,
+  mgr_action        TEXT,
+  mgr_comment       TEXT,
+  created_at        TIMESTAMPTZ DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ DEFAULT NOW()
 );
 
--- â”€â”€ Users â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-CREATE TABLE IF NOT EXISTS users (
+-- €€ Users €€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€
+CREATE TABLE IF NOT EXISTS app_users (
   id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   email      TEXT NOT NULL UNIQUE,
   name       TEXT NOT NULL,
@@ -189,6 +205,17 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- €€ Notifications €€€€€€€€€€€€€€€€€€€€€€€€€€€€€
+CREATE TABLE IF NOT EXISTS notifications (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  icon        TEXT,
+  kind        TEXT,
+  title       TEXT NOT NULL,
+  description TEXT,
+  time_label  TEXT,
+  is_read     BOOLEAN DEFAULT FALSE,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
 
 -- ============================================================
 --  SECTION 2 â€” CATEGORY-SPECIFIC EQUIPMENT TABLES
@@ -723,8 +750,8 @@ DECLARE
   tbl TEXT;
 BEGIN
   FOREACH tbl IN ARRAY ARRAY[
-    'companies','rigs','contracts','maintenance',
-    'certificates','transfers','users',
+    'companies','rigs','contracts','maintenance_schedules',
+    'certificates','transfers','app_users',
     'reg_bop','reg_well_head','reg_well_control',
     'reg_fire_extinguishers','reg_scba'
   ] LOOP
@@ -910,3 +937,7 @@ CREATE INDEX IF NOT EXISTS idx_reg_scba_expiry     ON reg_scba(expiry_inspection
   - Return { success: true, data: {row} } on POST/PUT
   - Return { success: true } on DELETE
 */
+
+
+
+
