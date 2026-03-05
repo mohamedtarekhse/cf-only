@@ -2845,6 +2845,7 @@
                 <option>Centrifugal Pumps</option>
                 <option>Drilling Equipment</option>
                 <option>Hoisting Equipment</option>
+                  <option>Winches</option>
               </select>
             </div>
             <div class="filter-group">
@@ -4389,6 +4390,7 @@ Asset Management System</textarea>
               <option>Centrifugal Pumps</option>
               <option>Drilling Equipment</option>
               <option>Hoisting Equipment</option>
+                  <option>Winches</option>
             </select>
           </div>
           <div class="form-group"><label class="form-label">Status</label>
@@ -9526,6 +9528,9 @@ Instructions:
           rerenderAll();
           showToast('Database connected ✓  (' + ASSETS.length + ' assets loaded)', 'success');
           console.log('[AssetAPI] Bootstrap complete');
+
+          // Load register tables in background (non-blocking)
+          if (typeof loadAllRegisterData === 'function') loadAllRegisterData();
         } catch (e) {
           console.error('[AssetAPI] Bootstrap failed:', e);
           showToast('⚠ Database error: ' + e.message, 'error');
@@ -10280,11 +10285,104 @@ Instructions:
         } catch (err) { showToast('Import failed: ' + err.message, 'error'); }
       }
 
-      // ══════════════════════════════════════════
+// ══════════════════════════════════════════
       //  REGISTERS MODULE
       // ══════════════════════════════════════════
 
-      // ── Tab switching ──
+      // ── Normaliser: DB row → app object ──────────────────────────────────────
+      function normReg(r) {
+        return {
+          id:               r.id,
+          regId:            r.reg_id,
+          asset:            r.asset,
+          serial:           r.serial_number,
+          lastInspection:   r.last_inspection,
+          expiryInspection: r.expiry_inspection,
+          location:         r.assigned_location,
+          rig:              r.rig,
+          notes:            r.notes,
+        };
+      }
+
+      // ── Payload: app object → DB row ─────────────────────────────────────────
+      function regPayload(fields) {
+        return {
+          asset:             fields.asset,
+          serial_number:     fields.serial,
+          last_inspection:   fields.lastInspection  || null,
+          expiry_inspection: fields.expiryInspection || null,
+          assigned_location: fields.location,
+          rig:               fields.rig,
+          notes:             fields.notes,
+        };
+      }
+
+      // ── Shared inspection status helper ──────────────────────────────────────
+      function bopInspStatus(expiry) {
+        if (!expiry) return { label: 'Unknown', cls: 'status-maintenance' };
+        const days = Math.ceil((new Date(expiry) - new Date()) / 86400000);
+        if (days < 0)   return { label: 'Expired',       cls: 'status-inactive'   };
+        if (days <= 30) return { label: 'Expiring Soon', cls: 'status-contracted' };
+        return               { label: 'Valid',          cls: 'status-active'     };
+      }
+
+      // ── Generic table renderer ────────────────────────────────────────────────
+      function renderRegTable({ records, tbodyId, countId, searchId, rigFilterId, inspFilterId, editFn, deleteFn, emptyIcon }) {
+        const search = (document.getElementById(searchId)?.value || '').toLowerCase();
+        const rigF   = document.getElementById(rigFilterId)?.value  || '';
+        const inspF  = document.getElementById(inspFilterId)?.value || '';
+
+        const rows = records.filter(r => {
+          const matchSearch = !search || [r.asset, r.serial, r.location, r.rig].some(v => (v||'').toLowerCase().includes(search));
+          const matchRig    = !rigF   || r.rig === rigF;
+          const st          = bopInspStatus(r.expiryInspection);
+          const matchInsp   = !inspF
+            || (inspF === 'valid'    && st.label === 'Valid')
+            || (inspF === 'expiring' && st.label === 'Expiring Soon')
+            || (inspF === 'expired'  && st.label === 'Expired');
+          return matchSearch && matchRig && matchInsp;
+        });
+
+        const tbody   = document.getElementById(tbodyId);
+        const countEl = document.getElementById(countId);
+        if (countEl) countEl.textContent = '(' + rows.length + ')';
+
+        if (!rows.length) {
+          tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--sap-text-muted)"><i class="${emptyIcon}" style="margin-right:8px;color:#ccc"></i>No records found.</td></tr>`;
+          return;
+        }
+        tbody.innerHTML = rows.map(r => {
+          const st = bopInspStatus(r.expiryInspection);
+          return `<tr>
+            <td><strong>${r.asset||'—'}</strong></td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${r.serial||'—'}</td>
+            <td>${r.lastInspection   ? new Date(r.lastInspection).toLocaleDateString('en-GB')   : '—'}</td>
+            <td>${r.expiryInspection ? new Date(r.expiryInspection).toLocaleDateString('en-GB') : '—'}</td>
+            <td>${r.location||'—'}</td>
+            <td>${r.rig||'—'}</td>
+            <td><span class="status-badge ${st.cls}">${st.label}</span></td>
+            <td>
+              <button class="btn btn-ghost"  style="height:24px;padding:0 8px;font-size:11px" onclick="${editFn}('${r.id}')"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-danger" style="height:24px;padding:0 8px;font-size:11px" onclick="${deleteFn}('${r.id}')"><i class="fas fa-trash"></i></button>
+            </td>
+          </tr>`;
+        }).join('');
+      }
+
+      // ── Generic export helper ─────────────────────────────────────────────────
+      function exportRegister(records, sheetName, fileName) {
+        if (!records.length) { showToast('No data to export.', 'warning'); return; }
+        const ws_data = [
+          ['Asset','Serial Number','Date of Last Inspection','Expiry of Inspection','Assigned Location','Rig','Status','Notes'],
+          ...records.map(r => [r.asset, r.serial, r.lastInspection, r.expiryInspection, r.location, r.rig, bopInspStatus(r.expiryInspection).label, r.notes])
+        ];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws_data), sheetName);
+        XLSX.writeFile(wb, fileName);
+        showToast(sheetName + ' exported.', 'success');
+      }
+
+      // ── Tab switching ─────────────────────────────────────────────────────────
       window.switchRegTab = function(tab, el) {
         document.querySelectorAll('.reg-mini-tab').forEach(t => {
           t.style.color = 'var(--sap-text-muted)';
@@ -10313,353 +10411,6 @@ Instructions:
         if (panel) panel.style.display = 'flex';
       };
 
-      // ── BOP Register Data (in-memory) ──
-      let BOP_RECORDS = [];
-      let bopEditId = null;
-
-      window.openBopModal = function(id) {
-        bopEditId = id || null;
-        document.getElementById('bopModalTitle').textContent = id ? 'Edit BOP Register Entry' : 'Add BOP Register Entry';
-        if (id) {
-          const r = BOP_RECORDS.find(x => x.id === id);
-          if (r) {
-            document.getElementById('bop_editId').value = r.id;
-            document.getElementById('bop_asset').value = r.asset || '';
-            document.getElementById('bop_serial').value = r.serial || '';
-            document.getElementById('bop_lastInspection').value = r.lastInspection || '';
-            document.getElementById('bop_expiryInspection').value = r.expiryInspection || '';
-            document.getElementById('bop_location').value = r.location || '';
-            document.getElementById('bop_rig').value = r.rig || '';
-            document.getElementById('bop_notes').value = r.notes || '';
-          }
-        } else {
-          ['bop_editId','bop_asset','bop_serial','bop_lastInspection','bop_expiryInspection','bop_location','bop_notes'].forEach(id => document.getElementById(id).value = '');
-          document.getElementById('bop_rig').value = '';
-        }
-        document.getElementById('bopModal').classList.add('active');
-      };
-
-      window.saveBopEntry = function() {
-        const asset = document.getElementById('bop_asset').value.trim();
-        const serial = document.getElementById('bop_serial').value.trim();
-        const lastInsp = document.getElementById('bop_lastInspection').value;
-        const expiry = document.getElementById('bop_expiryInspection').value;
-        if (!asset || !serial) { showToast('Asset and Serial Number are required.', 'error'); return; }
-        if (bopEditId) {
-          const idx = BOP_RECORDS.findIndex(r => r.id === bopEditId);
-          if (idx >= 0) {
-            BOP_RECORDS[idx] = { ...BOP_RECORDS[idx], asset, serial, lastInspection: lastInsp, expiryInspection: expiry,
-              location: document.getElementById('bop_location').value.trim(),
-              rig: document.getElementById('bop_rig').value,
-              notes: document.getElementById('bop_notes').value.trim() };
-          }
-        } else {
-          BOP_RECORDS.push({ id: 'BOP-' + Date.now(), asset, serial, lastInspection: lastInsp, expiryInspection: expiry,
-            location: document.getElementById('bop_location').value.trim(),
-            rig: document.getElementById('bop_rig').value,
-            notes: document.getElementById('bop_notes').value.trim() });
-        }
-        closeModal('bopModal');
-        renderBopTable();
-        showToast('BOP entry saved.', 'success');
-      };
-
-      window.deleteBopEntry = function(id) {
-        if (!confirm('Delete this BOP register entry?')) return;
-        BOP_RECORDS = BOP_RECORDS.filter(r => r.id !== id);
-        renderBopTable();
-        showToast('Entry deleted.', 'success');
-      };
-
-      function bopInspStatus(expiry) {
-        if (!expiry) return { label: 'Unknown', cls: 'status-maintenance' };
-        const days = Math.ceil((new Date(expiry) - new Date()) / 86400000);
-        if (days < 0) return { label: 'Expired', cls: 'status-inactive' };
-        if (days <= 30) return { label: 'Expiring Soon', cls: 'status-contracted' };
-        return { label: 'Valid', cls: 'status-active' };
-      }
-
-      window.renderBopTable = function() {
-        const search = (document.getElementById('bopSearch')?.value || '').toLowerCase();
-        const rigF = document.getElementById('bopRigFilter')?.value || '';
-        const inspF = document.getElementById('bopInspFilter')?.value || '';
-
-        let rows = BOP_RECORDS.filter(r => {
-          const matchSearch = !search || [r.asset, r.serial, r.location, r.rig].some(v => (v||'').toLowerCase().includes(search));
-          const matchRig = !rigF || r.rig === rigF;
-          const st = bopInspStatus(r.expiryInspection);
-          const matchInsp = !inspF || (inspF === 'valid' && st.label === 'Valid') || (inspF === 'expiring' && st.label === 'Expiring Soon') || (inspF === 'expired' && st.label === 'Expired');
-          return matchSearch && matchRig && matchInsp;
-        });
-
-        const tbody = document.getElementById('bopTbody');
-        const countEl = document.getElementById('bopCount');
-        if (countEl) countEl.textContent = '(' + rows.length + ')';
-
-        if (!rows.length) {
-          tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--sap-text-muted)"><i class="fas fa-circle-notch" style="margin-right:8px;color:#ccc"></i>No BOP records match the current filters.</td></tr>';
-          return;
-        }
-        tbody.innerHTML = rows.map(r => {
-          const st = bopInspStatus(r.expiryInspection);
-          return `<tr>
-            <td><strong>${r.asset || '—'}</strong></td>
-            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${r.serial || '—'}</td>
-            <td>${r.lastInspection ? new Date(r.lastInspection).toLocaleDateString('en-GB') : '—'}</td>
-            <td>${r.expiryInspection ? new Date(r.expiryInspection).toLocaleDateString('en-GB') : '—'}</td>
-            <td>${r.location || '—'}</td>
-            <td>${r.rig || '—'}</td>
-            <td><span class="status-badge ${st.cls}">${st.label}</span></td>
-            <td>
-              <button class="btn btn-ghost" style="height:24px;padding:0 8px;font-size:11px" onclick="openBopModal('${r.id}')"><i class="fas fa-edit"></i></button>
-              <button class="btn btn-danger" style="height:24px;padding:0 8px;font-size:11px" onclick="deleteBopEntry('${r.id}')"><i class="fas fa-trash"></i></button>
-            </td>
-          </tr>`;
-        }).join('');
-      };
-
-      window.clearBopFilters = function() {
-        document.getElementById('bopSearch').value = '';
-        document.getElementById('bopRigFilter').value = '';
-        document.getElementById('bopInspFilter').value = '';
-        renderBopTable();
-      };
-
-      window.exportBopRegister = function() {
-        if (!BOP_RECORDS.length) { showToast('No BOP data to export.', 'warning'); return; }
-        const ws_data = [['Asset','Serial Number','Date of Last Inspection','Expiry of Inspection','Assigned Location','Rig','Status','Notes'],
-          ...BOP_RECORDS.map(r => [r.asset, r.serial, r.lastInspection, r.expiryInspection, r.location, r.rig, bopInspStatus(r.expiryInspection).label, r.notes])];
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.aoa_to_sheet(ws_data);
-        XLSX.utils.book_append_sheet(wb, ws, 'BOP Register');
-        XLSX.writeFile(wb, 'BOP_Register.xlsx');
-        showToast('BOP Register exported.', 'success');
-      };
-
-      // ══════════════════════════════════════════
-      //  WELL HEAD REGISTER MODULE
-      // ══════════════════════════════════════════
-      let WELLHEAD_RECORDS = [];
-      let wellheadEditId = null;
-
-      window.openWellheadModal = function(id) {
-        wellheadEditId = id || null;
-        document.getElementById('wellheadModalTitle').textContent = id ? 'Edit Well Head Register Entry' : 'Add Well Head Register Entry';
-        if (id) {
-          const r = WELLHEAD_RECORDS.find(x => x.id === id);
-          if (r) {
-            document.getElementById('wellhead_editId').value = r.id;
-            document.getElementById('wellhead_asset').value = r.asset || '';
-            document.getElementById('wellhead_serial').value = r.serial || '';
-            document.getElementById('wellhead_lastInspection').value = r.lastInspection || '';
-            document.getElementById('wellhead_expiryInspection').value = r.expiryInspection || '';
-            document.getElementById('wellhead_location').value = r.location || '';
-            document.getElementById('wellhead_rig').value = r.rig || '';
-            document.getElementById('wellhead_notes').value = r.notes || '';
-          }
-        } else {
-          ['wellhead_editId','wellhead_asset','wellhead_serial','wellhead_lastInspection','wellhead_expiryInspection','wellhead_location','wellhead_notes'].forEach(fid => document.getElementById(fid).value = '');
-          document.getElementById('wellhead_rig').value = '';
-        }
-        document.getElementById('wellheadModal').classList.add('active');
-      };
-
-      window.saveWellheadEntry = function() {
-        const asset = document.getElementById('wellhead_asset').value.trim();
-        const serial = document.getElementById('wellhead_serial').value.trim();
-        if (!asset || !serial) { showToast('Asset and Serial Number are required.', 'error'); return; }
-        const entry = {
-          asset, serial,
-          lastInspection: document.getElementById('wellhead_lastInspection').value,
-          expiryInspection: document.getElementById('wellhead_expiryInspection').value,
-          location: document.getElementById('wellhead_location').value.trim(),
-          rig: document.getElementById('wellhead_rig').value,
-          notes: document.getElementById('wellhead_notes').value.trim()
-        };
-        if (wellheadEditId) {
-          const idx = WELLHEAD_RECORDS.findIndex(r => r.id === wellheadEditId);
-          if (idx >= 0) WELLHEAD_RECORDS[idx] = { ...WELLHEAD_RECORDS[idx], ...entry };
-        } else {
-          WELLHEAD_RECORDS.push({ id: 'WH-' + Date.now(), ...entry });
-        }
-        closeModal('wellheadModal');
-        renderWellheadTable();
-        showToast('Well Head entry saved.', 'success');
-      };
-
-      window.deleteWellheadEntry = function(id) {
-        if (!confirm('Delete this Well Head register entry?')) return;
-        WELLHEAD_RECORDS = WELLHEAD_RECORDS.filter(r => r.id !== id);
-        renderWellheadTable();
-        showToast('Entry deleted.', 'success');
-      };
-
-      window.renderWellheadTable = function() {
-        const search = (document.getElementById('wellheadSearch')?.value || '').toLowerCase();
-        const rigF = document.getElementById('wellheadRigFilter')?.value || '';
-        const inspF = document.getElementById('wellheadInspFilter')?.value || '';
-        let rows = WELLHEAD_RECORDS.filter(r => {
-          const matchSearch = !search || [r.asset, r.serial, r.location, r.rig].some(v => (v||'').toLowerCase().includes(search));
-          const matchRig = !rigF || r.rig === rigF;
-          const st = bopInspStatus(r.expiryInspection);
-          const matchInsp = !inspF || (inspF === 'valid' && st.label === 'Valid') || (inspF === 'expiring' && st.label === 'Expiring Soon') || (inspF === 'expired' && st.label === 'Expired');
-          return matchSearch && matchRig && matchInsp;
-        });
-        const tbody = document.getElementById('wellheadTbody');
-        const countEl = document.getElementById('wellheadCount');
-        if (countEl) countEl.textContent = '(' + rows.length + ')';
-        if (!rows.length) {
-          tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--sap-text-muted)"><i class="fas fa-ring" style="margin-right:8px;color:#ccc"></i>No Well Head records match the current filters.</td></tr>';
-          return;
-        }
-        tbody.innerHTML = rows.map(r => {
-          const st = bopInspStatus(r.expiryInspection);
-          return `<tr>
-            <td><strong>${r.asset || '—'}</strong></td>
-            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${r.serial || '—'}</td>
-            <td>${r.lastInspection ? new Date(r.lastInspection).toLocaleDateString('en-GB') : '—'}</td>
-            <td>${r.expiryInspection ? new Date(r.expiryInspection).toLocaleDateString('en-GB') : '—'}</td>
-            <td>${r.location || '—'}</td>
-            <td>${r.rig || '—'}</td>
-            <td><span class="status-badge ${st.cls}">${st.label}</span></td>
-            <td>
-              <button class="btn btn-ghost" style="height:24px;padding:0 8px;font-size:11px" onclick="openWellheadModal('${r.id}')"><i class="fas fa-edit"></i></button>
-              <button class="btn btn-danger" style="height:24px;padding:0 8px;font-size:11px" onclick="deleteWellheadEntry('${r.id}')"><i class="fas fa-trash"></i></button>
-            </td>
-          </tr>`;
-        }).join('');
-      };
-
-      window.clearWellheadFilters = function() {
-        document.getElementById('wellheadSearch').value = '';
-        document.getElementById('wellheadRigFilter').value = '';
-        document.getElementById('wellheadInspFilter').value = '';
-        renderWellheadTable();
-      };
-
-      window.exportWellheadRegister = function() {
-        if (!WELLHEAD_RECORDS.length) { showToast('No Well Head data to export.', 'warning'); return; }
-        const ws_data = [['Asset','Serial Number','Date of Last Inspection','Expiry of Inspection','Assigned Location','Rig','Status','Notes'],
-          ...WELLHEAD_RECORDS.map(r => [r.asset, r.serial, r.lastInspection, r.expiryInspection, r.location, r.rig, bopInspStatus(r.expiryInspection).label, r.notes])];
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.aoa_to_sheet(ws_data);
-        XLSX.utils.book_append_sheet(wb, ws, 'Well Head Register');
-        XLSX.writeFile(wb, 'WellHead_Register.xlsx');
-        showToast('Well Head Register exported.', 'success');
-      };
-
-      // ══════════════════════════════════════════
-      //  WELL CONTROL EQUIPMENT REGISTER MODULE
-      // ══════════════════════════════════════════
-      let WELLCONTROL_RECORDS = [];
-      let wellcontrolEditId = null;
-
-      window.openWellcontrolModal = function(id) {
-        wellcontrolEditId = id || null;
-        document.getElementById('wellcontrolModalTitle').textContent = id ? 'Edit Well Control Equipment Entry' : 'Add Well Control Equipment Entry';
-        if (id) {
-          const r = WELLCONTROL_RECORDS.find(x => x.id === id);
-          if (r) {
-            document.getElementById('wellcontrol_editId').value = r.id;
-            document.getElementById('wellcontrol_asset').value = r.asset || '';
-            document.getElementById('wellcontrol_serial').value = r.serial || '';
-            document.getElementById('wellcontrol_lastInspection').value = r.lastInspection || '';
-            document.getElementById('wellcontrol_expiryInspection').value = r.expiryInspection || '';
-            document.getElementById('wellcontrol_location').value = r.location || '';
-            document.getElementById('wellcontrol_rig').value = r.rig || '';
-            document.getElementById('wellcontrol_notes').value = r.notes || '';
-          }
-        } else {
-          ['wellcontrol_editId','wellcontrol_asset','wellcontrol_serial','wellcontrol_lastInspection','wellcontrol_expiryInspection','wellcontrol_location','wellcontrol_notes'].forEach(fid => document.getElementById(fid).value = '');
-          document.getElementById('wellcontrol_rig').value = '';
-        }
-        document.getElementById('wellcontrolModal').classList.add('active');
-      };
-
-      window.saveWellcontrolEntry = function() {
-        const asset = document.getElementById('wellcontrol_asset').value.trim();
-        const serial = document.getElementById('wellcontrol_serial').value.trim();
-        if (!asset || !serial) { showToast('Asset and Serial Number are required.', 'error'); return; }
-        const entry = {
-          asset, serial,
-          lastInspection: document.getElementById('wellcontrol_lastInspection').value,
-          expiryInspection: document.getElementById('wellcontrol_expiryInspection').value,
-          location: document.getElementById('wellcontrol_location').value.trim(),
-          rig: document.getElementById('wellcontrol_rig').value,
-          notes: document.getElementById('wellcontrol_notes').value.trim()
-        };
-        if (wellcontrolEditId) {
-          const idx = WELLCONTROL_RECORDS.findIndex(r => r.id === wellcontrolEditId);
-          if (idx >= 0) WELLCONTROL_RECORDS[idx] = { ...WELLCONTROL_RECORDS[idx], ...entry };
-        } else {
-          WELLCONTROL_RECORDS.push({ id: 'WCE-' + Date.now(), ...entry });
-        }
-        closeModal('wellcontrolModal');
-        renderWellcontrolTable();
-        showToast('Well Control Equipment entry saved.', 'success');
-      };
-
-      window.deleteWellcontrolEntry = function(id) {
-        if (!confirm('Delete this Well Control Equipment register entry?')) return;
-        WELLCONTROL_RECORDS = WELLCONTROL_RECORDS.filter(r => r.id !== id);
-        renderWellcontrolTable();
-        showToast('Entry deleted.', 'success');
-      };
-
-      window.renderWellcontrolTable = function() {
-        const search = (document.getElementById('wellcontrolSearch')?.value || '').toLowerCase();
-        const rigF = document.getElementById('wellcontrolRigFilter')?.value || '';
-        const inspF = document.getElementById('wellcontrolInspFilter')?.value || '';
-        let rows = WELLCONTROL_RECORDS.filter(r => {
-          const matchSearch = !search || [r.asset, r.serial, r.location, r.rig].some(v => (v||'').toLowerCase().includes(search));
-          const matchRig = !rigF || r.rig === rigF;
-          const st = bopInspStatus(r.expiryInspection);
-          const matchInsp = !inspF || (inspF === 'valid' && st.label === 'Valid') || (inspF === 'expiring' && st.label === 'Expiring Soon') || (inspF === 'expired' && st.label === 'Expired');
-          return matchSearch && matchRig && matchInsp;
-        });
-        const tbody = document.getElementById('wellcontrolTbody');
-        const countEl = document.getElementById('wellcontrolCount');
-        if (countEl) countEl.textContent = '(' + rows.length + ')';
-        if (!rows.length) {
-          tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--sap-text-muted)"><i class="fas fa-sliders-h" style="margin-right:8px;color:#ccc"></i>No Well Control Equipment records match the current filters.</td></tr>';
-          return;
-        }
-        tbody.innerHTML = rows.map(r => {
-          const st = bopInspStatus(r.expiryInspection);
-          return `<tr>
-            <td><strong>${r.asset || '—'}</strong></td>
-            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${r.serial || '—'}</td>
-            <td>${r.lastInspection ? new Date(r.lastInspection).toLocaleDateString('en-GB') : '—'}</td>
-            <td>${r.expiryInspection ? new Date(r.expiryInspection).toLocaleDateString('en-GB') : '—'}</td>
-            <td>${r.location || '—'}</td>
-            <td>${r.rig || '—'}</td>
-            <td><span class="status-badge ${st.cls}">${st.label}</span></td>
-            <td>
-              <button class="btn btn-ghost" style="height:24px;padding:0 8px;font-size:11px" onclick="openWellcontrolModal('${r.id}')"><i class="fas fa-edit"></i></button>
-              <button class="btn btn-danger" style="height:24px;padding:0 8px;font-size:11px" onclick="deleteWellcontrolEntry('${r.id}')"><i class="fas fa-trash"></i></button>
-            </td>
-          </tr>`;
-        }).join('');
-      };
-
-      window.clearWellcontrolFilters = function() {
-        document.getElementById('wellcontrolSearch').value = '';
-        document.getElementById('wellcontrolRigFilter').value = '';
-        document.getElementById('wellcontrolInspFilter').value = '';
-        renderWellcontrolTable();
-      };
-
-      window.exportWellcontrolRegister = function() {
-        if (!WELLCONTROL_RECORDS.length) { showToast('No Well Control Equipment data to export.', 'warning'); return; }
-        const ws_data = [['Asset','Serial Number','Date of Last Inspection','Expiry of Inspection','Assigned Location','Rig','Status','Notes'],
-          ...WELLCONTROL_RECORDS.map(r => [r.asset, r.serial, r.lastInspection, r.expiryInspection, r.location, r.rig, bopInspStatus(r.expiryInspection).label, r.notes])];
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.aoa_to_sheet(ws_data);
-        XLSX.utils.book_append_sheet(wb, ws, 'Well Control Equipment');
-        XLSX.writeFile(wb, 'WellControl_Register.xlsx');
-        showToast('Well Control Equipment Register exported.', 'success');
-      };
-
       window.switchSafetyTab = function(tab, el) {
         document.querySelectorAll('.safety-sub-tab').forEach(t => {
           t.style.color = 'var(--sap-text-muted)';
@@ -10674,9 +10425,314 @@ Instructions:
         if (panel) panel.style.display = 'flex';
       };
 
-      // ── FIRE EXTINGUISHER REGISTER ──
+
+      // ════════════════════════════════════════════════════════════
+      //  BOP REGISTER  (/reg-bop)
+      // ════════════════════════════════════════════════════════════
+      let BOP_RECORDS = [];
+      let bopEditId   = null;
+
+      async function loadBopRecords() {
+        try {
+          const res = await GET('/reg-bop', { limit: 500 });
+          BOP_RECORDS = (res.data || []).map(normReg);
+          renderBopTable();
+        } catch(e) { console.warn('[BOP] load failed:', e.message); }
+      }
+
+      window.openBopModal = function(id) {
+        bopEditId = id || null;
+        document.getElementById('bopModalTitle').textContent = id ? 'Edit BOP Register Entry' : 'Add BOP Register Entry';
+        if (id) {
+          const r = BOP_RECORDS.find(x => x.id === id);
+          if (r) {
+            document.getElementById('bop_editId').value          = r.id;
+            document.getElementById('bop_asset').value           = r.asset || '';
+            document.getElementById('bop_serial').value          = r.serial || '';
+            document.getElementById('bop_lastInspection').value  = r.lastInspection || '';
+            document.getElementById('bop_expiryInspection').value= r.expiryInspection || '';
+            document.getElementById('bop_location').value        = r.location || '';
+            document.getElementById('bop_rig').value             = r.rig || '';
+            document.getElementById('bop_notes').value           = r.notes || '';
+          }
+        } else {
+          ['bop_editId','bop_asset','bop_serial','bop_lastInspection','bop_expiryInspection','bop_location','bop_notes'].forEach(fid => document.getElementById(fid).value = '');
+          document.getElementById('bop_rig').value = '';
+        }
+        document.getElementById('bopModal').classList.add('active');
+      };
+
+      window.saveBopEntry = async function() {
+        const asset  = document.getElementById('bop_asset').value.trim();
+        const serial = document.getElementById('bop_serial').value.trim();
+        if (!asset || !serial) { showToast('Asset and Serial Number are required.', 'error'); return; }
+        const payload = regPayload({
+          asset, serial,
+          lastInspection:   document.getElementById('bop_lastInspection').value,
+          expiryInspection: document.getElementById('bop_expiryInspection').value,
+          location:         document.getElementById('bop_location').value.trim(),
+          rig:              document.getElementById('bop_rig').value,
+          notes:            document.getElementById('bop_notes').value.trim(),
+        });
+        try {
+          if (bopEditId) {
+            const res = await PUT(`/reg-bop/${bopEditId}`, payload);
+            const idx = BOP_RECORDS.findIndex(r => r.id === bopEditId);
+            if (idx >= 0) BOP_RECORDS[idx] = normReg(res.data);
+            showToast('BOP entry updated ✓', 'success');
+          } else {
+            const res = await POST('/reg-bop', payload);
+            BOP_RECORDS.push(normReg(res.data));
+            showToast('BOP entry added ✓', 'success');
+          }
+          closeModal('bopModal');
+          renderBopTable();
+        } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
+      };
+
+      window.deleteBopEntry = async function(id) {
+        if (!confirm('Delete this BOP register entry?')) return;
+        try {
+          await DELETE(`/reg-bop/${id}`);
+          BOP_RECORDS = BOP_RECORDS.filter(r => r.id !== id);
+          renderBopTable();
+          showToast('Entry deleted.', 'success');
+        } catch(e) { showToast('Delete failed: ' + e.message, 'error'); }
+      };
+
+      window.renderBopTable = function() {
+        renderRegTable({
+          records:      BOP_RECORDS,
+          tbodyId:      'bopTbody',
+          countId:      'bopCount',
+          searchId:     'bopSearch',
+          rigFilterId:  'bopRigFilter',
+          inspFilterId: 'bopInspFilter',
+          editFn:       'openBopModal',
+          deleteFn:     'deleteBopEntry',
+          emptyIcon:    'fas fa-circle-notch',
+        });
+      };
+
+      window.clearBopFilters = function() {
+        ['bopSearch','bopRigFilter','bopInspFilter'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
+        renderBopTable();
+      };
+
+      window.exportBopRegister = function() {
+        exportRegister(BOP_RECORDS, 'BOP Register', 'BOP_Register.xlsx');
+      };
+
+
+      // ════════════════════════════════════════════════════════════
+      //  WELL HEAD REGISTER  (/reg-well-head)
+      // ════════════════════════════════════════════════════════════
+      let WELLHEAD_RECORDS = [];
+      let wellheadEditId   = null;
+
+      async function loadWellheadRecords() {
+        try {
+          const res = await GET('/reg-well-head', { limit: 500 });
+          WELLHEAD_RECORDS = (res.data || []).map(normReg);
+          renderWellheadTable();
+        } catch(e) { console.warn('[WellHead] load failed:', e.message); }
+      }
+
+      window.openWellheadModal = function(id) {
+        wellheadEditId = id || null;
+        document.getElementById('wellheadModalTitle').textContent = id ? 'Edit Well Head Entry' : 'Add Well Head Register Entry';
+        if (id) {
+          const r = WELLHEAD_RECORDS.find(x => x.id === id);
+          if (r) {
+            document.getElementById('wellhead_editId').value          = r.id;
+            document.getElementById('wellhead_asset').value           = r.asset || '';
+            document.getElementById('wellhead_serial').value          = r.serial || '';
+            document.getElementById('wellhead_lastInspection').value  = r.lastInspection || '';
+            document.getElementById('wellhead_expiryInspection').value= r.expiryInspection || '';
+            document.getElementById('wellhead_location').value        = r.location || '';
+            document.getElementById('wellhead_rig').value             = r.rig || '';
+            document.getElementById('wellhead_notes').value           = r.notes || '';
+          }
+        } else {
+          ['wellhead_editId','wellhead_asset','wellhead_serial','wellhead_lastInspection','wellhead_expiryInspection','wellhead_location','wellhead_notes'].forEach(fid => document.getElementById(fid).value = '');
+          document.getElementById('wellhead_rig').value = '';
+        }
+        document.getElementById('wellheadModal').classList.add('active');
+      };
+
+      window.saveWellheadEntry = async function() {
+        const asset  = document.getElementById('wellhead_asset').value.trim();
+        const serial = document.getElementById('wellhead_serial').value.trim();
+        if (!asset || !serial) { showToast('Asset and Serial Number are required.', 'error'); return; }
+        const payload = regPayload({
+          asset, serial,
+          lastInspection:   document.getElementById('wellhead_lastInspection').value,
+          expiryInspection: document.getElementById('wellhead_expiryInspection').value,
+          location:         document.getElementById('wellhead_location').value.trim(),
+          rig:              document.getElementById('wellhead_rig').value,
+          notes:            document.getElementById('wellhead_notes').value.trim(),
+        });
+        try {
+          if (wellheadEditId) {
+            const res = await PUT(`/reg-well-head/${wellheadEditId}`, payload);
+            const idx = WELLHEAD_RECORDS.findIndex(r => r.id === wellheadEditId);
+            if (idx >= 0) WELLHEAD_RECORDS[idx] = normReg(res.data);
+            showToast('Well Head entry updated ✓', 'success');
+          } else {
+            const res = await POST('/reg-well-head', payload);
+            WELLHEAD_RECORDS.push(normReg(res.data));
+            showToast('Well Head entry added ✓', 'success');
+          }
+          closeModal('wellheadModal');
+          renderWellheadTable();
+        } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
+      };
+
+      window.deleteWellheadEntry = async function(id) {
+        if (!confirm('Delete this Well Head register entry?')) return;
+        try {
+          await DELETE(`/reg-well-head/${id}`);
+          WELLHEAD_RECORDS = WELLHEAD_RECORDS.filter(r => r.id !== id);
+          renderWellheadTable();
+          showToast('Entry deleted.', 'success');
+        } catch(e) { showToast('Delete failed: ' + e.message, 'error'); }
+      };
+
+      window.renderWellheadTable = function() {
+        renderRegTable({
+          records:      WELLHEAD_RECORDS,
+          tbodyId:      'wellheadTbody',
+          countId:      'wellheadCount',
+          searchId:     'wellheadSearch',
+          rigFilterId:  'wellheadRigFilter',
+          inspFilterId: 'wellheadInspFilter',
+          editFn:       'openWellheadModal',
+          deleteFn:     'deleteWellheadEntry',
+          emptyIcon:    'fas fa-ring',
+        });
+      };
+
+      window.clearWellheadFilters = function() {
+        ['wellheadSearch','wellheadRigFilter','wellheadInspFilter'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
+        renderWellheadTable();
+      };
+
+      window.exportWellheadRegister = function() {
+        exportRegister(WELLHEAD_RECORDS, 'Well Head Register', 'WellHead_Register.xlsx');
+      };
+
+
+      // ════════════════════════════════════════════════════════════
+      //  WELL CONTROL EQUIPMENT  (/reg-well-control)
+      // ════════════════════════════════════════════════════════════
+      let WELLCONTROL_RECORDS = [];
+      let wellcontrolEditId   = null;
+
+      async function loadWellcontrolRecords() {
+        try {
+          const res = await GET('/reg-well-control', { limit: 500 });
+          WELLCONTROL_RECORDS = (res.data || []).map(normReg);
+          renderWellcontrolTable();
+        } catch(e) { console.warn('[WellControl] load failed:', e.message); }
+      }
+
+      window.openWellcontrolModal = function(id) {
+        wellcontrolEditId = id || null;
+        document.getElementById('wellcontrolModalTitle').textContent = id ? 'Edit Well Control Entry' : 'Add Well Control Equipment Entry';
+        if (id) {
+          const r = WELLCONTROL_RECORDS.find(x => x.id === id);
+          if (r) {
+            document.getElementById('wellcontrol_editId').value          = r.id;
+            document.getElementById('wellcontrol_asset').value           = r.asset || '';
+            document.getElementById('wellcontrol_serial').value          = r.serial || '';
+            document.getElementById('wellcontrol_lastInspection').value  = r.lastInspection || '';
+            document.getElementById('wellcontrol_expiryInspection').value= r.expiryInspection || '';
+            document.getElementById('wellcontrol_location').value        = r.location || '';
+            document.getElementById('wellcontrol_rig').value             = r.rig || '';
+            document.getElementById('wellcontrol_notes').value           = r.notes || '';
+          }
+        } else {
+          ['wellcontrol_editId','wellcontrol_asset','wellcontrol_serial','wellcontrol_lastInspection','wellcontrol_expiryInspection','wellcontrol_location','wellcontrol_notes'].forEach(fid => document.getElementById(fid).value = '');
+          document.getElementById('wellcontrol_rig').value = '';
+        }
+        document.getElementById('wellcontrolModal').classList.add('active');
+      };
+
+      window.saveWellcontrolEntry = async function() {
+        const asset  = document.getElementById('wellcontrol_asset').value.trim();
+        const serial = document.getElementById('wellcontrol_serial').value.trim();
+        if (!asset || !serial) { showToast('Asset and Serial Number are required.', 'error'); return; }
+        const payload = regPayload({
+          asset, serial,
+          lastInspection:   document.getElementById('wellcontrol_lastInspection').value,
+          expiryInspection: document.getElementById('wellcontrol_expiryInspection').value,
+          location:         document.getElementById('wellcontrol_location').value.trim(),
+          rig:              document.getElementById('wellcontrol_rig').value,
+          notes:            document.getElementById('wellcontrol_notes').value.trim(),
+        });
+        try {
+          if (wellcontrolEditId) {
+            const res = await PUT(`/reg-well-control/${wellcontrolEditId}`, payload);
+            const idx = WELLCONTROL_RECORDS.findIndex(r => r.id === wellcontrolEditId);
+            if (idx >= 0) WELLCONTROL_RECORDS[idx] = normReg(res.data);
+            showToast('Well Control entry updated ✓', 'success');
+          } else {
+            const res = await POST('/reg-well-control', payload);
+            WELLCONTROL_RECORDS.push(normReg(res.data));
+            showToast('Well Control entry added ✓', 'success');
+          }
+          closeModal('wellcontrolModal');
+          renderWellcontrolTable();
+        } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
+      };
+
+      window.deleteWellcontrolEntry = async function(id) {
+        if (!confirm('Delete this Well Control Equipment entry?')) return;
+        try {
+          await DELETE(`/reg-well-control/${id}`);
+          WELLCONTROL_RECORDS = WELLCONTROL_RECORDS.filter(r => r.id !== id);
+          renderWellcontrolTable();
+          showToast('Entry deleted.', 'success');
+        } catch(e) { showToast('Delete failed: ' + e.message, 'error'); }
+      };
+
+      window.renderWellcontrolTable = function() {
+        renderRegTable({
+          records:      WELLCONTROL_RECORDS,
+          tbodyId:      'wellcontrolTbody',
+          countId:      'wellcontrolCount',
+          searchId:     'wellcontrolSearch',
+          rigFilterId:  'wellcontrolRigFilter',
+          inspFilterId: 'wellcontrolInspFilter',
+          editFn:       'openWellcontrolModal',
+          deleteFn:     'deleteWellcontrolEntry',
+          emptyIcon:    'fas fa-sliders-h',
+        });
+      };
+
+      window.clearWellcontrolFilters = function() {
+        ['wellcontrolSearch','wellcontrolRigFilter','wellcontrolInspFilter'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
+        renderWellcontrolTable();
+      };
+
+      window.exportWellcontrolRegister = function() {
+        exportRegister(WELLCONTROL_RECORDS, 'Well Control Equipment', 'WellControl_Register.xlsx');
+      };
+
+
+      // ════════════════════════════════════════════════════════════
+      //  FIRE EXTINGUISHERS  (/reg-fire-extinguishers)
+      // ════════════════════════════════════════════════════════════
       let FIREEXT_RECORDS = [];
-      let fireextEditId = null;
+      let fireextEditId   = null;
+
+      async function loadFireextRecords() {
+        try {
+          const res = await GET('/reg-fire-extinguishers', { limit: 500 });
+          FIREEXT_RECORDS = (res.data || []).map(normReg);
+          renderFireextTable();
+        } catch(e) { console.warn('[FireExt] load failed:', e.message); }
+      }
 
       window.openFireextModal = function(id) {
         fireextEditId = id || null;
@@ -10684,14 +10740,14 @@ Instructions:
         if (id) {
           const r = FIREEXT_RECORDS.find(x => x.id === id);
           if (r) {
-            document.getElementById('fireext_editId').value = r.id;
-            document.getElementById('fireext_asset').value = r.asset || '';
-            document.getElementById('fireext_serial').value = r.serial || '';
-            document.getElementById('fireext_lastInspection').value = r.lastInspection || '';
-            document.getElementById('fireext_expiryInspection').value = r.expiryInspection || '';
-            document.getElementById('fireext_location').value = r.location || '';
-            document.getElementById('fireext_rig').value = r.rig || '';
-            document.getElementById('fireext_notes').value = r.notes || '';
+            document.getElementById('fireext_editId').value          = r.id;
+            document.getElementById('fireext_asset').value           = r.asset || '';
+            document.getElementById('fireext_serial').value          = r.serial || '';
+            document.getElementById('fireext_lastInspection').value  = r.lastInspection || '';
+            document.getElementById('fireext_expiryInspection').value= r.expiryInspection || '';
+            document.getElementById('fireext_location').value        = r.location || '';
+            document.getElementById('fireext_rig').value             = r.rig || '';
+            document.getElementById('fireext_notes').value           = r.notes || '';
           }
         } else {
           ['fireext_editId','fireext_asset','fireext_serial','fireext_lastInspection','fireext_expiryInspection','fireext_location','fireext_notes'].forEach(fid => document.getElementById(fid).value = '');
@@ -10700,87 +10756,81 @@ Instructions:
         document.getElementById('fireextModal').classList.add('active');
       };
 
-      window.saveFireextEntry = function() {
-        const asset = document.getElementById('fireext_asset').value.trim();
+      window.saveFireextEntry = async function() {
+        const asset  = document.getElementById('fireext_asset').value.trim();
         const serial = document.getElementById('fireext_serial').value.trim();
         if (!asset || !serial) { showToast('Asset and Serial Number are required.', 'error'); return; }
-        const entry = { asset, serial,
-          lastInspection: document.getElementById('fireext_lastInspection').value,
+        const payload = regPayload({
+          asset, serial,
+          lastInspection:   document.getElementById('fireext_lastInspection').value,
           expiryInspection: document.getElementById('fireext_expiryInspection').value,
-          location: document.getElementById('fireext_location').value.trim(),
-          rig: document.getElementById('fireext_rig').value,
-          notes: document.getElementById('fireext_notes').value.trim() };
-        if (fireextEditId) {
-          const idx = FIREEXT_RECORDS.findIndex(r => r.id === fireextEditId);
-          if (idx >= 0) FIREEXT_RECORDS[idx] = { ...FIREEXT_RECORDS[idx], ...entry };
-        } else {
-          FIREEXT_RECORDS.push({ id: 'FE-' + Date.now(), ...entry });
-        }
-        closeModal('fireextModal');
-        renderFireextTable();
-        showToast('Fire Extinguisher entry saved.', 'success');
+          location:         document.getElementById('fireext_location').value.trim(),
+          rig:              document.getElementById('fireext_rig').value,
+          notes:            document.getElementById('fireext_notes').value.trim(),
+        });
+        try {
+          if (fireextEditId) {
+            const res = await PUT(`/reg-fire-extinguishers/${fireextEditId}`, payload);
+            const idx = FIREEXT_RECORDS.findIndex(r => r.id === fireextEditId);
+            if (idx >= 0) FIREEXT_RECORDS[idx] = normReg(res.data);
+            showToast('Fire Extinguisher entry updated ✓', 'success');
+          } else {
+            const res = await POST('/reg-fire-extinguishers', payload);
+            FIREEXT_RECORDS.push(normReg(res.data));
+            showToast('Fire Extinguisher entry added ✓', 'success');
+          }
+          closeModal('fireextModal');
+          renderFireextTable();
+        } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
       };
 
-      window.deleteFireextEntry = function(id) {
+      window.deleteFireextEntry = async function(id) {
         if (!confirm('Delete this Fire Extinguisher entry?')) return;
-        FIREEXT_RECORDS = FIREEXT_RECORDS.filter(r => r.id !== id);
-        renderFireextTable();
-        showToast('Entry deleted.', 'success');
+        try {
+          await DELETE(`/reg-fire-extinguishers/${id}`);
+          FIREEXT_RECORDS = FIREEXT_RECORDS.filter(r => r.id !== id);
+          renderFireextTable();
+          showToast('Entry deleted.', 'success');
+        } catch(e) { showToast('Delete failed: ' + e.message, 'error'); }
       };
 
       window.renderFireextTable = function() {
-        const search = (document.getElementById('fireextSearch')?.value || '').toLowerCase();
-        const rigF = document.getElementById('fireextRigFilter')?.value || '';
-        const inspF = document.getElementById('fireextInspFilter')?.value || '';
-        let rows = FIREEXT_RECORDS.filter(r => {
-          const matchSearch = !search || [r.asset,r.serial,r.location,r.rig].some(v=>(v||'').toLowerCase().includes(search));
-          const matchRig = !rigF || r.rig === rigF;
-          const st = bopInspStatus(r.expiryInspection);
-          const matchInsp = !inspF||(inspF==='valid'&&st.label==='Valid')||(inspF==='expiring'&&st.label==='Expiring Soon')||(inspF==='expired'&&st.label==='Expired');
-          return matchSearch && matchRig && matchInsp;
+        renderRegTable({
+          records:      FIREEXT_RECORDS,
+          tbodyId:      'fireextTbody',
+          countId:      'fireextCount',
+          searchId:     'fireextSearch',
+          rigFilterId:  'fireextRigFilter',
+          inspFilterId: 'fireextInspFilter',
+          editFn:       'openFireextModal',
+          deleteFn:     'deleteFireextEntry',
+          emptyIcon:    'fas fa-fire-extinguisher',
         });
-        const tbody = document.getElementById('fireextTbody');
-        const countEl = document.getElementById('fireextCount');
-        if (countEl) countEl.textContent = '(' + rows.length + ')';
-        if (!rows.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--sap-text-muted)"><i class="fas fa-fire-extinguisher" style="margin-right:8px;color:#ccc"></i>No records match the current filters.</td></tr>'; return; }
-        tbody.innerHTML = rows.map(r => {
-          const st = bopInspStatus(r.expiryInspection);
-          return `<tr>
-            <td><strong>${r.asset||'—'}</strong></td>
-            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${r.serial||'—'}</td>
-            <td>${r.lastInspection?new Date(r.lastInspection).toLocaleDateString('en-GB'):'—'}</td>
-            <td>${r.expiryInspection?new Date(r.expiryInspection).toLocaleDateString('en-GB'):'—'}</td>
-            <td>${r.location||'—'}</td>
-            <td>${r.rig||'—'}</td>
-            <td><span class="status-badge ${st.cls}">${st.label}</span></td>
-            <td>
-              <button class="btn btn-ghost" style="height:24px;padding:0 8px;font-size:11px" onclick="openFireextModal('${r.id}')"><i class="fas fa-edit"></i></button>
-              <button class="btn btn-danger" style="height:24px;padding:0 8px;font-size:11px" onclick="deleteFireextEntry('${r.id}')"><i class="fas fa-trash"></i></button>
-            </td>
-          </tr>`;
-        }).join('');
       };
 
       window.clearFireextFilters = function() {
-        document.getElementById('fireextSearch').value = '';
-        document.getElementById('fireextRigFilter').value = '';
-        document.getElementById('fireextInspFilter').value = '';
+        ['fireextSearch','fireextRigFilter','fireextInspFilter'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
         renderFireextTable();
       };
 
       window.exportFireextRegister = function() {
-        if (!FIREEXT_RECORDS.length) { showToast('No Fire Extinguisher data to export.', 'warning'); return; }
-        const ws_data = [['Asset','Serial Number','Date of Last Inspection','Expiry of Inspection','Assigned Location','Rig','Status','Notes'],
-          ...FIREEXT_RECORDS.map(r=>[r.asset,r.serial,r.lastInspection,r.expiryInspection,r.location,r.rig,bopInspStatus(r.expiryInspection).label,r.notes])];
-        const wb = XLSX.utils.book_new(); const ws = XLSX.utils.aoa_to_sheet(ws_data);
-        XLSX.utils.book_append_sheet(wb,ws,'Fire Extinguishers');
-        XLSX.writeFile(wb,'FireExtinguisher_Register.xlsx');
-        showToast('Fire Extinguisher Register exported.', 'success');
+        exportRegister(FIREEXT_RECORDS, 'Fire Extinguishers', 'FireExtinguisher_Register.xlsx');
       };
 
-      // ── SCBA REGISTER ──
+
+      // ════════════════════════════════════════════════════════════
+      //  SCBA REGISTER  (/reg-scba)
+      // ════════════════════════════════════════════════════════════
       let SCBA_RECORDS = [];
-      let scbaEditId = null;
+      let scbaEditId   = null;
+
+      async function loadScbaRecords() {
+        try {
+          const res = await GET('/reg-scba', { limit: 500 });
+          SCBA_RECORDS = (res.data || []).map(normReg);
+          renderScbaTable();
+        } catch(e) { console.warn('[SCBA] load failed:', e.message); }
+      }
 
       window.openScbaModal = function(id) {
         scbaEditId = id || null;
@@ -10788,14 +10838,14 @@ Instructions:
         if (id) {
           const r = SCBA_RECORDS.find(x => x.id === id);
           if (r) {
-            document.getElementById('scba_editId').value = r.id;
-            document.getElementById('scba_asset').value = r.asset || '';
-            document.getElementById('scba_serial').value = r.serial || '';
-            document.getElementById('scba_lastInspection').value = r.lastInspection || '';
-            document.getElementById('scba_expiryInspection').value = r.expiryInspection || '';
-            document.getElementById('scba_location').value = r.location || '';
-            document.getElementById('scba_rig').value = r.rig || '';
-            document.getElementById('scba_notes').value = r.notes || '';
+            document.getElementById('scba_editId').value          = r.id;
+            document.getElementById('scba_asset').value           = r.asset || '';
+            document.getElementById('scba_serial').value          = r.serial || '';
+            document.getElementById('scba_lastInspection').value  = r.lastInspection || '';
+            document.getElementById('scba_expiryInspection').value= r.expiryInspection || '';
+            document.getElementById('scba_location').value        = r.location || '';
+            document.getElementById('scba_rig').value             = r.rig || '';
+            document.getElementById('scba_notes').value           = r.notes || '';
           }
         } else {
           ['scba_editId','scba_asset','scba_serial','scba_lastInspection','scba_expiryInspection','scba_location','scba_notes'].forEach(fid => document.getElementById(fid).value = '');
@@ -10804,82 +10854,79 @@ Instructions:
         document.getElementById('scbaModal').classList.add('active');
       };
 
-      window.saveScbaEntry = function() {
-        const asset = document.getElementById('scba_asset').value.trim();
+      window.saveScbaEntry = async function() {
+        const asset  = document.getElementById('scba_asset').value.trim();
         const serial = document.getElementById('scba_serial').value.trim();
         if (!asset || !serial) { showToast('Asset and Serial Number are required.', 'error'); return; }
-        const entry = { asset, serial,
-          lastInspection: document.getElementById('scba_lastInspection').value,
+        const payload = regPayload({
+          asset, serial,
+          lastInspection:   document.getElementById('scba_lastInspection').value,
           expiryInspection: document.getElementById('scba_expiryInspection').value,
-          location: document.getElementById('scba_location').value.trim(),
-          rig: document.getElementById('scba_rig').value,
-          notes: document.getElementById('scba_notes').value.trim() };
-        if (scbaEditId) {
-          const idx = SCBA_RECORDS.findIndex(r => r.id === scbaEditId);
-          if (idx >= 0) SCBA_RECORDS[idx] = { ...SCBA_RECORDS[idx], ...entry };
-        } else {
-          SCBA_RECORDS.push({ id: 'SCBA-' + Date.now(), ...entry });
-        }
-        closeModal('scbaModal');
-        renderScbaTable();
-        showToast('SCBA entry saved.', 'success');
+          location:         document.getElementById('scba_location').value.trim(),
+          rig:              document.getElementById('scba_rig').value,
+          notes:            document.getElementById('scba_notes').value.trim(),
+        });
+        try {
+          if (scbaEditId) {
+            const res = await PUT(`/reg-scba/${scbaEditId}`, payload);
+            const idx = SCBA_RECORDS.findIndex(r => r.id === scbaEditId);
+            if (idx >= 0) SCBA_RECORDS[idx] = normReg(res.data);
+            showToast('SCBA entry updated ✓', 'success');
+          } else {
+            const res = await POST('/reg-scba', payload);
+            SCBA_RECORDS.push(normReg(res.data));
+            showToast('SCBA entry added ✓', 'success');
+          }
+          closeModal('scbaModal');
+          renderScbaTable();
+        } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
       };
 
-      window.deleteScbaEntry = function(id) {
+      window.deleteScbaEntry = async function(id) {
         if (!confirm('Delete this SCBA entry?')) return;
-        SCBA_RECORDS = SCBA_RECORDS.filter(r => r.id !== id);
-        renderScbaTable();
-        showToast('Entry deleted.', 'success');
+        try {
+          await DELETE(`/reg-scba/${id}`);
+          SCBA_RECORDS = SCBA_RECORDS.filter(r => r.id !== id);
+          renderScbaTable();
+          showToast('Entry deleted.', 'success');
+        } catch(e) { showToast('Delete failed: ' + e.message, 'error'); }
       };
 
       window.renderScbaTable = function() {
-        const search = (document.getElementById('scbaSearch')?.value || '').toLowerCase();
-        const rigF = document.getElementById('scbaRigFilter')?.value || '';
-        const inspF = document.getElementById('scbaInspFilter')?.value || '';
-        let rows = SCBA_RECORDS.filter(r => {
-          const matchSearch = !search || [r.asset,r.serial,r.location,r.rig].some(v=>(v||'').toLowerCase().includes(search));
-          const matchRig = !rigF || r.rig === rigF;
-          const st = bopInspStatus(r.expiryInspection);
-          const matchInsp = !inspF||(inspF==='valid'&&st.label==='Valid')||(inspF==='expiring'&&st.label==='Expiring Soon')||(inspF==='expired'&&st.label==='Expired');
-          return matchSearch && matchRig && matchInsp;
+        renderRegTable({
+          records:      SCBA_RECORDS,
+          tbodyId:      'scbaTbody',
+          countId:      'scbaCount',
+          searchId:     'scbaSearch',
+          rigFilterId:  'scbaRigFilter',
+          inspFilterId: 'scbaInspFilter',
+          editFn:       'openScbaModal',
+          deleteFn:     'deleteScbaEntry',
+          emptyIcon:    'fas fa-lungs',
         });
-        const tbody = document.getElementById('scbaTbody');
-        const countEl = document.getElementById('scbaCount');
-        if (countEl) countEl.textContent = '(' + rows.length + ')';
-        if (!rows.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--sap-text-muted)"><i class="fas fa-lungs" style="margin-right:8px;color:#ccc"></i>No records match the current filters.</td></tr>'; return; }
-        tbody.innerHTML = rows.map(r => {
-          const st = bopInspStatus(r.expiryInspection);
-          return `<tr>
-            <td><strong>${r.asset||'—'}</strong></td>
-            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${r.serial||'—'}</td>
-            <td>${r.lastInspection?new Date(r.lastInspection).toLocaleDateString('en-GB'):'—'}</td>
-            <td>${r.expiryInspection?new Date(r.expiryInspection).toLocaleDateString('en-GB'):'—'}</td>
-            <td>${r.location||'—'}</td>
-            <td>${r.rig||'—'}</td>
-            <td><span class="status-badge ${st.cls}">${st.label}</span></td>
-            <td>
-              <button class="btn btn-ghost" style="height:24px;padding:0 8px;font-size:11px" onclick="openScbaModal('${r.id}')"><i class="fas fa-edit"></i></button>
-              <button class="btn btn-danger" style="height:24px;padding:0 8px;font-size:11px" onclick="deleteScbaEntry('${r.id}')"><i class="fas fa-trash"></i></button>
-            </td>
-          </tr>`;
-        }).join('');
       };
 
       window.clearScbaFilters = function() {
-        document.getElementById('scbaSearch').value = '';
-        document.getElementById('scbaRigFilter').value = '';
-        document.getElementById('scbaInspFilter').value = '';
+        ['scbaSearch','scbaRigFilter','scbaInspFilter'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
         renderScbaTable();
       };
 
       window.exportScbaRegister = function() {
-        if (!SCBA_RECORDS.length) { showToast('No SCBA data to export.', 'warning'); return; }
-        const ws_data = [['Asset','Serial Number','Date of Last Inspection','Expiry of Inspection','Assigned Location','Rig','Status','Notes'],
-          ...SCBA_RECORDS.map(r=>[r.asset,r.serial,r.lastInspection,r.expiryInspection,r.location,r.rig,bopInspStatus(r.expiryInspection).label,r.notes])];
-        const wb = XLSX.utils.book_new(); const ws = XLSX.utils.aoa_to_sheet(ws_data);
-        XLSX.utils.book_append_sheet(wb,ws,'SCBA Register');
-        XLSX.writeFile(wb,'SCBA_Register.xlsx');
-        showToast('SCBA Register exported.', 'success');
+        exportRegister(SCBA_RECORDS, 'SCBA Register', 'SCBA_Register.xlsx');
+      };
+
+
+      // ════════════════════════════════════════════════════════════
+      //  LOAD ALL REGISTER DATA  (called from bootstrap)
+      // ════════════════════════════════════════════════════════════
+      window.loadAllRegisterData = async function() {
+        await Promise.all([
+          loadBopRecords(),
+          loadWellheadRecords(),
+          loadWellcontrolRecords(),
+          loadFireextRecords(),
+          loadScbaRecords(),
+        ]);
       };
 
       // ══════════════════════════════════════════
