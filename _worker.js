@@ -253,6 +253,62 @@ async function router(path, method, url, request, SB, KEY) {
     if(method==='POST')  return ok(await sbPost(SB,KEY,'notifications',body));
   }
 
+  // ── GENERIC REGISTER TABLE HELPER ────────────────────────────────────────────
+  // Handles: reg-bop, reg-well-head, reg-well-control, reg-fire-extinguishers, reg-scba
+  const REG_TABLE_MAP = {
+    'reg-bop':                'reg_bop',
+    'reg-well-head':          'reg_well_head',
+    'reg-well-control':       'reg_well_control',
+    'reg-fire-extinguishers': 'reg_fire_extinguishers',
+    'reg-scba':               'reg_scba',
+  };
+
+  if (REG_TABLE_MAP[res]) {
+    const tbl = REG_TABLE_MAP[res];
+
+    // GET all records
+    if (method === 'GET' && !id) {
+      const f = {};
+      if (q.get('rig')) f.rig = `eq.${q.get('rig')}`;
+      return ok(await sbGet(SB, KEY, tbl, {
+        filters: f,
+        order: 'created_at.desc',
+        limit: +(q.get('limit') || 500),
+      }));
+    }
+
+    // GET single record by UUID id
+    if (method === 'GET' && id) {
+      return ok(await sbGet(SB, KEY, tbl, { filters: { id: `eq.${id}` }, single: true }));
+    }
+
+    // POST — create new entry
+    if (method === 'POST') {
+      // Remove any client-generated id — let Supabase uuid_generate_v4() handle it
+      const { id: _cid, reg_id: _rid, created_at: _ca, updated_at: _ua, inspection_status: _is, ...insert } = body;
+      return ok(await sbPost(SB, KEY, tbl, insert));
+    }
+
+    // PUT — full update by UUID id
+    if (method === 'PUT') {
+      const { id: _i, reg_id: _r, created_at: _ca, updated_at: _ua, inspection_status: _is, ...update } = body;
+      return ok(await sbPatch(SB, KEY, tbl, { id: `eq.${id}` }, update));
+    }
+
+    // PATCH — partial update by UUID id
+    if (method === 'PATCH') {
+      const { id: _i, reg_id: _r, created_at: _ca, updated_at: _ua, inspection_status: _is, ...update } = body;
+      return ok(await sbPatch(SB, KEY, tbl, { id: `eq.${id}` }, update));
+    }
+
+    // DELETE — remove by UUID id
+    if (method === 'DELETE') {
+      const r = await sbDelete(SB, KEY, tbl, { id: `eq.${id}` });
+      if (r.error) return err500(r.error);
+      return ok({ deleted: id });
+    }
+  }
+
   return respond({ success:false, error:`Route not found: ${method} ${path}` }, 404);
 }
 

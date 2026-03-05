@@ -3703,6 +3703,8 @@
               <span class="card-title"><i class="fas fa-fire-extinguisher" style="color:#E9730C;margin-right:4px"></i> Fire Extinguisher Register <span class="record-count" id="fireextCount"></span></span>
               <button class="btn btn-primary" onclick="openFireextModal()"><i class="fas fa-plus"></i> Add Entry</button>
               <button class="btn btn-secondary" onclick="exportFireextRegister()"><i class="fas fa-file-excel"></i> Export</button>
+              <button class="btn btn-secondary" onclick="document.getElementById('importFileFireext').click()"><i class="fas fa-upload"></i> Import</button>
+              <input type="file" id="importFileFireext" accept=".xlsx,.xls,.csv" style="display:none" onchange="importRegisterFile(event,'fireext')">
             </div>
             <div class="filter-bar">
               <div class="filter-group search-wrap">
@@ -3761,6 +3763,8 @@
               <span class="card-title"><i class="fas fa-lungs" style="color:var(--sap-blue);margin-right:4px"></i> SCBA Register <span class="record-count" id="scbaCount"></span></span>
               <button class="btn btn-primary" onclick="openScbaModal()"><i class="fas fa-plus"></i> Add Entry</button>
               <button class="btn btn-secondary" onclick="exportScbaRegister()"><i class="fas fa-file-excel"></i> Export</button>
+              <button class="btn btn-secondary" onclick="document.getElementById('importFileScba').click()"><i class="fas fa-upload"></i> Import</button>
+              <input type="file" id="importFileScba" accept=".xlsx,.xls,.csv" style="display:none" onchange="importRegisterFile(event,'scba')">
             </div>
             <div class="filter-bar">
               <div class="filter-group search-wrap">
@@ -3830,6 +3834,8 @@
               <span class="card-title"><i class="fas fa-circle-notch" style="color:var(--sap-blue);margin-right:4px"></i> BOP Register <span class="record-count" id="bopCount"></span></span>
               <button class="btn btn-primary" onclick="openBopModal()"><i class="fas fa-plus"></i> Add Entry</button>
               <button class="btn btn-secondary" onclick="exportBopRegister()"><i class="fas fa-file-excel"></i> Export</button>
+              <button class="btn btn-secondary" onclick="document.getElementById('importFileBop').click()"><i class="fas fa-upload"></i> Import</button>
+              <input type="file" id="importFileBop" accept=".xlsx,.xls,.csv" style="display:none" onchange="importRegisterFile(event,'bop')">
             </div>
             <div class="filter-bar">
               <div class="filter-group search-wrap">
@@ -3888,6 +3894,8 @@
               <span class="card-title"><i class="fas fa-ring" style="color:var(--sap-blue);margin-right:4px"></i> Well Head Register <span class="record-count" id="wellheadCount"></span></span>
               <button class="btn btn-primary" onclick="openWellheadModal()"><i class="fas fa-plus"></i> Add Entry</button>
               <button class="btn btn-secondary" onclick="exportWellheadRegister()"><i class="fas fa-file-excel"></i> Export</button>
+              <button class="btn btn-secondary" onclick="document.getElementById('importFileWellhead').click()"><i class="fas fa-upload"></i> Import</button>
+              <input type="file" id="importFileWellhead" accept=".xlsx,.xls,.csv" style="display:none" onchange="importRegisterFile(event,'wellhead')">
             </div>
             <div class="filter-bar">
               <div class="filter-group search-wrap">
@@ -3946,6 +3954,8 @@
               <span class="card-title"><i class="fas fa-sliders-h" style="color:var(--sap-warning);margin-right:4px"></i> Well Control Equipment Register <span class="record-count" id="wellcontrolCount"></span></span>
               <button class="btn btn-primary" onclick="openWellcontrolModal()"><i class="fas fa-plus"></i> Add Entry</button>
               <button class="btn btn-secondary" onclick="exportWellcontrolRegister()"><i class="fas fa-file-excel"></i> Export</button>
+              <button class="btn btn-secondary" onclick="document.getElementById('importFileWellcontrol').click()"><i class="fas fa-upload"></i> Import</button>
+              <input type="file" id="importFileWellcontrol" accept=".xlsx,.xls,.csv" style="display:none" onchange="importRegisterFile(event,'wellcontrol')">
             </div>
             <div class="filter-bar">
               <div class="filter-group search-wrap">
@@ -10459,7 +10469,7 @@ Instructions:
           ['bop_editId','bop_asset','bop_serial','bop_lastInspection','bop_expiryInspection','bop_location','bop_notes'].forEach(fid => document.getElementById(fid).value = '');
           document.getElementById('bop_rig').value = '';
         }
-        document.getElementById('bopModal').classList.add('active');
+        openModal('bopModal');
       };
 
       window.saveBopEntry = async function() {
@@ -10557,7 +10567,7 @@ Instructions:
           ['wellhead_editId','wellhead_asset','wellhead_serial','wellhead_lastInspection','wellhead_expiryInspection','wellhead_location','wellhead_notes'].forEach(fid => document.getElementById(fid).value = '');
           document.getElementById('wellhead_rig').value = '';
         }
-        document.getElementById('wellheadModal').classList.add('active');
+        openModal('wellheadModal');
       };
 
       window.saveWellheadEntry = async function() {
@@ -10655,7 +10665,7 @@ Instructions:
           ['wellcontrol_editId','wellcontrol_asset','wellcontrol_serial','wellcontrol_lastInspection','wellcontrol_expiryInspection','wellcontrol_location','wellcontrol_notes'].forEach(fid => document.getElementById(fid).value = '');
           document.getElementById('wellcontrol_rig').value = '';
         }
-        document.getElementById('wellcontrolModal').classList.add('active');
+        openModal('wellcontrolModal');
       };
 
       window.saveWellcontrolEntry = async function() {
@@ -10753,7 +10763,7 @@ Instructions:
           ['fireext_editId','fireext_asset','fireext_serial','fireext_lastInspection','fireext_expiryInspection','fireext_location','fireext_notes'].forEach(fid => document.getElementById(fid).value = '');
           document.getElementById('fireext_rig').value = '';
         }
-        document.getElementById('fireextModal').classList.add('active');
+        openModal('fireextModal');
       };
 
       window.saveFireextEntry = async function() {
@@ -10851,7 +10861,7 @@ Instructions:
           ['scba_editId','scba_asset','scba_serial','scba_lastInspection','scba_expiryInspection','scba_location','scba_notes'].forEach(fid => document.getElementById(fid).value = '');
           document.getElementById('scba_rig').value = '';
         }
-        document.getElementById('scbaModal').classList.add('active');
+        openModal('scbaModal');
       };
 
       window.saveScbaEntry = async function() {
@@ -10932,6 +10942,98 @@ Instructions:
       // ══════════════════════════════════════════
       //  END REGISTERS MODULE
       // ══════════════════════════════════════════
+
+      // ══════════════════════════════════════════════════════════════════════════
+      //  REGISTER IMPORT  — shared Excel/CSV importer for all 5 register tables
+      //  Columns expected (case-insensitive, flexible header names):
+      //    Asset | Serial Number | Date of Last Inspection |
+      //    Expiry of Inspection | Assigned Location | Rig | Notes
+      // ══════════════════════════════════════════════════════════════════════════
+      window.importRegisterFile = async function(event, registerType) {
+        const file = event.target.files[0];
+        if (!file) return;
+        event.target.value = ''; // reset so same file can be re-imported
+
+        // Map registerType → { apiPath, records array, renderFn, label }
+        const CONFIG = {
+          bop:         { path: '/reg-bop',                records: BOP_RECORDS,         render: renderBopTable,         label: 'BOP Register' },
+          wellhead:    { path: '/reg-well-head',          records: WELLHEAD_RECORDS,     render: renderWellheadTable,    label: 'Well Head Register' },
+          wellcontrol: { path: '/reg-well-control',       records: WELLCONTROL_RECORDS,  render: renderWellcontrolTable, label: 'Well Control Equipment' },
+          fireext:     { path: '/reg-fire-extinguishers', records: FIREEXT_RECORDS,      render: renderFireextTable,     label: 'Fire Extinguisher Register' },
+          scba:        { path: '/reg-scba',               records: SCBA_RECORDS,         render: renderScbaTable,        label: 'SCBA Register' },
+        };
+
+        const cfg = CONFIG[registerType];
+        if (!cfg) { showToast('Unknown register type.', 'error'); return; }
+
+        showToast(`Importing ${cfg.label}…`, 'info');
+
+        try {
+          const rows = await readXlsx(file);
+          if (!rows || !rows.length) { showToast('No data rows found in file.', 'warning'); return; }
+
+          // Flexible column header resolver (case + space insensitive)
+          function col(row, ...keys) {
+            const norm = k => k.toLowerCase().replace(/[\s_\-]/g, '');
+            for (const k of Object.keys(row)) {
+              if (keys.some(kk => norm(k) === norm(kk))) return (row[k] || '').toString().trim();
+            }
+            return '';
+          }
+
+          // Helper: parse a date value from Excel (number or string)
+          function parseDate(val) {
+            if (!val) return null;
+            const s = val.toString().trim();
+            if (!s) return null;
+            // Excel serial number
+            if (/^\d+$/.test(s) && Number(s) > 10000) {
+              const d = new Date(Math.round((Number(s) - 25569) * 86400 * 1000));
+              return d.toISOString().slice(0, 10);
+            }
+            // Try direct parse
+            const d = new Date(s);
+            if (!isNaN(d)) return d.toISOString().slice(0, 10);
+            return s; // leave as-is
+          }
+
+          let added = 0, skipped = 0, errors = [];
+
+          for (const r of rows) {
+            const asset  = col(r, 'Asset', 'Asset Name', 'Equipment', 'Description');
+            const serial = col(r, 'Serial Number', 'Serial', 'SerialNo', 'Serial No');
+            if (!asset || !serial) { skipped++; continue; }
+
+            const payload = {
+              asset,
+              serial_number:     serial,
+              last_inspection:   parseDate(col(r, 'Date of Last Inspection', 'Last Inspection', 'LastInspection', 'Inspected Date')),
+              expiry_inspection: parseDate(col(r, 'Expiry of Inspection', 'Expiry', 'Expiry Date', 'Next Inspection', 'ExpiryDate')),
+              assigned_location: col(r, 'Assigned Location', 'Location', 'Assigned Location'),
+              rig:               col(r, 'Rig', 'Rig Name', 'RigName'),
+              notes:             col(r, 'Notes', 'Remarks', 'Comments'),
+            };
+
+            try {
+              const res = await POST(cfg.path, payload);
+              cfg.records.push(normReg(res.data));
+              added++;
+            } catch(e) {
+              skipped++;
+              errors.push(e.message);
+            }
+          }
+
+          cfg.render();
+          const errNote = errors.length ? ` (last error: ${errors[errors.length-1]})` : '';
+          showToast(
+            `${cfg.label}: ${added} record(s) imported.${skipped ? ' ' + skipped + ' skipped.' + errNote : ''}`,
+            added > 0 ? 'success' : 'warning'
+          );
+        } catch(err) {
+          showToast('Import failed: ' + err.message, 'error');
+        }
+      };
 
       window.importMaintenance = async function importMaintenance(event) {
         if (!canImport()) { showToast('Only Admins can import data.', 'error'); return; }
