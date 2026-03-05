@@ -435,6 +435,7 @@ $$;
 CREATE TABLE IF NOT EXISTS reg_bop (
   id                 UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   reg_id             TEXT NOT NULL UNIQUE DEFAULT 'BOP-' || EXTRACT(EPOCH FROM NOW())::BIGINT::TEXT,
+  asset_id           TEXT REFERENCES assets(asset_id) ON DELETE SET NULL,
   asset              TEXT NOT NULL,
   serial_number      TEXT NOT NULL,
   last_inspection    DATE,
@@ -451,6 +452,7 @@ CREATE TABLE IF NOT EXISTS reg_bop (
 CREATE TABLE IF NOT EXISTS reg_well_head (
   id                 UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   reg_id             TEXT NOT NULL UNIQUE DEFAULT 'WH-' || EXTRACT(EPOCH FROM NOW())::BIGINT::TEXT,
+  asset_id           TEXT REFERENCES assets(asset_id) ON DELETE SET NULL,
   asset              TEXT NOT NULL,
   serial_number      TEXT NOT NULL,
   last_inspection    DATE,
@@ -467,6 +469,7 @@ CREATE TABLE IF NOT EXISTS reg_well_head (
 CREATE TABLE IF NOT EXISTS reg_well_control (
   id                 UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   reg_id             TEXT NOT NULL UNIQUE DEFAULT 'WCE-' || EXTRACT(EPOCH FROM NOW())::BIGINT::TEXT,
+  asset_id           TEXT REFERENCES assets(asset_id) ON DELETE SET NULL,
   asset              TEXT NOT NULL,
   serial_number      TEXT NOT NULL,
   last_inspection    DATE,
@@ -483,6 +486,7 @@ CREATE TABLE IF NOT EXISTS reg_well_control (
 CREATE TABLE IF NOT EXISTS reg_fire_extinguishers (
   id                 UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   reg_id             TEXT NOT NULL UNIQUE DEFAULT 'FE-' || EXTRACT(EPOCH FROM NOW())::BIGINT::TEXT,
+  asset_id           TEXT REFERENCES assets(asset_id) ON DELETE SET NULL,
   asset              TEXT NOT NULL,
   serial_number      TEXT NOT NULL,
   last_inspection    DATE,
@@ -499,6 +503,7 @@ CREATE TABLE IF NOT EXISTS reg_fire_extinguishers (
 CREATE TABLE IF NOT EXISTS reg_scba (
   id                 UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   reg_id             TEXT NOT NULL UNIQUE DEFAULT 'SCBA-' || EXTRACT(EPOCH FROM NOW())::BIGINT::TEXT,
+  asset_id           TEXT REFERENCES assets(asset_id) ON DELETE SET NULL,
   asset              TEXT NOT NULL,
   serial_number      TEXT NOT NULL,
   last_inspection    DATE,

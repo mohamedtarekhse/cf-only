@@ -3703,8 +3703,6 @@
               <span class="card-title"><i class="fas fa-fire-extinguisher" style="color:#E9730C;margin-right:4px"></i> Fire Extinguisher Register <span class="record-count" id="fireextCount"></span></span>
               <button class="btn btn-primary" onclick="openFireextModal()"><i class="fas fa-plus"></i> Add Entry</button>
               <button class="btn btn-secondary" onclick="exportFireextRegister()"><i class="fas fa-file-excel"></i> Export</button>
-              <button class="btn btn-secondary" onclick="document.getElementById('importFileFireext').click()"><i class="fas fa-upload"></i> Import</button>
-              <input type="file" id="importFileFireext" accept=".xlsx,.xls,.csv" style="display:none" onchange="importRegisterFile(event,'fireext')">
             </div>
             <div class="filter-bar">
               <div class="filter-group search-wrap">
@@ -3740,6 +3738,7 @@
               <table id="fireextTable">
                 <thead>
                   <tr>
+                    <th>Asset ID</th>
                     <th>Asset</th>
                     <th>Serial Number</th>
                     <th>Date of Last Inspection</th>
@@ -3751,7 +3750,7 @@
                   </tr>
                 </thead>
                 <tbody id="fireextTbody">
-                  <tr><td colspan="8" style="text-align:center;padding:32px;color:var(--sap-text-muted)"><i class="fas fa-fire-extinguisher" style="margin-right:8px;color:#ccc"></i>No Fire Extinguisher records found. Click <strong>Add Entry</strong> to begin.</td></tr>
+                  <tr><td colspan="9" style="text-align:center;padding:32px;color:var(--sap-text-muted)"><i class="fas fa-fire-extinguisher" style="margin-right:8px;color:#ccc"></i>No Fire Extinguisher records found. Click <strong>Add Entry</strong> to begin.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -3763,8 +3762,6 @@
               <span class="card-title"><i class="fas fa-lungs" style="color:var(--sap-blue);margin-right:4px"></i> SCBA Register <span class="record-count" id="scbaCount"></span></span>
               <button class="btn btn-primary" onclick="openScbaModal()"><i class="fas fa-plus"></i> Add Entry</button>
               <button class="btn btn-secondary" onclick="exportScbaRegister()"><i class="fas fa-file-excel"></i> Export</button>
-              <button class="btn btn-secondary" onclick="document.getElementById('importFileScba').click()"><i class="fas fa-upload"></i> Import</button>
-              <input type="file" id="importFileScba" accept=".xlsx,.xls,.csv" style="display:none" onchange="importRegisterFile(event,'scba')">
             </div>
             <div class="filter-bar">
               <div class="filter-group search-wrap">
@@ -3800,6 +3797,7 @@
               <table id="scbaTable">
                 <thead>
                   <tr>
+                    <th>Asset ID</th>
                     <th>Asset</th>
                     <th>Serial Number</th>
                     <th>Date of Last Inspection</th>
@@ -3811,7 +3809,7 @@
                   </tr>
                 </thead>
                 <tbody id="scbaTbody">
-                  <tr><td colspan="8" style="text-align:center;padding:32px;color:var(--sap-text-muted)"><i class="fas fa-lungs" style="margin-right:8px;color:#ccc"></i>No SCBA records found. Click <strong>Add Entry</strong> to begin.</td></tr>
+                  <tr><td colspan="9" style="text-align:center;padding:32px;color:var(--sap-text-muted)"><i class="fas fa-lungs" style="margin-right:8px;color:#ccc"></i>No SCBA records found. Click <strong>Add Entry</strong> to begin.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -3834,8 +3832,6 @@
               <span class="card-title"><i class="fas fa-circle-notch" style="color:var(--sap-blue);margin-right:4px"></i> BOP Register <span class="record-count" id="bopCount"></span></span>
               <button class="btn btn-primary" onclick="openBopModal()"><i class="fas fa-plus"></i> Add Entry</button>
               <button class="btn btn-secondary" onclick="exportBopRegister()"><i class="fas fa-file-excel"></i> Export</button>
-              <button class="btn btn-secondary" onclick="document.getElementById('importFileBop').click()"><i class="fas fa-upload"></i> Import</button>
-              <input type="file" id="importFileBop" accept=".xlsx,.xls,.csv" style="display:none" onchange="importRegisterFile(event,'bop')">
             </div>
             <div class="filter-bar">
               <div class="filter-group search-wrap">
@@ -3871,6 +3867,7 @@
               <table id="bopTable">
                 <thead>
                   <tr>
+                    <th>Asset ID</th>
                     <th>Asset</th>
                     <th>Serial Number</th>
                     <th>Date of Last Inspection</th>
@@ -3882,7 +3879,7 @@
                   </tr>
                 </thead>
                 <tbody id="bopTbody">
-                  <tr><td colspan="8" style="text-align:center;padding:32px;color:var(--sap-text-muted)"><i class="fas fa-circle-notch" style="margin-right:8px;color:#ccc"></i>No BOP records found. Click <strong>Add Entry</strong> to begin.</td></tr>
+                  <tr><td colspan="9" style="text-align:center;padding:32px;color:var(--sap-text-muted)"><i class="fas fa-circle-notch" style="margin-right:8px;color:#ccc"></i>No BOP records found. Click <strong>Add Entry</strong> to begin.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -3894,8 +3891,6 @@
               <span class="card-title"><i class="fas fa-ring" style="color:var(--sap-blue);margin-right:4px"></i> Well Head Register <span class="record-count" id="wellheadCount"></span></span>
               <button class="btn btn-primary" onclick="openWellheadModal()"><i class="fas fa-plus"></i> Add Entry</button>
               <button class="btn btn-secondary" onclick="exportWellheadRegister()"><i class="fas fa-file-excel"></i> Export</button>
-              <button class="btn btn-secondary" onclick="document.getElementById('importFileWellhead').click()"><i class="fas fa-upload"></i> Import</button>
-              <input type="file" id="importFileWellhead" accept=".xlsx,.xls,.csv" style="display:none" onchange="importRegisterFile(event,'wellhead')">
             </div>
             <div class="filter-bar">
               <div class="filter-group search-wrap">
@@ -3931,6 +3926,7 @@
               <table id="wellheadTable">
                 <thead>
                   <tr>
+                    <th>Asset ID</th>
                     <th>Asset</th>
                     <th>Serial Number</th>
                     <th>Date of Last Inspection</th>
@@ -3942,7 +3938,7 @@
                   </tr>
                 </thead>
                 <tbody id="wellheadTbody">
-                  <tr><td colspan="8" style="text-align:center;padding:32px;color:var(--sap-text-muted)"><i class="fas fa-ring" style="margin-right:8px;color:#ccc"></i>No Well Head records found. Click <strong>Add Entry</strong> to begin.</td></tr>
+                  <tr><td colspan="9" style="text-align:center;padding:32px;color:var(--sap-text-muted)"><i class="fas fa-ring" style="margin-right:8px;color:#ccc"></i>No Well Head records found. Click <strong>Add Entry</strong> to begin.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -3954,8 +3950,6 @@
               <span class="card-title"><i class="fas fa-sliders-h" style="color:var(--sap-warning);margin-right:4px"></i> Well Control Equipment Register <span class="record-count" id="wellcontrolCount"></span></span>
               <button class="btn btn-primary" onclick="openWellcontrolModal()"><i class="fas fa-plus"></i> Add Entry</button>
               <button class="btn btn-secondary" onclick="exportWellcontrolRegister()"><i class="fas fa-file-excel"></i> Export</button>
-              <button class="btn btn-secondary" onclick="document.getElementById('importFileWellcontrol').click()"><i class="fas fa-upload"></i> Import</button>
-              <input type="file" id="importFileWellcontrol" accept=".xlsx,.xls,.csv" style="display:none" onchange="importRegisterFile(event,'wellcontrol')">
             </div>
             <div class="filter-bar">
               <div class="filter-group search-wrap">
@@ -3991,6 +3985,7 @@
               <table id="wellcontrolTable">
                 <thead>
                   <tr>
+                    <th>Asset ID</th>
                     <th>Asset</th>
                     <th>Serial Number</th>
                     <th>Date of Last Inspection</th>
@@ -4002,7 +3997,7 @@
                   </tr>
                 </thead>
                 <tbody id="wellcontrolTbody">
-                  <tr><td colspan="8" style="text-align:center;padding:32px;color:var(--sap-text-muted)"><i class="fas fa-sliders-h" style="margin-right:8px;color:#ccc"></i>No Well Control Equipment records found. Click <strong>Add Entry</strong> to begin.</td></tr>
+                  <tr><td colspan="9" style="text-align:center;padding:32px;color:var(--sap-text-muted)"><i class="fas fa-sliders-h" style="margin-right:8px;color:#ccc"></i>No Well Control Equipment records found. Click <strong>Add Entry</strong> to begin.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -4201,6 +4196,7 @@
       </div>
       <div class="modal-body">
         <input type="hidden" id="wellhead_editId">
+        <input type="hidden" id="wellhead_assetId">
         <div class="form-group">
           <label class="form-label">Asset <span style="color:var(--sap-error)">*</span>
             <span style="color:var(--sap-text-muted);font-size:11px;font-weight:400;margin-left:6px">— Well Head Equipment only</span>
@@ -4209,7 +4205,7 @@
             <option value="">— Select Asset —</option>
           </select>
           <div id="wellhead_asset_none" style="display:none;font-size:12px;color:var(--sap-warning);margin-top:4px">
-            <i class="fas fa-exclamation-triangle"></i> No assets found with category "Well Head Equipment". Add assets first in the Assets tab.
+            <i class="fas fa-exclamation-triangle"></i> No assets with category "Well Head Equipment" found. Add them in the Assets tab first.
           </div>
         </div>
         <div class="form-row">
@@ -4224,11 +4220,11 @@
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Date of Last Inspection <span style="color:var(--sap-error)">*</span></label>
+            <label class="form-label">Date of Last Inspection</label>
             <input class="form-input" id="wellhead_lastInspection" type="date">
           </div>
           <div class="form-group">
-            <label class="form-label">Expiry of Inspection <span style="color:var(--sap-error)">*</span></label>
+            <label class="form-label">Expiry of Inspection</label>
             <input class="form-input" id="wellhead_expiryInspection" type="date">
           </div>
         </div>
@@ -4239,7 +4235,7 @@
           </div>
           <div class="form-group">
             <label class="form-label">Notes</label>
-            <textarea class="form-textarea" id="wellhead_notes" rows="1" placeholder="Additional notes..."></textarea>
+            <textarea class="form-textarea" id="wellhead_notes" rows="2" placeholder="Additional notes..."></textarea>
           </div>
         </div>
       </div>
@@ -4260,6 +4256,7 @@
       </div>
       <div class="modal-body">
         <input type="hidden" id="wellcontrol_editId">
+        <input type="hidden" id="wellcontrol_assetId">
         <div class="form-group">
           <label class="form-label">Asset <span style="color:var(--sap-error)">*</span>
             <span style="color:var(--sap-text-muted);font-size:11px;font-weight:400;margin-left:6px">— Well Control Equipment only</span>
@@ -4268,7 +4265,7 @@
             <option value="">— Select Asset —</option>
           </select>
           <div id="wellcontrol_asset_none" style="display:none;font-size:12px;color:var(--sap-warning);margin-top:4px">
-            <i class="fas fa-exclamation-triangle"></i> No assets found with category "Well Control Equipment". Add assets first in the Assets tab.
+            <i class="fas fa-exclamation-triangle"></i> No assets with category "Well Control Equipment" found. Add them in the Assets tab first.
           </div>
         </div>
         <div class="form-row">
@@ -4283,11 +4280,11 @@
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Date of Last Inspection <span style="color:var(--sap-error)">*</span></label>
+            <label class="form-label">Date of Last Inspection</label>
             <input class="form-input" id="wellcontrol_lastInspection" type="date">
           </div>
           <div class="form-group">
-            <label class="form-label">Expiry of Inspection <span style="color:var(--sap-error)">*</span></label>
+            <label class="form-label">Expiry of Inspection</label>
             <input class="form-input" id="wellcontrol_expiryInspection" type="date">
           </div>
         </div>
@@ -4298,7 +4295,7 @@
           </div>
           <div class="form-group">
             <label class="form-label">Notes</label>
-            <textarea class="form-textarea" id="wellcontrol_notes" rows="1" placeholder="Additional notes..."></textarea>
+            <textarea class="form-textarea" id="wellcontrol_notes" rows="2" placeholder="Additional notes..."></textarea>
           </div>
         </div>
       </div>
@@ -10306,7 +10303,8 @@ Instructions:
         return {
           id:               r.id,
           regId:            r.reg_id,
-          asset:            r.asset,
+          assetId:          r.asset_id   || '',
+          asset:            r.asset      || '',
           serial:           r.serial_number,
           lastInspection:   r.last_inspection,
           expiryInspection: r.expiry_inspection,
@@ -10318,7 +10316,7 @@ Instructions:
 
       // ── Payload: app object → DB row ─────────────────────────────────────────
       function regPayload(fields) {
-        return {
+        const p = {
           asset:             fields.asset,
           serial_number:     fields.serial,
           last_inspection:   fields.lastInspection  || null,
@@ -10327,6 +10325,8 @@ Instructions:
           rig:               fields.rig,
           notes:             fields.notes,
         };
+        if (fields.assetId) p.asset_id = fields.assetId;
+        return p;
       }
 
       // ── Shared inspection status helper ──────────────────────────────────────
@@ -10345,7 +10345,7 @@ Instructions:
         const inspF  = document.getElementById(inspFilterId)?.value || '';
 
         const rows = records.filter(r => {
-          const matchSearch = !search || [r.asset, r.serial, r.location, r.rig].some(v => (v||'').toLowerCase().includes(search));
+          const matchSearch = !search || [r.assetId, r.asset, r.serial, r.location, r.rig].some(v => (v||'').toLowerCase().includes(search));
           const matchRig    = !rigF   || r.rig === rigF;
           const st          = bopInspStatus(r.expiryInspection);
           const matchInsp   = !inspF
@@ -10360,12 +10360,13 @@ Instructions:
         if (countEl) countEl.textContent = '(' + rows.length + ')';
 
         if (!rows.length) {
-          tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--sap-text-muted)"><i class="${emptyIcon}" style="margin-right:8px;color:#ccc"></i>No records found.</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--sap-text-muted)"><i class="${emptyIcon}" style="margin-right:8px;color:#ccc"></i>No records found.</td></tr>`;
           return;
         }
         tbody.innerHTML = rows.map(r => {
           const st = bopInspStatus(r.expiryInspection);
           return `<tr>
+            <td><span class="tag blue" style="font-size:11px">${r.assetId||'—'}</span></td>
             <td><strong>${r.asset||'—'}</strong></td>
             <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${r.serial||'—'}</td>
             <td>${r.lastInspection   ? new Date(r.lastInspection).toLocaleDateString('en-GB')   : '—'}</td>
@@ -10385,8 +10386,8 @@ Instructions:
       function exportRegister(records, sheetName, fileName) {
         if (!records.length) { showToast('No data to export.', 'warning'); return; }
         const ws_data = [
-          ['Asset','Serial Number','Date of Last Inspection','Expiry of Inspection','Assigned Location','Rig','Status','Notes'],
-          ...records.map(r => [r.asset, r.serial, r.lastInspection, r.expiryInspection, r.location, r.rig, bopInspStatus(r.expiryInspection).label, r.notes])
+          ['Asset ID','Asset','Serial Number','Date of Last Inspection','Expiry of Inspection','Assigned Location','Rig','Status','Notes'],
+          ...records.map(r => [r.assetId||'', r.asset, r.serial, r.lastInspection, r.expiryInspection, r.location, r.rig, bopInspStatus(r.expiryInspection).label, r.notes])
         ];
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws_data), sheetName);
@@ -10478,8 +10479,11 @@ Instructions:
         const asset  = document.getElementById('bop_asset').value.trim();
         const serial = document.getElementById('bop_serial').value.trim();
         if (!asset || !serial) { showToast('Asset and Serial Number are required.', 'error'); return; }
+        // Look up asset_id from the ASSETS array by matching name
+        const matchedAsset = ASSETS.find(a => a.name === asset || a.assetId === asset);
+        const assetId = matchedAsset ? matchedAsset.assetId : '';
         const payload = regPayload({
-          asset, serial,
+          assetId, asset, serial,
           lastInspection:   document.getElementById('bop_lastInspection').value,
           expiryInspection: document.getElementById('bop_expiryInspection').value,
           location:         document.getElementById('bop_location').value.trim(),
@@ -10550,7 +10554,7 @@ Instructions:
         } catch(e) { console.warn('[WellHead] load failed:', e.message); }
       }
 
-      // Populate Well Head asset dropdown from ASSETS filtered by category
+      // Populate Well Head asset dropdown — filtered to Well Head Equipment category
       function populateWellheadAssetDropdown(selectValue) {
         const sel = document.getElementById('wellhead_asset');
         const noneMsg = document.getElementById('wellhead_asset_none');
@@ -10559,6 +10563,7 @@ Instructions:
         filtered.forEach(a => {
           const opt = document.createElement('option');
           opt.value = a.name;
+          opt.dataset.assetId  = a.assetId  || '';
           opt.dataset.serial   = a.serial   || '';
           opt.dataset.location = a.location || '';
           opt.dataset.rig      = a.rigName  || '';
@@ -10566,43 +10571,47 @@ Instructions:
           if (a.name === selectValue) opt.selected = true;
           sel.appendChild(opt);
         });
-        noneMsg.style.display = filtered.length === 0 ? 'block' : 'none';
+        if (noneMsg) noneMsg.style.display = filtered.length === 0 ? 'block' : 'none';
       }
 
-      // Auto-fill serial / location / rig when asset is picked
+      // Auto-fill asset_id, serial, location, rig when asset is selected
       window.onWellheadAssetChange = function() {
         const sel = document.getElementById('wellhead_asset');
         const opt = sel.options[sel.selectedIndex];
         if (opt && opt.value) {
+          document.getElementById('wellhead_assetId').value = opt.dataset.assetId || '';
           const s = document.getElementById('wellhead_serial');
           const l = document.getElementById('wellhead_location');
           const r = document.getElementById('wellhead_rig');
           if (!s.value) s.value = opt.dataset.serial   || '';
           if (!l.value) l.value = opt.dataset.location || '';
           if (!r.value) r.value = opt.dataset.rig      || '';
+        } else {
+          document.getElementById('wellhead_assetId').value = '';
         }
       };
 
       window.openWellheadModal = function(id) {
         wellheadEditId = id || null;
         document.getElementById('wellheadModalTitle').textContent = id ? 'Edit Well Head Entry' : 'Add Well Head Register Entry';
-        // Reset all fields first
-        ['wellhead_editId','wellhead_serial','wellhead_lastInspection',
+        // Reset all fields
+        ['wellhead_editId','wellhead_assetId','wellhead_serial','wellhead_lastInspection',
          'wellhead_expiryInspection','wellhead_location','wellhead_rig','wellhead_notes']
-          .forEach(fid => document.getElementById(fid).value = '');
-        // Build asset dropdown (filtered to Well Head Equipment)
+          .forEach(fid => { const el = document.getElementById(fid); if (el) el.value = ''; });
+        // Populate asset dropdown
         populateWellheadAssetDropdown('');
         if (id) {
           const r = WELLHEAD_RECORDS.find(x => x.id === id);
           if (r) {
             document.getElementById('wellhead_editId').value           = r.id;
+            document.getElementById('wellhead_assetId').value          = r.assetId || '';
             document.getElementById('wellhead_serial').value           = r.serial || '';
             document.getElementById('wellhead_lastInspection').value   = r.lastInspection || '';
             document.getElementById('wellhead_expiryInspection').value = r.expiryInspection || '';
             document.getElementById('wellhead_location').value         = r.location || '';
             document.getElementById('wellhead_rig').value              = r.rig || '';
             document.getElementById('wellhead_notes').value            = r.notes || '';
-            // Re-populate dropdown with the saved asset pre-selected
+            // Pre-select the asset in the dropdown
             populateWellheadAssetDropdown(r.asset || '');
           }
         }
@@ -10610,13 +10619,14 @@ Instructions:
       };
 
       window.saveWellheadEntry = async function() {
-        const sel    = document.getElementById('wellhead_asset');
-        const asset  = sel.value.trim();
-        const serial = document.getElementById('wellhead_serial').value.trim();
+        const sel     = document.getElementById('wellhead_asset');
+        const asset   = sel.value.trim();
+        const assetId = document.getElementById('wellhead_assetId').value.trim();
+        const serial  = document.getElementById('wellhead_serial').value.trim();
         if (!asset)  { showToast('Please select an asset.', 'error'); return; }
         if (!serial) { showToast('Serial Number is required.', 'error'); return; }
         const payload = regPayload({
-          asset, serial,
+          assetId, asset, serial,
           lastInspection:   document.getElementById('wellhead_lastInspection').value,
           expiryInspection: document.getElementById('wellhead_expiryInspection').value,
           location:         document.getElementById('wellhead_location').value.trim(),
@@ -10687,7 +10697,7 @@ Instructions:
         } catch(e) { console.warn('[WellControl] load failed:', e.message); }
       }
 
-      // Populate Well Control asset dropdown from ASSETS filtered by category
+      // Populate Well Control asset dropdown — filtered to Well Control Equipment category
       function populateWellcontrolAssetDropdown(selectValue) {
         const sel = document.getElementById('wellcontrol_asset');
         const noneMsg = document.getElementById('wellcontrol_asset_none');
@@ -10696,6 +10706,7 @@ Instructions:
         filtered.forEach(a => {
           const opt = document.createElement('option');
           opt.value = a.name;
+          opt.dataset.assetId  = a.assetId  || '';
           opt.dataset.serial   = a.serial   || '';
           opt.dataset.location = a.location || '';
           opt.dataset.rig      = a.rigName  || '';
@@ -10703,43 +10714,47 @@ Instructions:
           if (a.name === selectValue) opt.selected = true;
           sel.appendChild(opt);
         });
-        noneMsg.style.display = filtered.length === 0 ? 'block' : 'none';
+        if (noneMsg) noneMsg.style.display = filtered.length === 0 ? 'block' : 'none';
       }
 
-      // Auto-fill serial / location / rig when asset is picked
+      // Auto-fill asset_id, serial, location, rig when asset is selected
       window.onWellcontrolAssetChange = function() {
         const sel = document.getElementById('wellcontrol_asset');
         const opt = sel.options[sel.selectedIndex];
         if (opt && opt.value) {
+          document.getElementById('wellcontrol_assetId').value = opt.dataset.assetId || '';
           const s = document.getElementById('wellcontrol_serial');
           const l = document.getElementById('wellcontrol_location');
           const r = document.getElementById('wellcontrol_rig');
           if (!s.value) s.value = opt.dataset.serial   || '';
           if (!l.value) l.value = opt.dataset.location || '';
           if (!r.value) r.value = opt.dataset.rig      || '';
+        } else {
+          document.getElementById('wellcontrol_assetId').value = '';
         }
       };
 
       window.openWellcontrolModal = function(id) {
         wellcontrolEditId = id || null;
         document.getElementById('wellcontrolModalTitle').textContent = id ? 'Edit Well Control Entry' : 'Add Well Control Equipment Entry';
-        // Reset all fields first
-        ['wellcontrol_editId','wellcontrol_serial','wellcontrol_lastInspection',
+        // Reset all fields
+        ['wellcontrol_editId','wellcontrol_assetId','wellcontrol_serial','wellcontrol_lastInspection',
          'wellcontrol_expiryInspection','wellcontrol_location','wellcontrol_rig','wellcontrol_notes']
-          .forEach(fid => document.getElementById(fid).value = '');
-        // Build asset dropdown (filtered to Well Control Equipment)
+          .forEach(fid => { const el = document.getElementById(fid); if (el) el.value = ''; });
+        // Populate asset dropdown
         populateWellcontrolAssetDropdown('');
         if (id) {
           const r = WELLCONTROL_RECORDS.find(x => x.id === id);
           if (r) {
             document.getElementById('wellcontrol_editId').value           = r.id;
+            document.getElementById('wellcontrol_assetId').value          = r.assetId || '';
             document.getElementById('wellcontrol_serial').value           = r.serial || '';
             document.getElementById('wellcontrol_lastInspection').value   = r.lastInspection || '';
             document.getElementById('wellcontrol_expiryInspection').value = r.expiryInspection || '';
             document.getElementById('wellcontrol_location').value         = r.location || '';
             document.getElementById('wellcontrol_rig').value              = r.rig || '';
             document.getElementById('wellcontrol_notes').value            = r.notes || '';
-            // Re-populate dropdown with the saved asset pre-selected
+            // Pre-select the asset in the dropdown
             populateWellcontrolAssetDropdown(r.asset || '');
           }
         }
@@ -10747,13 +10762,14 @@ Instructions:
       };
 
       window.saveWellcontrolEntry = async function() {
-        const sel    = document.getElementById('wellcontrol_asset');
-        const asset  = sel.value.trim();
-        const serial = document.getElementById('wellcontrol_serial').value.trim();
+        const sel     = document.getElementById('wellcontrol_asset');
+        const asset   = sel.value.trim();
+        const assetId = document.getElementById('wellcontrol_assetId').value.trim();
+        const serial  = document.getElementById('wellcontrol_serial').value.trim();
         if (!asset)  { showToast('Please select an asset.', 'error'); return; }
         if (!serial) { showToast('Serial Number is required.', 'error'); return; }
         const payload = regPayload({
-          asset, serial,
+          assetId, asset, serial,
           lastInspection:   document.getElementById('wellcontrol_lastInspection').value,
           expiryInspection: document.getElementById('wellcontrol_expiryInspection').value,
           location:         document.getElementById('wellcontrol_location').value.trim(),
@@ -10850,8 +10866,11 @@ Instructions:
         const asset  = document.getElementById('fireext_asset').value.trim();
         const serial = document.getElementById('fireext_serial').value.trim();
         if (!asset || !serial) { showToast('Asset and Serial Number are required.', 'error'); return; }
+        // Look up asset_id from the ASSETS array by matching name
+        const matchedAsset = ASSETS.find(a => a.name === asset || a.assetId === asset);
+        const assetId = matchedAsset ? matchedAsset.assetId : '';
         const payload = regPayload({
-          asset, serial,
+          assetId, asset, serial,
           lastInspection:   document.getElementById('fireext_lastInspection').value,
           expiryInspection: document.getElementById('fireext_expiryInspection').value,
           location:         document.getElementById('fireext_location').value.trim(),
@@ -10948,8 +10967,11 @@ Instructions:
         const asset  = document.getElementById('scba_asset').value.trim();
         const serial = document.getElementById('scba_serial').value.trim();
         if (!asset || !serial) { showToast('Asset and Serial Number are required.', 'error'); return; }
+        // Look up asset_id from the ASSETS array by matching name
+        const matchedAsset = ASSETS.find(a => a.name === asset || a.assetId === asset);
+        const assetId = matchedAsset ? matchedAsset.assetId : '';
         const payload = regPayload({
-          asset, serial,
+          assetId, asset, serial,
           lastInspection:   document.getElementById('scba_lastInspection').value,
           expiryInspection: document.getElementById('scba_expiryInspection').value,
           location:         document.getElementById('scba_location').value.trim(),
@@ -11022,98 +11044,6 @@ Instructions:
       // ══════════════════════════════════════════
       //  END REGISTERS MODULE
       // ══════════════════════════════════════════
-
-      // ══════════════════════════════════════════════════════════════════════════
-      //  REGISTER IMPORT  — shared Excel/CSV importer for all 5 register tables
-      //  Columns expected (case-insensitive, flexible header names):
-      //    Asset | Serial Number | Date of Last Inspection |
-      //    Expiry of Inspection | Assigned Location | Rig | Notes
-      // ══════════════════════════════════════════════════════════════════════════
-      window.importRegisterFile = async function(event, registerType) {
-        const file = event.target.files[0];
-        if (!file) return;
-        event.target.value = ''; // reset so same file can be re-imported
-
-        // Map registerType → { apiPath, records array, renderFn, label }
-        const CONFIG = {
-          bop:         { path: '/reg-bop',                records: BOP_RECORDS,         render: renderBopTable,         label: 'BOP Register' },
-          wellhead:    { path: '/reg-well-head',          records: WELLHEAD_RECORDS,     render: renderWellheadTable,    label: 'Well Head Register' },
-          wellcontrol: { path: '/reg-well-control',       records: WELLCONTROL_RECORDS,  render: renderWellcontrolTable, label: 'Well Control Equipment' },
-          fireext:     { path: '/reg-fire-extinguishers', records: FIREEXT_RECORDS,      render: renderFireextTable,     label: 'Fire Extinguisher Register' },
-          scba:        { path: '/reg-scba',               records: SCBA_RECORDS,         render: renderScbaTable,        label: 'SCBA Register' },
-        };
-
-        const cfg = CONFIG[registerType];
-        if (!cfg) { showToast('Unknown register type.', 'error'); return; }
-
-        showToast(`Importing ${cfg.label}…`, 'info');
-
-        try {
-          const rows = await readXlsx(file);
-          if (!rows || !rows.length) { showToast('No data rows found in file.', 'warning'); return; }
-
-          // Flexible column header resolver (case + space insensitive)
-          function col(row, ...keys) {
-            const norm = k => k.toLowerCase().replace(/[\s_\-]/g, '');
-            for (const k of Object.keys(row)) {
-              if (keys.some(kk => norm(k) === norm(kk))) return (row[k] || '').toString().trim();
-            }
-            return '';
-          }
-
-          // Helper: parse a date value from Excel (number or string)
-          function parseDate(val) {
-            if (!val) return null;
-            const s = val.toString().trim();
-            if (!s) return null;
-            // Excel serial number
-            if (/^\d+$/.test(s) && Number(s) > 10000) {
-              const d = new Date(Math.round((Number(s) - 25569) * 86400 * 1000));
-              return d.toISOString().slice(0, 10);
-            }
-            // Try direct parse
-            const d = new Date(s);
-            if (!isNaN(d)) return d.toISOString().slice(0, 10);
-            return s; // leave as-is
-          }
-
-          let added = 0, skipped = 0, errors = [];
-
-          for (const r of rows) {
-            const asset  = col(r, 'Asset', 'Asset Name', 'Equipment', 'Description');
-            const serial = col(r, 'Serial Number', 'Serial', 'SerialNo', 'Serial No');
-            if (!asset || !serial) { skipped++; continue; }
-
-            const payload = {
-              asset,
-              serial_number:     serial,
-              last_inspection:   parseDate(col(r, 'Date of Last Inspection', 'Last Inspection', 'LastInspection', 'Inspected Date')),
-              expiry_inspection: parseDate(col(r, 'Expiry of Inspection', 'Expiry', 'Expiry Date', 'Next Inspection', 'ExpiryDate')),
-              assigned_location: col(r, 'Assigned Location', 'Location', 'Assigned Location'),
-              rig:               col(r, 'Rig', 'Rig Name', 'RigName'),
-              notes:             col(r, 'Notes', 'Remarks', 'Comments'),
-            };
-
-            try {
-              const res = await POST(cfg.path, payload);
-              cfg.records.push(normReg(res.data));
-              added++;
-            } catch(e) {
-              skipped++;
-              errors.push(e.message);
-            }
-          }
-
-          cfg.render();
-          const errNote = errors.length ? ` (last error: ${errors[errors.length-1]})` : '';
-          showToast(
-            `${cfg.label}: ${added} record(s) imported.${skipped ? ' ' + skipped + ' skipped.' + errNote : ''}`,
-            added > 0 ? 'success' : 'warning'
-          );
-        } catch(err) {
-          showToast('Import failed: ' + err.message, 'error');
-        }
-      };
 
       window.importMaintenance = async function importMaintenance(event) {
         if (!canImport()) { showToast('Only Admins can import data.', 'error'); return; }
