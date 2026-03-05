@@ -371,6 +371,41 @@
       border-color: var(--sap-warning);
     }
 
+    /* ── COLUMN PICKER ── */
+    .col-picker-wrap { position: relative; display: inline-flex; }
+    .col-picker-btn {
+      height: 32px; padding: 0 12px; border: 1px solid var(--sap-border);
+      border-radius: var(--radius); background: #fff; font-family: inherit;
+      font-size: 12.5px; color: var(--sap-text); cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px;
+      transition: border-color .15s, background .15s;
+    }
+    .col-picker-btn:hover { border-color: var(--sap-blue); background: var(--sap-blue-light); color: var(--sap-blue); }
+    .col-picker-btn.active { border-color: var(--sap-blue); background: var(--sap-blue-light); color: var(--sap-blue); }
+    .col-picker-panel {
+      display: none; position: absolute; top: calc(100% + 6px); right: 0;
+      background: #fff; border: 1px solid var(--sap-border); border-radius: 6px;
+      box-shadow: var(--shadow-lg); z-index: 500; min-width: 230px; padding: 8px 0;
+    }
+    .col-picker-panel.open { display: block; }
+    .col-picker-title {
+      font-size: 11px; font-weight: 700; color: var(--sap-text-muted);
+      text-transform: uppercase; letter-spacing: .6px;
+      padding: 4px 14px 8px; border-bottom: 1px solid var(--sap-border); margin-bottom: 4px;
+    }
+    .col-picker-item {
+      display: flex; align-items: center; gap: 10px; padding: 6px 14px;
+      cursor: pointer; transition: background .1s; user-select: none; font-size: 13px;
+    }
+    .col-picker-item:hover { background: var(--sap-blue-light); }
+    .col-picker-item input[type=checkbox] { cursor: pointer; accent-color: var(--sap-blue); width: 15px; height: 15px; }
+    .col-picker-item.locked { opacity: .5; cursor: not-allowed; }
+    .col-picker-footer {
+      padding: 8px 14px 4px; border-top: 1px solid var(--sap-border); margin-top: 4px;
+      display: flex; gap: 8px;
+    }
+    .col-picker-footer button { flex: 1; font-size: 12px; height: 28px; }
+
     /* ── SEARCH / FILTER BAR ── */
     .filter-bar {
       padding: 5px 10px;
@@ -2807,6 +2842,12 @@
               New Asset</button>
             <button class="btn btn-secondary" onclick="exportAssets()"><i class="fas fa-file-excel"></i> Export Excel</button>
             <button class="btn btn-secondary" onclick="exportAssetsPDF()" style="background:#fff0f0;border-color:#c00;color:#c00"><i class="fas fa-file-pdf"></i> Export PDF</button>
+            <div class="col-picker-wrap" id="assetColPickerWrap">
+              <button class="col-picker-btn" id="assetColPickerBtn" onclick="toggleColPicker('asset')"><i class="fas fa-columns"></i> Columns</button>
+              <div class="col-picker-panel" id="assetColPickerPanel">
+                <div class="col-picker-title">Visible Columns</div>
+              </div>
+            </div>
             <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()"><i
                 class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFile" accept=".xlsx,.xls,.csv" style="display:none"
@@ -2883,7 +2924,7 @@
           </div>
           <div class="table-wrap" style="flex:1">
             <table id="assetTable">
-              <thead>
+              <thead id="assetThead">
                 <tr>
                   <th class="checkbox-cell"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"></th>
                   <th onclick="sortTable('assetId')">Asset ID <i class="fas fa-sort sort-icon"></i></th>
@@ -3153,6 +3194,12 @@
               Request</button>
             <button class="btn btn-secondary" onclick="exportTransfers()"><i class="fas fa-file-excel"></i> Export Excel</button>
             <button class="btn btn-secondary" onclick="exportTransfersPDF()" style="background:#fff0f0;border-color:#c00;color:#c00"><i class="fas fa-file-pdf"></i> Export PDF</button>
+            <div class="col-picker-wrap" id="trColPickerWrap">
+              <button class="col-picker-btn" id="trColPickerBtn" onclick="toggleColPicker('transfer')"><i class="fas fa-columns"></i> Columns</button>
+              <div class="col-picker-panel" id="trColPickerPanel">
+                <div class="col-picker-title">Visible Columns</div>
+              </div>
+            </div>
             <button class="btn btn-secondary" onclick="document.getElementById('importFileTransfers').click()"><i
                 class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileTransfers" accept=".xlsx,.xls,.csv" style="display:none"
@@ -3196,7 +3243,7 @@
           <!-- Transfer Table -->
           <div class="table-wrap">
             <table>
-              <thead>
+              <thead id="transferThead">
                 <tr>
                   <th>Request ID</th>
                   <th>Asset</th>
@@ -4992,6 +5039,139 @@ Asset Management System</textarea>
     // ══════════════════════════════════
     //  INIT
     // ══════════════════════════════════
+    // ══════════════════════════════════════════════════════════════════
+    //  COLUMN PICKER ENGINE
+    // ══════════════════════════════════════════════════════════════════
+
+    // ── Column definitions ──────────────────────────────────────────
+    const ASSET_COLS = [
+      { key: 'assetId',        label: 'Asset ID',         locked: true,  default: true,  sortKey: 'assetId' },
+      { key: 'name',           label: 'Asset Name',       locked: false, default: true,  sortKey: 'name' },
+      { key: 'category',       label: 'Category',         locked: false, default: true,  sortKey: 'category' },
+      { key: 'company',        label: 'Company',          locked: false, default: true,  sortKey: 'company' },
+      { key: 'rigName',        label: 'Rig',              locked: false, default: true,  sortKey: 'rigName' },
+      { key: 'location',       label: 'Location',         locked: false, default: true,  sortKey: 'location' },
+      { key: 'status',         label: 'Status',           locked: false, default: true,  sortKey: 'status' },
+      { key: 'value',          label: 'Value (USD)',       locked: false, default: true,  sortKey: 'value' },
+      { key: 'acquisitionDate',label: 'Acquisition Date', locked: false, default: true,  sortKey: 'acquisitionDate' },
+      { key: 'serial',         label: 'Serial Number',    locked: false, default: false, sortKey: null },
+      { key: 'lastInspection', label: 'Last Inspection',  locked: false, default: false, sortKey: null },
+      { key: 'inspectionType', label: 'Inspection Type',  locked: false, default: false, sortKey: null },
+      { key: 'notes',          label: 'Notes',            locked: false, default: false, sortKey: null },
+    ];
+
+    const TRANSFER_COLS = [
+      { key: 'id',          label: 'Request ID',      locked: true,  default: true },
+      { key: 'asset',       label: 'Asset',           locked: false, default: true },
+      { key: 'currentLoc',  label: 'Current Location',locked: false, default: true },
+      { key: 'destination', label: 'Destination',     locked: false, default: true },
+      { key: 'reason',      label: 'Reason',          locked: false, default: true },
+      { key: 'priority',    label: 'Priority',        locked: false, default: true },
+      { key: 'requestedBy', label: 'Requested By',    locked: false, default: true },
+      { key: 'requestDate', label: 'Request Date',    locked: false, default: true },
+      { key: 'status',      label: 'Status',          locked: false, default: true },
+      { key: 'opsApproval', label: 'Drilling Manager',locked: false, default: true },
+      { key: 'mgrApproval', label: 'Asset Manager',   locked: false, default: true },
+      { key: 'type',        label: 'Transfer Type',   locked: false, default: false },
+      { key: 'destRig',     label: 'Dest. Rig',       locked: false, default: false },
+      { key: 'destCompany', label: 'Dest. Company',   locked: false, default: false },
+      { key: 'requiredDate',label: 'Required By',     locked: false, default: false },
+      { key: 'assetId',     label: 'Asset ID',        locked: false, default: false },
+    ];
+
+    // ── Visible column state (Set of keys) ──────────────────────────
+    const _colState = {
+      asset:    new Set(ASSET_COLS.filter(c => c.default).map(c => c.key)),
+      transfer: new Set(TRANSFER_COLS.filter(c => c.default).map(c => c.key)),
+    };
+
+    // Returns ordered array of visible column objects
+    function getVisibleCols(table) {
+      const defs = table === 'asset' ? ASSET_COLS : TRANSFER_COLS;
+      return defs.filter(c => _colState[table].has(c.key));
+    }
+
+    // ── Build and populate picker panel ─────────────────────────────
+    function buildColPickerPanel(table) {
+      const defs = table === 'asset' ? ASSET_COLS : TRANSFER_COLS;
+      const panelId = table === 'asset' ? 'assetColPickerPanel' : 'trColPickerPanel';
+      const panel = document.getElementById(panelId);
+      if (!panel) return;
+      const state = _colState[table];
+
+      panel.innerHTML = `<div class="col-picker-title"><i class="fas fa-columns" style="margin-right:5px"></i>Visible Columns</div>`;
+
+      defs.forEach(col => {
+        const checked = state.has(col.key);
+        const item = document.createElement('label');
+        item.className = 'col-picker-item' + (col.locked ? ' locked' : '');
+        item.innerHTML = `<input type="checkbox" ${checked ? 'checked' : ''} ${col.locked ? 'disabled' : ''}
+          onchange="toggleCol('${table}','${col.key}',this.checked)">
+          <span>${col.label}</span>
+          ${col.locked ? '<span style="margin-left:auto;font-size:10px;color:var(--sap-text-muted)">Required</span>' : ''}`;
+        panel.appendChild(item);
+      });
+
+      const footer = document.createElement('div');
+      footer.className = 'col-picker-footer';
+      footer.innerHTML = `
+        <button class="btn btn-ghost" onclick="resetColPicker('${table}')"><i class="fas fa-undo"></i> Reset</button>
+        <button class="btn btn-primary" onclick="closeColPicker('${table}')">Done</button>`;
+      panel.appendChild(footer);
+    }
+
+    // ── Toggle panel open/close ──────────────────────────────────────
+    function toggleColPicker(table) {
+      const panelId = table === 'asset' ? 'assetColPickerPanel' : 'trColPickerPanel';
+      const btnId   = table === 'asset' ? 'assetColPickerBtn'   : 'trColPickerBtn';
+      const panel = document.getElementById(panelId);
+      const btn   = document.getElementById(btnId);
+      const isOpen = panel.classList.contains('open');
+      // Close any other open pickers first
+      document.querySelectorAll('.col-picker-panel.open').forEach(p => p.classList.remove('open'));
+      document.querySelectorAll('.col-picker-btn.active').forEach(b => b.classList.remove('active'));
+      if (!isOpen) {
+        buildColPickerPanel(table);
+        panel.classList.add('open');
+        btn.classList.add('active');
+      }
+    }
+
+    function closeColPicker(table) {
+      const panelId = table === 'asset' ? 'assetColPickerPanel' : 'trColPickerPanel';
+      const btnId   = table === 'asset' ? 'assetColPickerBtn'   : 'trColPickerBtn';
+      document.getElementById(panelId)?.classList.remove('open');
+      document.getElementById(btnId)?.classList.remove('active');
+    }
+
+    // ── Toggle a single column ───────────────────────────────────────
+    function toggleCol(table, key, visible) {
+      const defs = table === 'asset' ? ASSET_COLS : TRANSFER_COLS;
+      const col = defs.find(c => c.key === key);
+      if (col?.locked) return;
+      if (visible) _colState[table].add(key);
+      else _colState[table].delete(key);
+      if (table === 'asset') renderAssets();
+      else renderTransfers();
+    }
+
+    // ── Reset to defaults ────────────────────────────────────────────
+    function resetColPicker(table) {
+      const defs = table === 'asset' ? ASSET_COLS : TRANSFER_COLS;
+      _colState[table] = new Set(defs.filter(c => c.default).map(c => c.key));
+      buildColPickerPanel(table); // re-render checkboxes
+      if (table === 'asset') renderAssets();
+      else renderTransfers();
+    }
+
+    // ── Close picker when clicking outside ──────────────────────────
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.col-picker-wrap')) {
+        document.querySelectorAll('.col-picker-panel.open').forEach(p => p.classList.remove('open'));
+        document.querySelectorAll('.col-picker-btn.active').forEach(b => b.classList.remove('active'));
+      }
+    }, true);
+
     window.onload = function () {
       renderNotifications();
       populateCompanyFilters();
@@ -5088,30 +5268,56 @@ Asset Management System</textarea>
       const start = (currentPage - 1) * pageSize;
       const end = Math.min(start + pageSize, total);
       const page = filteredAssets.slice(start, end);
+      const cols = getVisibleCols('asset');
+
+      // ── rebuild thead dynamically ──
+      const thead = document.getElementById('assetThead');
+      if (thead) {
+        thead.innerHTML = '<tr>' +
+          '<th class="checkbox-cell"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"></th>' +
+          cols.filter(c => c.key !== '_select' && c.key !== '_actions').map(c =>
+            c.sortKey
+              ? `<th onclick="sortTable('${c.sortKey}')">${c.label} <i class="fas fa-sort sort-icon"></i></th>`
+              : `<th>${c.label}</th>`
+          ).join('') +
+          '<th>Actions</th></tr>';
+      }
 
       const tbody = document.getElementById('assetTbody');
+      const colCount = cols.length + 2; // +2 for checkbox + actions
       if (!page.length) {
-        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;padding:40px;color:var(--sap-text-muted)"><i class="fas fa-search" style="font-size:24px;margin-bottom:8px;display:block"></i>No assets found</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${colCount}" style="text-align:center;padding:40px;color:var(--sap-text-muted)"><i class="fas fa-search" style="font-size:24px;margin-bottom:8px;display:block"></i>No assets found</td></tr>`;
       } else {
-        tbody.innerHTML = page.map(a => `
-      <tr id="row-${a.assetId}" onclick="handleRowClick(event,'${a.assetId}')">
-        <td class="checkbox-cell"><input type="checkbox" onclick="e => e.stopPropagation()"></td>
-        <td><span class="tag blue">${a.assetId}</span></td>
-        <td style="font-weight:500">${a.name}</td>
-        <td>${a.category}</td>
-        <td>${a.company}</td>
-        <td>${a.rigName}</td>
-        <td>${a.location}</td>
-        <td>${statusBadge(a.status)}</td>
-        <td style="font-family:'IBM Plex Mono',monospace;font-size:12.5px">$${Number(a.value).toLocaleString()}</td>
-        <td>${a.acquisitionDate}</td>
-        <td onclick="event.stopPropagation()">
-          <button class="btn btn-ghost btn-icon" title="View" onclick="openAssetDetail('${a.assetId}')"><i class="fas fa-eye"></i></button>
-          <button class="btn btn-ghost btn-icon" title="Edit" onclick="openAddAssetModal('${a.assetId}')"><i class="fas fa-edit"></i></button>
-          <button class="btn btn-ghost btn-icon" title="Transfer" style="color:#E9730C" onclick="event.stopPropagation();openTransferModal('${a.assetId}')"><i class="fas fa-exchange-alt"></i></button>
-          <button class="btn btn-ghost btn-icon" title="Delete" style="color:var(--sap-error)" onclick="deleteAsset('${a.assetId}')"><i class="fas fa-trash"></i></button>
-        </td>
-      </tr>`).join('');
+        tbody.innerHTML = page.map(a => {
+          const dataCells = cols.filter(c => c.key !== '_select' && c.key !== '_actions').map(c => {
+            switch(c.key) {
+              case 'assetId':    return `<td><span class="tag blue">${a.assetId}</span></td>`;
+              case 'name':       return `<td style="font-weight:500">${a.name}</td>`;
+              case 'category':   return `<td>${a.category || '—'}</td>`;
+              case 'company':    return `<td>${a.company || '—'}</td>`;
+              case 'rigName':    return `<td>${a.rigName || '—'}</td>`;
+              case 'location':   return `<td>${a.location || '—'}</td>`;
+              case 'status':     return `<td>${statusBadge(a.status)}</td>`;
+              case 'value':      return `<td style="font-family:'IBM Plex Mono',monospace;font-size:12.5px">$${Number(a.value||0).toLocaleString()}</td>`;
+              case 'acquisitionDate': return `<td>${a.acquisitionDate || '—'}</td>`;
+              case 'serial':     return `<td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${a.serial || '—'}</td>`;
+              case 'lastInspection': return `<td>${a.lastInspection || '—'}</td>`;
+              case 'inspectionType': return `<td>${a.inspectionType || '—'}</td>`;
+              case 'notes':      return `<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="${(a.notes||'').replace(/"/g,'&quot;')}">${a.notes || '—'}</td>`;
+              default:           return `<td>—</td>`;
+            }
+          }).join('');
+          return `<tr id="row-${a.assetId}" onclick="handleRowClick(event,'${a.assetId}')">
+            <td class="checkbox-cell"><input type="checkbox" onclick="e => e.stopPropagation()"></td>
+            ${dataCells}
+            <td onclick="event.stopPropagation()">
+              <button class="btn btn-ghost btn-icon" title="View" onclick="openAssetDetail('${a.assetId}')"><i class="fas fa-eye"></i></button>
+              <button class="btn btn-ghost btn-icon" title="Edit" onclick="openAddAssetModal('${a.assetId}')"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-ghost btn-icon" title="Transfer" style="color:#E9730C" onclick="event.stopPropagation();openTransferModal('${a.assetId}')"><i class="fas fa-exchange-alt"></i></button>
+              <button class="btn btn-ghost btn-icon" title="Delete" style="color:var(--sap-error)" onclick="deleteAsset('${a.assetId}')"><i class="fas fa-trash"></i></button>
+            </td>
+          </tr>`;
+        }).join('');
       }
 
       document.getElementById('assetCount').textContent = `(${total} records)`;
@@ -6656,40 +6862,50 @@ Asset Management System</textarea>
 
       document.getElementById('trCount').textContent = `(${list.length})`;
 
+      const cols = getVisibleCols('transfer');
       const priorityClass = { Critical: 'priority-critical', High: 'priority-high', Normal: 'priority-normal', Low: 'priority-low' };
 
-      document.getElementById('transferTbody').innerHTML = list.map(t => `
-    <tr style="cursor:pointer" onclick="openTransferDetail('${t.id}')">
-      <td onclick="event.stopPropagation()"><span class="tag blue" style="font-family:'IBM Plex Mono',monospace;font-size:11px">${t.id}</span></td>
-      <td>
-        <div style="font-weight:600;font-size:13px">${t.assetName}</div>
-        <div style="font-size:11px;color:var(--sap-text-muted);font-family:'IBM Plex Mono',monospace">${t.assetId}</div>
-      </td>
-      <td>
-        <div style="display:flex;align-items:center;gap:5px;font-size:12.5px">
-          <i class="fas fa-map-marker-alt" style="color:var(--sap-text-muted);font-size:10px"></i>${t.currentLoc}
-        </div>
-      </td>
-      <td>
-        ${t.vendorName ? `<div style="font-size:10.5px;background:#FFF3E0;color:#E65100;border-radius:3px;padding:1px 6px;margin-bottom:2px;display:inline-block"><i class="fas fa-store" style="font-size:9px"></i> ${t.vendorName}${t.poNumber ? ' · PO: ' + t.poNumber : ''}</div>` : ''}
-        <div style="display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:500;color:var(--sap-blue)">
-          <i class="fas fa-location-dot" style="font-size:10px"></i>${t.destination}
-        </div>
-      </td>
-      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="${t.reason}">${t.reason}</td>
-      <td><span class="${priorityClass[t.priority] || 'priority-normal'}">${t.priority === 'Critical' ? '⚠ ' : ''}${t.priority}</span></td>
-      <td style="font-size:12.5px">${t.requestedBy}</td>
-      <td style="font-size:12px;color:var(--sap-text-muted)">${t.requestDate}</td>
-      <td>${transferStatusBadge(t.status)}</td>
-      <td>${approvalCell(t.opsApproval)}</td>
-      <td>${approvalCell(t.mgrApproval)}</td>
-      <td style="white-space:nowrap" onclick="event.stopPropagation()">
-        <button class="btn btn-ghost btn-icon" title="View Details" onclick="openTransferDetail('${t.id}')"><i class="fas fa-eye"></i></button>
-        ${t.status === 'Pending' && canApproveDrilling() ? `<button class="btn btn-ghost btn-icon" title="Drilling Manager Review" style="color:#E65100" onclick="openApprovalModal('${t.id}','drilling')"><i class="fas fa-hard-hat"></i></button>` : ''}
-        ${t.status === 'Ops Approved' && canApproveAsset() ? `<button class="btn btn-ghost btn-icon" title="Asset Manager Final Approval" style="color:#6D28D9" onclick="openApprovalModal('${t.id}','asset')"><i class="fas fa-user-tie"></i></button>` : ''}
-        ${(t.status === 'Pending' || t.status === 'Ops Approved') ? `<button class="btn btn-ghost btn-icon" title="Cancel Request" style="color:var(--sap-error)" onclick="cancelTransfer('${t.id}')"><i class="fas fa-ban"></i></button>` : ''}
-      </td>
-    </tr>`).join('') || '<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--sap-text-muted)"><i class="fas fa-exchange-alt" style="font-size:28px;opacity:.3;display:block;margin-bottom:8px"></i>No transfer requests found</td></tr>';
+      // ── rebuild thead dynamically ──
+      const thead = document.getElementById('transferThead');
+      if (thead) {
+        thead.innerHTML = '<tr>' +
+          cols.filter(c => c.key !== '_actions').map(c => `<th>${c.label}</th>`).join('') +
+          '<th>Actions</th></tr>';
+      }
+
+      const colCount = cols.length + 1;
+      document.getElementById('transferTbody').innerHTML = list.map(t => {
+        const dataCells = cols.filter(c => c.key !== '_actions').map(c => {
+          switch(c.key) {
+            case 'id':          return `<td onclick="event.stopPropagation()"><span class="tag blue" style="font-family:'IBM Plex Mono',monospace;font-size:11px">${t.id}</span></td>`;
+            case 'asset':       return `<td><div style="font-weight:600;font-size:13px">${t.assetName}</div><div style="font-size:11px;color:var(--sap-text-muted);font-family:'IBM Plex Mono',monospace">${t.assetId}</div></td>`;
+            case 'assetId':     return `<td><span class="tag blue" style="font-size:11px">${t.assetId}</span></td>`;
+            case 'currentLoc':  return `<td><div style="display:flex;align-items:center;gap:5px;font-size:12.5px"><i class="fas fa-map-marker-alt" style="color:var(--sap-text-muted);font-size:10px"></i>${t.currentLoc}</div></td>`;
+            case 'destination': return `<td>${t.vendorName ? `<div style="font-size:10.5px;background:#FFF3E0;color:#E65100;border-radius:3px;padding:1px 6px;margin-bottom:2px;display:inline-block"><i class="fas fa-store" style="font-size:9px"></i> ${t.vendorName}${t.poNumber ? ' · PO: ' + t.poNumber : ''}</div>` : ''}<div style="display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:500;color:var(--sap-blue)"><i class="fas fa-location-dot" style="font-size:10px"></i>${t.destination}</div></td>`;
+            case 'reason':      return `<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="${(t.reason||'').replace(/"/g,'&quot;')}">${t.reason || '—'}</td>`;
+            case 'priority':    return `<td><span class="${priorityClass[t.priority] || 'priority-normal'}">${t.priority === 'Critical' ? '⚠ ' : ''}${t.priority}</span></td>`;
+            case 'requestedBy': return `<td style="font-size:12.5px">${t.requestedBy || '—'}</td>`;
+            case 'requestDate': return `<td style="font-size:12px;color:var(--sap-text-muted)">${t.requestDate || '—'}</td>`;
+            case 'requiredDate':return `<td style="font-size:12px">${t.requiredDate || '—'}</td>`;
+            case 'status':      return `<td>${transferStatusBadge(t.status)}</td>`;
+            case 'opsApproval': return `<td>${approvalCell(t.opsApproval)}</td>`;
+            case 'mgrApproval': return `<td>${approvalCell(t.mgrApproval)}</td>`;
+            case 'type':        return `<td style="font-size:12.5px">${t.type || '—'}</td>`;
+            case 'destRig':     return `<td style="font-size:12.5px">${t.destRig || '—'}</td>`;
+            case 'destCompany': return `<td style="font-size:12.5px">${t.destCompany || '—'}</td>`;
+            default:            return `<td>—</td>`;
+          }
+        }).join('');
+        return `<tr style="cursor:pointer" onclick="openTransferDetail('${t.id}')">
+          ${dataCells}
+          <td style="white-space:nowrap" onclick="event.stopPropagation()">
+            <button class="btn btn-ghost btn-icon" title="View Details" onclick="openTransferDetail('${t.id}')"><i class="fas fa-eye"></i></button>
+            ${t.status === 'Pending' && canApproveDrilling() ? `<button class="btn btn-ghost btn-icon" title="Drilling Manager Review" style="color:#E65100" onclick="openApprovalModal('${t.id}','drilling')"><i class="fas fa-hard-hat"></i></button>` : ''}
+            ${t.status === 'Ops Approved' && canApproveAsset() ? `<button class="btn btn-ghost btn-icon" title="Asset Manager Final Approval" style="color:#6D28D9" onclick="openApprovalModal('${t.id}','asset')"><i class="fas fa-user-tie"></i></button>` : ''}
+            ${(t.status === 'Pending' || t.status === 'Ops Approved') ? `<button class="btn btn-ghost btn-icon" title="Cancel Request" style="color:var(--sap-error)" onclick="cancelTransfer('${t.id}')"><i class="fas fa-ban"></i></button>` : ''}
+          </td>
+        </tr>`;
+      }).join('') || `<tr><td colspan="${colCount}" style="text-align:center;padding:40px;color:var(--sap-text-muted)"><i class="fas fa-exchange-alt" style="font-size:28px;opacity:.3;display:block;margin-bottom:8px"></i>No transfer requests found</td></tr>`;
 
       updateTransferKPIs();
     }
