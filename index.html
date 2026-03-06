@@ -2888,6 +2888,7 @@
     <button class="nav-tab" onclick="switchTab('contracts', this)"><i class="fas fa-file-contract"></i>
       Contracts</button>
     <button class="nav-tab" id="tab-projects" onclick="switchTab('projects', this)"><i class="fas fa-layer-group"></i> Projects <span id="prjBadge" style="display:none;background:#0070F2;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:1px 6px;margin-left:4px">0</span></button>
+    <button class="nav-tab" id="tab-inspections" onclick="switchTab('inspections', this)"><i class="fas fa-clipboard-check"></i> Inspections</button>
     <button class="nav-tab" onclick="switchTab('transfers', this)"><i class="fas fa-exchange-alt"></i>
       Transfers</button>
     <button class="nav-tab" onclick="switchTab('rigs', this)"><i class="fas fa-oil-well"></i> Land Rigs</button>
@@ -3253,6 +3254,126 @@
             <div id="prjPagPages"></div>
             <button class="pag-btn" id="prjBtnNext" onclick="prjChangePage(1)"><i class="fas fa-chevron-right"></i></button>
             <select class="filter-select" style="height:28px;width:70px;margin-left:8px;font-size:12px" id="prjPageSizeSel" onchange="prjChangePageSize()">
+              <option>10</option><option>25</option><option selected>50</option><option>100</option>
+            </select>
+            <span style="color:var(--sap-text-muted);font-size:12px">per page</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ======= INSPECTIONS ======= -->
+    <div class="section" id="section-inspections">
+      <div class="content">
+
+        <!-- KPIs -->
+        <div class="kpi-row">
+          <div class="kpi-card blue">
+            <div class="kpi-icon"><i class="fas fa-clipboard-check"></i></div>
+            <div class="kpi-label">Total Inspections</div>
+            <div class="kpi-value" id="inspKpiTotal">0</div>
+            <div class="kpi-sub">All records</div>
+          </div>
+          <div class="kpi-card green">
+            <div class="kpi-icon"><i class="fas fa-calendar-check"></i></div>
+            <div class="kpi-label">This Month</div>
+            <div class="kpi-value" id="inspKpiMonth">0</div>
+            <div class="kpi-sub">Current month</div>
+          </div>
+          <div class="kpi-card orange">
+            <div class="kpi-icon"><i class="fas fa-building"></i></div>
+            <div class="kpi-label">Companies</div>
+            <div class="kpi-value" id="inspKpiCompanies">0</div>
+            <div class="kpi-sub">Unique companies</div>
+          </div>
+          <div class="kpi-card" style="border-top:3px solid #6D28D9">
+            <div class="kpi-icon" style="background:#EDE9FE;color:#6D28D9"><i class="fas fa-dollar-sign"></i></div>
+            <div class="kpi-label">Total Cost</div>
+            <div class="kpi-value" id="inspKpiCost" style="font-size:18px">$0</div>
+            <div class="kpi-sub">Joint total cost</div>
+          </div>
+        </div>
+
+        <!-- Table Card -->
+        <div class="card" style="flex:1;display:flex;flex-direction:column">
+          <div class="card-header">
+            <span class="card-title"><i class="fas fa-clipboard-check" style="color:var(--sap-blue)"></i> Inspections <span class="record-count" id="inspCount"></span></span>
+            <button class="btn btn-primary" id="btnNewInspection" onclick="openInspectionModal()"><i class="fas fa-plus"></i> New Inspection</button>
+            <button class="btn btn-secondary" onclick="exportInspectionsExcel()"><i class="fas fa-file-excel"></i> Export Excel</button>
+            <button class="btn btn-secondary" onclick="exportInspectionsPDF()" style="background:#fff0f0;border-color:#c00;color:#c00"><i class="fas fa-file-pdf"></i> Export PDF</button>
+          </div>
+
+          <!-- Filter Bar -->
+          <div class="filter-bar">
+            <div class="filter-group search-wrap">
+              <label class="filter-label">Search</label>
+              <i class="search-icon fas fa-search"></i>
+              <input class="filter-input" id="inspSearch" placeholder="Company, PO, service order..." oninput="applyInspectionFilters()">
+            </div>
+            <div class="filter-group">
+              <label class="filter-label">Type</label>
+              <select class="filter-select" id="inspFilterType" onchange="applyInspectionFilters()">
+                <option value="">All Types</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label class="filter-label">Company</label>
+              <select class="filter-select" id="inspFilterCompany" onchange="applyInspectionFilters()">
+                <option value="">All</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label class="filter-label">Year</label>
+              <select class="filter-select" id="inspFilterYear" onchange="applyInspectionFilters()">
+                <option value="">All Years</option>
+              </select>
+            </div>
+            <div class="filter-group" style="margin-left:auto">
+              <label class="filter-label">&nbsp;</label>
+              <button class="btn btn-ghost" onclick="clearInspectionFilters()"><i class="fas fa-times"></i> Clear</button>
+            </div>
+          </div>
+
+          <!-- Bulk Bar -->
+          <div class="bulk-bar" id="inspBulkBar">
+            <span class="bulk-count" id="inspBulkCount">0</span>
+            <span class="bulk-label">inspections selected</span>
+            <div class="bulk-sep"></div>
+            <button class="bulk-btn" onclick="openInspectionMassEdit()"><i class="fas fa-edit"></i> Edit Selected</button>
+            <button class="bulk-btn danger" onclick="bulkDeleteInspections()"><i class="fas fa-trash"></i> Delete Selected</button>
+            <div class="bulk-spacer"></div>
+            <button class="bulk-close" onclick="clearInspectionSelection()"><i class="fas fa-times"></i></button>
+          </div>
+
+          <!-- Table -->
+          <div class="table-wrap" style="flex:1;overflow-x:auto">
+            <table id="inspectionTable" style="min-width:1100px">
+              <thead>
+                <tr>
+                  <th class="checkbox-cell"><input type="checkbox" id="inspSelectAll" onchange="toggleInspectionSelectAll(this)"></th>
+                  <th onclick="sortInspTable('startDate')" style="white-space:nowrap">Start Date <i class="fas fa-sort sort-icon"></i></th>
+                  <th onclick="sortInspTable('endDate')" style="white-space:nowrap">End Date <i class="fas fa-sort sort-icon"></i></th>
+                  <th onclick="sortInspTable('company')" style="white-space:nowrap">Company <i class="fas fa-sort sort-icon"></i></th>
+                  <th onclick="sortInspTable('inspectionType')" style="white-space:nowrap">Type of Inspection <i class="fas fa-sort sort-icon"></i></th>
+                  <th onclick="sortInspTable('costPerDay')" style="white-space:nowrap">Cost / Day (USD) <i class="fas fa-sort sort-icon"></i></th>
+                  <th onclick="sortInspTable('totalCost')" style="white-space:nowrap">Joint Total Cost <i class="fas fa-sort sort-icon"></i></th>
+                  <th onclick="sortInspTable('po')" style="white-space:nowrap">PO <i class="fas fa-sort sort-icon"></i></th>
+                  <th onclick="sortInspTable('serviceOrder')" style="white-space:nowrap">Service Order <i class="fas fa-sort sort-icon"></i></th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="inspTbody"></tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <div class="pagination">
+            <div class="pag-info" id="inspPagInfo"></div>
+            <button class="pag-btn" id="inspBtnPrev" onclick="inspChangePage(-1)"><i class="fas fa-chevron-left"></i></button>
+            <div id="inspPagPages"></div>
+            <button class="pag-btn" id="inspBtnNext" onclick="inspChangePage(1)"><i class="fas fa-chevron-right"></i></button>
+            <select class="filter-select" style="height:28px;width:70px;margin-left:8px;font-size:12px" id="inspPageSizeSel" onchange="inspChangePageSize()">
               <option>10</option><option>25</option><option selected>50</option><option>100</option>
             </select>
             <span style="color:var(--sap-text-muted);font-size:12px">per page</span>
@@ -3849,12 +3970,18 @@
             <label class="form-label">Inspection Type <span style="color:var(--sap-error)">*</span></label>
             <select class="form-select" id="cert_type">
               <option value="">— Select Type —</option>
-              <option>Cat III</option>
               <option>Cat IV</option>
-              <option>Pressure Test</option>
+              <option>Annual Inspection</option>
+              <option>6-Month Inspection</option>
+              <option>Quarterly Inspection</option>
+              <option>Monthly Inspection</option>
+              <option>Weekly Inspection</option>
+              <option>Bi-Weekly Inspection</option>
+              <option>Load Test</option>
+              <option>BOP Pressure Test</option>
               <option>Calibration</option>
-              <option>Wall Thickness</option>
-              <option>Tubular Inspection DS1</option>
+              <option>Pressure Test</option>
+              <option>UT NDT Inspection</option>
             </select>
           </div>
         </div>
@@ -4193,7 +4320,21 @@
           <input type="checkbox" id="mef_inspectionType_chk" onchange="toggleMassField('inspectionType')">
           <label for="mef_inspectionType_chk">Inspection Type</label>
           <div class="field-ctrl">
-            <input class="form-control" id="mef_inspectionType" placeholder="e.g. Annual, 6-Monthly..." disabled>
+            <select class="form-control" id="mef_inspectionType" disabled>
+              <option value="">&nbsp;</option>
+              <option>Cat IV</option>
+              <option>Annual Inspection</option>
+              <option>6-Month Inspection</option>
+              <option>Quarterly Inspection</option>
+              <option>Monthly Inspection</option>
+              <option>Weekly Inspection</option>
+              <option>Bi-Weekly Inspection</option>
+              <option>Load Test</option>
+              <option>BOP Pressure Test</option>
+              <option>Calibration</option>
+              <option>Pressure Test</option>
+              <option>UT NDT Inspection</option>
+            </select>
           </div>
         </div>
 
@@ -4208,6 +4349,126 @@
     </div>
   </div>
 
+
+
+  <!-- INSPECTION ADD/EDIT MODAL -->
+  <div class="modal-overlay" id="inspectionModal">
+    <div class="modal" style="width:680px;max-width:96vw">
+      <div class="modal-header">
+        <i class="fas fa-clipboard-check" style="color:var(--sap-blue);font-size:18px"></i>
+        <h2 id="inspModalTitle">New Inspection</h2>
+        <button class="shell-btn" style="color:var(--sap-text-muted)" onclick="closeModal('inspectionModal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="insp_editId">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="form-group">
+            <label class="form-label">Start Date <span style="color:#b00">*</span></label>
+            <input class="form-control" id="insp_start" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">End Date</label>
+            <input class="form-control" id="insp_end" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Company <span style="color:#b00">*</span></label>
+            <select class="form-control" id="insp_company"><option value="">— Select —</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Type of Inspection <span style="color:#b00">*</span></label>
+            <select class="form-control" id="insp_type"><option value="">— Select —</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Cost / Day (USD)</label>
+            <input class="form-control" id="insp_costday" type="number" min="0" step="0.01" placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Joint Total Cost (USD)</label>
+            <input class="form-control" id="insp_totalcost" type="number" min="0" step="0.01" placeholder="Auto-calculated or manual">
+          </div>
+          <div class="form-group">
+            <label class="form-label">PO Number</label>
+            <input class="form-control" id="insp_po" placeholder="e.g. PO-2025-001">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Service Order</label>
+            <input class="form-control" id="insp_so" placeholder="e.g. SO-12345">
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label class="form-label">Notes</label>
+            <textarea class="form-control" id="insp_notes" rows="2" placeholder="Additional notes..."></textarea>
+          </div>
+        </div>
+        <div style="background:#EBF4FF;border:1px solid #B3D4FF;border-radius:6px;padding:8px 14px;margin-top:8px;font-size:12.5px;color:#0040B0">
+          <i class="fas fa-calculator" style="margin-right:6px"></i>
+          Total cost auto-calculated from Cost/Day × number of days when end date is set. Override manually if needed.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('inspectionModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveInspection()"><i class="fas fa-save"></i> Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- INSPECTION MASS EDIT MODAL -->
+  <div class="modal-overlay" id="inspectionMassEditModal">
+    <div class="modal" style="width:500px;max-width:96vw">
+      <div class="modal-header">
+        <i class="fas fa-edit" style="color:var(--sap-blue);font-size:18px"></i>
+        <h2>Edit Selected Inspections</h2>
+        <button class="shell-btn" style="color:var(--sap-text-muted)" onclick="closeModal('inspectionMassEditModal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div style="background:var(--sap-blue-light);border:1px solid #B3D4FF;border-radius:6px;padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px">
+          <i class="fas fa-info-circle" style="color:var(--sap-blue);flex-shrink:0"></i>
+          <span style="font-size:13px;color:#0040B0">Check fields to update across <strong id="inspMassCount">0</strong> selected inspection(s).</span>
+        </div>
+        <div class="mass-edit-field" id="imef-type">
+          <input type="checkbox" id="imef_type_chk" onchange="toggleInspField('type')">
+          <label for="imef_type_chk">Inspection Type</label>
+          <div class="field-ctrl">
+            <select class="form-control" id="imef_type" disabled><option value="">— Select —</option></select>
+          </div>
+        </div>
+        <div class="mass-edit-field" id="imef-company">
+          <input type="checkbox" id="imef_company_chk" onchange="toggleInspField('company')">
+          <label for="imef_company_chk">Company</label>
+          <div class="field-ctrl">
+            <select class="form-control" id="imef_company" disabled><option value="">— Select —</option></select>
+          </div>
+        </div>
+        <div class="mass-edit-field" id="imef-po">
+          <input type="checkbox" id="imef_po_chk" onchange="toggleInspField('po')">
+          <label for="imef_po_chk">PO Number</label>
+          <div class="field-ctrl">
+            <input class="form-control" id="imef_po" placeholder="New PO..." disabled>
+          </div>
+        </div>
+        <div class="mass-edit-field" id="imef-so">
+          <input type="checkbox" id="imef_so_chk" onchange="toggleInspField('so')">
+          <label for="imef_so_chk">Service Order</label>
+          <div class="field-ctrl">
+            <input class="form-control" id="imef_so" placeholder="New service order..." disabled>
+          </div>
+        </div>
+        <div class="mass-edit-field" id="imef-costday">
+          <input type="checkbox" id="imef_costday_chk" onchange="toggleInspField('costday')">
+          <label for="imef_costday_chk">Cost / Day</label>
+          <div class="field-ctrl">
+            <input class="form-control" id="imef_costday" type="number" min="0" placeholder="0.00" disabled>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content:space-between">
+        <span style="font-size:12px;color:var(--sap-text-muted)" id="inspMassProgress"></span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" onclick="closeModal('inspectionMassEditModal')">Cancel</button>
+          <button class="btn btn-primary" onclick="applyInspectionMassEdit()"><i class="fas fa-check"></i> Apply Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- PROJECT ADD/EDIT MODAL -->
   <div class="modal-overlay" id="projectModal">
@@ -4411,20 +4672,18 @@
               <label class="form-label">Inspection Type <span style="color:#b00">*</span></label>
               <select class="form-control" id="ar_type">
                 <option value="">— Select —</option>
+                <option>Cat IV</option>
                 <option>Annual Inspection</option>
                 <option>6-Month Inspection</option>
                 <option>Quarterly Inspection</option>
                 <option>Monthly Inspection</option>
-                <option>BOP Pressure Test</option>
-                <option>Hydrostatic Test</option>
+                <option>Weekly Inspection</option>
+                <option>Bi-Weekly Inspection</option>
                 <option>Load Test</option>
-                <option>NDT Inspection</option>
-                <option>ATEX/IECEX Inspection</option>
-                <option>Fire Extinguisher Service</option>
-                <option>SCBA Service</option>
-                <option>Well Control</option>
+                <option>BOP Pressure Test</option>
                 <option>Calibration</option>
-                <option>Custom</option>
+                <option>Pressure Test</option>
+                <option>UT NDT Inspection</option>
               </select>
             </div>
             <div class="form-group">
@@ -4632,12 +4891,18 @@ Asset Management System</textarea>
           <div class="form-group"><label class="form-label">Inspection Type</label>
             <select class="form-select" id="f_inspectionType">
               <option value="">— None —</option>
-              <option>Cat III</option>
               <option>Cat IV</option>
-              <option>Pressure Test</option>
+              <option>Annual Inspection</option>
+              <option>6-Month Inspection</option>
+              <option>Quarterly Inspection</option>
+              <option>Monthly Inspection</option>
+              <option>Weekly Inspection</option>
+              <option>Bi-Weekly Inspection</option>
+              <option>Load Test</option>
+              <option>BOP Pressure Test</option>
               <option>Calibration</option>
-              <option>Wall Thickness</option>
-              <option>Tubular Inspection DS1</option>
+              <option>Pressure Test</option>
+              <option>UT NDT Inspection</option>
             </select>
           </div>
         </div>
@@ -5659,6 +5924,14 @@ Asset Management System</textarea>
 
     const CONTRACTS = [];
 
+
+    // ── Unified inspection type list (single source of truth) ──────────
+    const INSP_TYPES = ['Cat IV', 'Annual Inspection', '6-Month Inspection', 'Quarterly Inspection', 'Monthly Inspection', 'Weekly Inspection', 'Bi-Weekly Inspection', 'Load Test', 'BOP Pressure Test', 'Calibration', 'Pressure Test', 'UT NDT Inspection'];
+    function inspTypeOptions(blankLabel='— Select —', selectedVal='') {
+      return '<option value="">' + blankLabel + '</option>' +
+        INSP_TYPES.map(t => `<option ${t===selectedVal?'selected':''}>${t}</option>`).join('');
+    }
+
     const NOTIFICATIONS = [];
 
     const USERS = [];
@@ -5843,6 +6116,7 @@ Asset Management System</textarea>
     //  PROJECTS MODULE
     // ══════════════════════════════════════════════════════════════════
     let PROJECTS = [];
+    let INSPECTIONS = [];
     let filteredProjects = [];
     let prjPage = 1, prjPageSize = 50, prjSortKey = 'projectId', prjSortDir = 1;
     const _selectedProjects = new Set();
@@ -6756,6 +7030,506 @@ Asset Management System</textarea>
       setTimeout(runAllAlertRules, 1500);
     });
 
+
+    // ══════════════════════════════════════════════════════════════════
+    //  INSPECTIONS MODULE
+    // ══════════════════════════════════════════════════════════════════
+    let INSPECTIONS = [];
+    let filteredInspections = [];
+    let inspPage = 1, inspPageSize = 50, inspSortKey = 'startDate', inspSortDir = -1;
+    const _selectedInspections = new Set();
+
+    // ── Normalise API row ────────────────────────────────────────────
+    function normInsp(r) {
+      return { ...r,
+        id:            r.id || r.inspection_id || '',
+        startDate:     r.start_date  || r.startDate  || '',
+        endDate:       r.end_date    || r.endDate    || '',
+        company:       r.company     || '',
+        inspectionType:r.inspection_type || r.inspectionType || '',
+        costPerDay:    Number(r.cost_per_day  || r.costPerDay  || 0),
+        totalCost:     Number(r.total_cost    || r.totalCost   || 0),
+        po:            r.po_number   || r.po     || '',
+        serviceOrder:  r.service_order || r.serviceOrder || '',
+        notes:         r.notes       || '',
+      };
+    }
+
+    // ── KPIs ─────────────────────────────────────────────────────────
+    function updateInspectionKPIs() {
+      document.getElementById('inspKpiTotal').textContent = INSPECTIONS.length;
+      const now = new Date();
+      const month = now.getMonth(), year = now.getFullYear();
+      const thisMonth = INSPECTIONS.filter(i => {
+        if (!i.startDate) return false;
+        const d = new Date(i.startDate);
+        return d.getMonth() === month && d.getFullYear() === year;
+      }).length;
+      document.getElementById('inspKpiMonth').textContent = thisMonth;
+      const companies = new Set(INSPECTIONS.map(i => i.company).filter(Boolean)).size;
+      document.getElementById('inspKpiCompanies').textContent = companies;
+      const total = INSPECTIONS.reduce((s, i) => s + i.totalCost, 0);
+      const el = document.getElementById('inspKpiCost');
+      if (el) el.textContent = total >= 1e6 ? '$' + (total / 1e6).toFixed(1) + 'M' : '$' + total.toLocaleString();
+    }
+
+    // ── Populate filter dropdowns ────────────────────────────────────
+    function populateInspectionFilters() {
+      const typeSel = document.getElementById('inspFilterType');
+      if (typeSel && typeSel.options.length <= 1) {
+        INSP_TYPES.forEach(t => typeSel.appendChild(new Option(t, t)));
+      }
+      const coSel = document.getElementById('inspFilterCompany');
+      if (coSel && coSel.options.length <= 1) {
+        COMPANIES.forEach(c => coSel.appendChild(new Option(c.name, c.name)));
+      }
+      const yearSel = document.getElementById('inspFilterYear');
+      if (yearSel && yearSel.options.length <= 1) {
+        const years = [...new Set(INSPECTIONS.map(i => i.startDate ? i.startDate.slice(0, 4) : '').filter(Boolean))].sort((a, b) => b - a);
+        years.forEach(y => yearSel.appendChild(new Option(y, y)));
+      }
+    }
+
+    // ── Filter ───────────────────────────────────────────────────────
+    function applyInspectionFilters() {
+      const q  = (document.getElementById('inspSearch')?.value || '').toLowerCase();
+      const fT = document.getElementById('inspFilterType')?.value    || '';
+      const fC = document.getElementById('inspFilterCompany')?.value || '';
+      const fY = document.getElementById('inspFilterYear')?.value    || '';
+      filteredInspections = INSPECTIONS.filter(i => {
+        const hay = [i.company, i.po, i.serviceOrder, i.inspectionType, i.notes].join(' ').toLowerCase();
+        return (!q || hay.includes(q))
+          && (!fT || i.inspectionType === fT)
+          && (!fC || i.company === fC)
+          && (!fY || (i.startDate || '').startsWith(fY));
+      });
+      inspPage = 1;
+      renderInspections();
+    }
+    function clearInspectionFilters() {
+      ['inspSearch', 'inspFilterType', 'inspFilterCompany', 'inspFilterYear'].forEach(id => {
+        const e = document.getElementById(id); if (e) e.value = '';
+      });
+      applyInspectionFilters();
+    }
+
+    // ── Sort ─────────────────────────────────────────────────────────
+    function sortInspTable(key) {
+      if (inspSortKey === key) inspSortDir *= -1; else { inspSortKey = key; inspSortDir = 1; }
+      filteredInspections.sort((a, b) => {
+        let va = a[key] ?? '', vb = b[key] ?? '';
+        if (['costPerDay','totalCost'].includes(key)) { va = Number(va); vb = Number(vb); }
+        return va > vb ? inspSortDir : va < vb ? -inspSortDir : 0;
+      });
+      renderInspections();
+    }
+
+    // ── Pagination ───────────────────────────────────────────────────
+    function inspChangePage(d) { inspPage += d; renderInspections(); }
+    function inspChangePageSize() { inspPageSize = parseInt(document.getElementById('inspPageSizeSel').value); inspPage = 1; renderInspections(); }
+
+    // ── Selection ────────────────────────────────────────────────────
+    function onInspCheck(cb, id) {
+      if (cb.checked) _selectedInspections.add(id); else _selectedInspections.delete(id);
+      syncInspBulkBar();
+    }
+    function toggleInspectionSelectAll(cb) {
+      document.querySelectorAll('#inspTbody input[type=checkbox]').forEach(c => {
+        c.checked = cb.checked;
+        const id = c.dataset.inspId;
+        if (id) { if (cb.checked) _selectedInspections.add(id); else _selectedInspections.delete(id); }
+      });
+      syncInspBulkBar();
+    }
+    function syncInspBulkBar() {
+      const n = _selectedInspections.size;
+      const bar = document.getElementById('inspBulkBar');
+      if (bar) bar.classList.toggle('visible', n > 0);
+      const cnt = document.getElementById('inspBulkCount');
+      if (cnt) cnt.textContent = n;
+      const cbs = document.querySelectorAll('#inspTbody input[type=checkbox]');
+      const hdr = document.getElementById('inspSelectAll');
+      if (hdr && cbs.length > 0) {
+        const chk = [...cbs].filter(c => c.checked).length;
+        hdr.checked = chk === cbs.length;
+        hdr.indeterminate = chk > 0 && chk < cbs.length;
+      }
+    }
+    function clearInspectionSelection() {
+      _selectedInspections.clear();
+      document.querySelectorAll('#inspTbody input[type=checkbox]').forEach(c => c.checked = false);
+      const hdr = document.getElementById('inspSelectAll');
+      if (hdr) { hdr.checked = false; hdr.indeterminate = false; }
+      syncInspBulkBar();
+    }
+
+    // ── Type badge ───────────────────────────────────────────────────
+    function inspTypeBadge(t) {
+      const map = {
+        'Cat IV':              { bg:'#EDE9FE', c:'#6D28D9' },
+        'Annual Inspection':   { bg:'#E8F5EC', c:'#107E3E' },
+        '6-Month Inspection':  { bg:'#EBF4FF', c:'#0040B0' },
+        'Quarterly Inspection':{ bg:'#FFF8E1', c:'#856404' },
+        'Monthly Inspection':  { bg:'#FFF3E0', c:'#E9730C' },
+        'Weekly Inspection':   { bg:'#F0F0F0', c:'#354A5E' },
+        'Bi-Weekly Inspection':{ bg:'#F5F6F7', c:'#6A6D70' },
+        'Load Test':           { bg:'#FDECEA', c:'#B00020' },
+        'BOP Pressure Test':   { bg:'#FDECEA', c:'#B00020' },
+        'Calibration':         { bg:'#E8F5EC', c:'#107E3E' },
+        'Pressure Test':       { bg:'#FFF3E0', c:'#E9730C' },
+        'UT NDT Inspection':   { bg:'#EDE9FE', c:'#6D28D9' },
+      };
+      const v = map[t] || { bg:'#F5F6F7', c:'#6A6D70' };
+      return `<span style="display:inline-block;padding:2px 10px;border-radius:12px;background:${v.bg};color:${v.c};font-size:11.5px;font-weight:600;white-space:nowrap">${t || '—'}</span>`;
+    }
+
+    // ── Render table ─────────────────────────────────────────────────
+    function renderInspections() {
+      populateInspectionFilters();
+      const total = filteredInspections.length;
+      const start = (inspPage - 1) * inspPageSize;
+      const end   = Math.min(start + inspPageSize, total);
+      const page  = filteredInspections.slice(start, end);
+
+      const tbody = document.getElementById('inspTbody');
+      if (!page.length) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--sap-text-muted)">
+          <i class="fas fa-clipboard-check" style="font-size:28px;opacity:.3;display:block;margin-bottom:8px"></i>No inspections found</td></tr>`;
+      } else {
+        tbody.innerHTML = page.map(i => {
+          const days = (i.startDate && i.endDate)
+            ? Math.max(1, Math.ceil((new Date(i.endDate) - new Date(i.startDate)) / 86400000) + 1)
+            : '—';
+          return `<tr ${_selectedInspections.has(i.id) ? 'class="selected"' : ''}>
+            <td class="checkbox-cell"><input type="checkbox" data-insp-id="${i.id}" ${_selectedInspections.has(i.id) ? 'checked' : ''} onclick="onInspCheck(this,'${i.id}')"></td>
+            <td style="font-size:12.5px;white-space:nowrap">${i.startDate || '—'}</td>
+            <td style="font-size:12.5px;white-space:nowrap">${i.endDate || '—'}</td>
+            <td style="font-size:12.5px;font-weight:500">${i.company || '—'}</td>
+            <td>${inspTypeBadge(i.inspectionType)}</td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;text-align:right">${i.costPerDay ? '$' + i.costPerDay.toLocaleString() : '—'}</td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:600;text-align:right">${i.totalCost ? '$' + i.totalCost.toLocaleString() : '—'}</td>
+            <td style="font-size:12px;color:#354A5E">${i.po || '—'}</td>
+            <td style="font-size:12px;color:#354A5E">${i.serviceOrder || '—'}</td>
+            <td style="white-space:nowrap">
+              <button class="btn btn-ghost btn-icon" title="Edit" onclick="openInspectionModal('${i.id}')"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-ghost btn-icon" title="Delete" style="color:var(--sap-error)" onclick="deleteInspection('${i.id}')"><i class="fas fa-trash"></i></button>
+            </td>
+          </tr>`;
+        }).join('');
+      }
+
+      document.getElementById('inspCount').textContent = `(${total} records)`;
+      const pages = Math.ceil(total / inspPageSize) || 1;
+      const pgDiv = document.getElementById('inspPagPages');
+      if (pgDiv) {
+        pgDiv.innerHTML = '';
+        for (let p = 1; p <= Math.min(pages, 7); p++) {
+          const btn = document.createElement('button');
+          btn.className = 'pag-btn' + (p === inspPage ? ' active' : '');
+          btn.textContent = p;
+          btn.onclick = (function(pg) { return () => { inspPage = pg; renderInspections(); }; })(p);
+          pgDiv.appendChild(btn);
+        }
+      }
+      const pi = document.getElementById('inspPagInfo');
+      if (pi) pi.textContent = total ? `Showing ${start + 1}–${end} of ${total}` : 'No records';
+      const prev = document.getElementById('inspBtnPrev');
+      const next = document.getElementById('inspBtnNext');
+      if (prev) prev.disabled = inspPage <= 1;
+      if (next) next.disabled = inspPage >= pages;
+      updateInspectionKPIs();
+      syncInspBulkBar();
+    }
+
+    function initInspections() {
+      filteredInspections = [...INSPECTIONS];
+      renderInspections();
+    }
+
+    // ── Add / Edit modal ─────────────────────────────────────────────
+    let _inspEditId = null;
+    function openInspectionModal(id) {
+      _inspEditId = id || null;
+      document.getElementById('inspModalTitle').textContent = id ? 'Edit Inspection' : 'New Inspection';
+
+      // Populate company dropdown
+      const coSel = document.getElementById('insp_company');
+      coSel.innerHTML = '<option value="">— Select —</option>';
+      COMPANIES.forEach(c => coSel.appendChild(new Option(c.name, c.name)));
+
+      // Populate type dropdown with unified list
+      const typeSel = document.getElementById('insp_type');
+      typeSel.innerHTML = '<option value="">— Select —</option>';
+      INSP_TYPES.forEach(t => typeSel.appendChild(new Option(t, t)));
+
+      if (id) {
+        const insp = INSPECTIONS.find(x => x.id === id);
+        if (!insp) return;
+        document.getElementById('insp_editId').value    = insp.id;
+        document.getElementById('insp_start').value     = insp.startDate || '';
+        document.getElementById('insp_end').value       = insp.endDate   || '';
+        document.getElementById('insp_company').value   = insp.company   || '';
+        document.getElementById('insp_type').value      = insp.inspectionType || '';
+        document.getElementById('insp_costday').value   = insp.costPerDay  || '';
+        document.getElementById('insp_totalcost').value = insp.totalCost   || '';
+        document.getElementById('insp_po').value        = insp.po          || '';
+        document.getElementById('insp_so').value        = insp.serviceOrder|| '';
+        document.getElementById('insp_notes').value     = insp.notes       || '';
+      } else {
+        ['insp_editId','insp_start','insp_end','insp_costday','insp_totalcost','insp_po','insp_so','insp_notes'].forEach(id => {
+          document.getElementById(id).value = '';
+        });
+        document.getElementById('insp_company').value = '';
+        document.getElementById('insp_type').value    = '';
+      }
+
+      // Auto-calc total cost when dates or cost/day changes
+      const autoCalc = () => {
+        const s = document.getElementById('insp_start').value;
+        const e = document.getElementById('insp_end').value;
+        const cpd = parseFloat(document.getElementById('insp_costday').value);
+        if (s && e && !isNaN(cpd) && cpd > 0) {
+          const days = Math.max(1, Math.ceil((new Date(e) - new Date(s)) / 86400000) + 1);
+          document.getElementById('insp_totalcost').value = (cpd * days).toFixed(2);
+        }
+      };
+      document.getElementById('insp_start').oninput   = autoCalc;
+      document.getElementById('insp_end').oninput     = autoCalc;
+      document.getElementById('insp_costday').oninput = autoCalc;
+
+      openModal('inspectionModal');
+    }
+
+    async function saveInspection() {
+      const startDate = document.getElementById('insp_start').value;
+      const company   = document.getElementById('insp_company').value;
+      const type      = document.getElementById('insp_type').value;
+      if (!startDate) { showToast('Start date is required.', 'error'); return; }
+      if (!company)   { showToast('Company is required.', 'error'); return; }
+      if (!type)      { showToast('Inspection type is required.', 'error'); return; }
+
+      const payload = {
+        start_date:     startDate,
+        end_date:       document.getElementById('insp_end').value       || null,
+        company,
+        inspection_type: type,
+        cost_per_day:   parseFloat(document.getElementById('insp_costday').value)   || 0,
+        total_cost:     parseFloat(document.getElementById('insp_totalcost').value) || 0,
+        po_number:      document.getElementById('insp_po').value.trim(),
+        service_order:  document.getElementById('insp_so').value.trim(),
+        notes:          document.getElementById('insp_notes').value.trim(),
+      };
+
+      try {
+        if (_inspEditId) {
+          if (typeof PUT !== 'undefined') {
+            const r = await PUT(`/inspections/${_inspEditId}`, payload);
+            const idx = INSPECTIONS.findIndex(x => x.id === _inspEditId);
+            if (idx >= 0) INSPECTIONS[idx] = normInsp({ ...INSPECTIONS[idx], ...payload, ...(r.data || {}) });
+          } else {
+            const idx = INSPECTIONS.findIndex(x => x.id === _inspEditId);
+            if (idx >= 0) Object.assign(INSPECTIONS[idx], normInsp(payload));
+          }
+          showToast('Inspection updated ✓', 'success');
+        } else {
+          if (typeof POST !== 'undefined') {
+            const r = await POST('/inspections', payload);
+            INSPECTIONS.unshift(normInsp(r.data || payload));
+          } else {
+            INSPECTIONS.unshift(normInsp({ ...payload, id: 'local-' + Date.now() }));
+          }
+          showToast('Inspection created ✓', 'success');
+        }
+        closeModal('inspectionModal');
+        filteredInspections = [...INSPECTIONS];
+        applyInspectionFilters();
+      } catch (e) { showToast('Save failed: ' + e.message, 'error'); }
+    }
+
+    // ── Delete ───────────────────────────────────────────────────────
+    async function deleteInspection(id, silent) {
+      const insp = INSPECTIONS.find(x => x.id === id);
+      if (!insp) return;
+      if (!silent && !confirm(`Delete this inspection record?\n${insp.inspectionType} · ${insp.company} · ${insp.startDate}\n\nThis cannot be undone.`)) return;
+      try {
+        if (typeof DELETE !== 'undefined') await DELETE(`/inspections/${id}`);
+        INSPECTIONS.splice(INSPECTIONS.findIndex(x => x.id === id), 1);
+        filteredInspections = filteredInspections.filter(x => x.id !== id);
+        _selectedInspections.delete(id);
+        renderInspections();
+        if (!silent) showToast('Inspection deleted ✓', 'warning');
+      } catch (e) { showToast('Delete failed: ' + e.message, 'error'); }
+    }
+
+    // ── Bulk delete ──────────────────────────────────────────────────
+    async function bulkDeleteInspections() {
+      const ids = [..._selectedInspections];
+      if (!ids.length) return;
+      if (!confirm(`Delete ${ids.length} inspection(s)? This cannot be undone.`)) return;
+      showToast(`Deleting ${ids.length} inspection(s)…`, 'info');
+      let deleted = 0, failed = 0;
+      if (typeof DELETE !== 'undefined') {
+        const results = await Promise.allSettled(ids.map(id => DELETE(`/inspections/${id}`)));
+        deleted = results.filter(r => r.status === 'fulfilled').length;
+        failed  = results.filter(r => r.status === 'rejected').length;
+      } else { deleted = ids.length; }
+      ids.forEach(id => {
+        INSPECTIONS.splice(INSPECTIONS.findIndex(x => x.id === id), 1);
+        filteredInspections = filteredInspections.filter(x => x.id !== id);
+      });
+      _selectedInspections.clear();
+      renderInspections();
+      showToast(failed ? `Deleted ${deleted}, ${failed} failed.` : `${deleted} inspection(s) deleted ✓`, failed ? 'warning' : 'success');
+    }
+
+    // ── Mass edit ────────────────────────────────────────────────────
+    function openInspectionMassEdit() {
+      const ids = [..._selectedInspections];
+      if (!ids.length) return;
+      document.getElementById('inspMassCount').textContent = ids.length;
+      document.getElementById('inspMassProgress').textContent = '';
+      ['type','company','po','so','costday'].forEach(f => {
+        const chk  = document.getElementById(`imef_${f}_chk`);
+        const ctrl = document.getElementById(`imef_${f}`);
+        const row  = document.getElementById(`imef-${f}`);
+        if (chk)  chk.checked     = false;
+        if (ctrl) { ctrl.disabled = true; ctrl.value = ''; }
+        if (row)  row.classList.remove('active');
+      });
+      // Populate type dropdown
+      const tSel = document.getElementById('imef_type');
+      tSel.innerHTML = '<option value="">— Select —</option>';
+      INSP_TYPES.forEach(t => tSel.appendChild(new Option(t, t)));
+      // Populate company dropdown
+      const cSel = document.getElementById('imef_company');
+      cSel.innerHTML = '<option value="">— Select —</option>';
+      COMPANIES.forEach(c => cSel.appendChild(new Option(c.name, c.name)));
+      openModal('inspectionMassEditModal');
+    }
+    function toggleInspField(f) {
+      const chk  = document.getElementById(`imef_${f}_chk`);
+      const ctrl = document.getElementById(`imef_${f}`);
+      const row  = document.getElementById(`imef-${f}`);
+      const on   = chk.checked;
+      if (ctrl) ctrl.disabled = !on;
+      if (row)  row.classList.toggle('active', on);
+      if (on && ctrl) ctrl.focus();
+    }
+    async function applyInspectionMassEdit() {
+      const ids = [..._selectedInspections];
+      if (!ids.length) { showToast('No inspections selected.', 'warning'); return; }
+      const fMap = { type:'inspection_type', company:'company', po:'po_number', so:'service_order', costday:'cost_per_day' };
+      const changes = {};
+      Object.entries(fMap).forEach(([f, key]) => {
+        const chk  = document.getElementById(`imef_${f}_chk`);
+        const ctrl = document.getElementById(`imef_${f}`);
+        if (chk?.checked && ctrl) changes[key] = key === 'cost_per_day' ? parseFloat(ctrl.value) || 0 : ctrl.value;
+      });
+      if (!Object.keys(changes).length) { showToast('Check at least one field.', 'warning'); return; }
+      document.getElementById('inspMassProgress').textContent = 'Applying…';
+      let updated = 0, failed = 0;
+      if (typeof PUT !== 'undefined') {
+        const results = await Promise.allSettled(ids.map(async id => {
+          const insp = INSPECTIONS.find(x => x.id === id);
+          if (!insp) throw new Error('Not found');
+          const payload = {
+            start_date:      insp.startDate,
+            end_date:        insp.endDate || null,
+            company:         changes.company         ?? insp.company,
+            inspection_type: changes.inspection_type ?? insp.inspectionType,
+            cost_per_day:    changes.cost_per_day    ?? insp.costPerDay,
+            total_cost:      insp.totalCost,
+            po_number:       changes.po_number       ?? insp.po,
+            service_order:   changes.service_order   ?? insp.serviceOrder,
+            notes:           insp.notes,
+          };
+          const res = await PUT(`/inspections/${id}`, payload);
+          const idx = INSPECTIONS.findIndex(x => x.id === id);
+          if (idx >= 0) INSPECTIONS[idx] = normInsp({ ...INSPECTIONS[idx], ...payload, ...(res.data || {}) });
+        }));
+        updated = results.filter(r => r.status === 'fulfilled').length;
+        failed  = results.filter(r => r.status === 'rejected').length;
+      } else {
+        ids.forEach(id => {
+          const idx = INSPECTIONS.findIndex(x => x.id === id);
+          if (idx < 0) { failed++; return; }
+          if (changes.inspection_type) INSPECTIONS[idx].inspectionType = changes.inspection_type;
+          if (changes.company)         INSPECTIONS[idx].company        = changes.company;
+          if (changes.po_number)       INSPECTIONS[idx].po             = changes.po_number;
+          if (changes.service_order)   INSPECTIONS[idx].serviceOrder   = changes.service_order;
+          if (changes.cost_per_day !== undefined) INSPECTIONS[idx].costPerDay = changes.cost_per_day;
+          updated++;
+        });
+      }
+      filteredInspections = [...INSPECTIONS];
+      _selectedInspections.clear();
+      closeModal('inspectionMassEditModal');
+      applyInspectionFilters();
+      const labels = { inspection_type:'Type', company:'Company', po_number:'PO', service_order:'Service Order', cost_per_day:'Cost/Day' };
+      const changed = Object.keys(changes).map(k => labels[k] || k).join(', ');
+      showToast(failed ? `Updated ${updated}, ${failed} failed. (${changed})` : `${updated} inspection(s) updated ✓  (${changed})`, failed ? 'warning' : 'success');
+    }
+
+    // ── Export Excel ─────────────────────────────────────────────────
+    function exportInspectionsExcel() {
+      const data = filteredInspections.length < INSPECTIONS.length ? filteredInspections : INSPECTIONS;
+      if (!data.length) { showToast('No data to export.', 'warning'); return; }
+      const ws = XLSX.utils.json_to_sheet(data.map(i => ({
+        'Start Date':        i.startDate       || '',
+        'End Date':          i.endDate         || '',
+        'Company':           i.company         || '',
+        'Type of Inspection':i.inspectionType  || '',
+        'Cost / Day (USD)':  i.costPerDay      || 0,
+        'Joint Total Cost':  i.totalCost       || 0,
+        'PO Number':         i.po              || '',
+        'Service Order':     i.serviceOrder    || '',
+        'Notes':             i.notes           || '',
+      })));
+      ws['!cols'] = [12, 12, 22, 22, 15, 18, 16, 16, 30].map(w => ({ wch: w }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Inspections');
+      XLSX.writeFile(wb, `Inspections_${new Date().toISOString().slice(0,10)}.xlsx`);
+      showToast(`Exported ${data.length} inspection(s) ✓`, 'success');
+    }
+
+    // ── Export PDF ───────────────────────────────────────────────────
+    function exportInspectionsPDF() {
+      const data = filteredInspections.length < INSPECTIONS.length ? filteredInspections : INSPECTIONS;
+      if (!data.length) { showToast('No data to export.', 'warning'); return; }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+      const W = doc.internal.pageSize.getWidth();
+      doc.setFillColor(53, 74, 94); doc.rect(0, 0, W, 36, 'F');
+      doc.setTextColor(255, 255, 255); doc.setFontSize(13); doc.setFont('helvetica', 'bold');
+      doc.text('Asset Management System — Inspections Report', 14, 24);
+      doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(200, 200, 200);
+      doc.text(`Records: ${data.length}   |   ${new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}`, 14, 33);
+      doc.autoTable({
+        startY: 44,
+        head: [['Start Date', 'End Date', 'Company', 'Type of Inspection', 'Cost/Day', 'Total Cost', 'PO', 'Service Order']],
+        body: data.map(i => [
+          i.startDate || '', i.endDate || '', i.company || '',
+          i.inspectionType || '',
+          i.costPerDay ? '$' + i.costPerDay.toLocaleString() : '—',
+          i.totalCost  ? '$' + i.totalCost.toLocaleString()  : '—',
+          i.po || '', i.serviceOrder || '',
+        ]),
+        styles: { fontSize: 7.5, cellPadding: 3, textColor: [50, 54, 58] },
+        headStyles: { fillColor: [0, 112, 242], textColor: 255, fontStyle: 'bold', fontSize: 8 },
+        alternateRowStyles: { fillColor: [245, 246, 247] },
+        columnStyles: { 4: { halign: 'right' }, 5: { halign: 'right' } },
+        margin: { left: 14, right: 14 },
+        didDrawPage: function() {
+          const pg  = doc.internal.getCurrentPageInfo().pageNumber;
+          const tot = doc.internal.getNumberOfPages();
+          doc.setFontSize(7); doc.setTextColor(150);
+          doc.text(`Page ${pg} of ${tot}`, W - 14, doc.internal.pageSize.getHeight() - 8, { align: 'right' });
+        }
+      });
+      doc.save(`Inspections_${new Date().toISOString().slice(0,10)}.pdf`);
+      showToast(`Exported ${data.length} inspection(s) to PDF ✓`, 'success');
+    }
+
     window.onload = function () {
       renderNotifications();
       populateCompanyFilters();
@@ -6776,6 +7550,8 @@ Asset Management System</textarea>
       initTransfers();
       initMaintenance();
       initProjects();
+      initInspections();
+      initInspections();
       // Apply role-based UI restrictions after all data is loaded
       if (typeof applyRoleUI === 'function') applyRoleUI();
       window.__bootstrapDone = true;
@@ -11508,7 +12284,7 @@ Instructions:
       function rerenderAll() {
         if (typeof filteredAssets !== 'undefined') filteredAssets = [...ASSETS];
         rerender(
-          'renderAssets', 'renderContracts', 'renderRigs', 'renderCompanies', 'renderProjects',
+          'renderAssets', 'renderContracts', 'renderRigs', 'renderCompanies', 'renderProjects', 'renderInspections', 'renderInspections',
           'renderUsers', 'renderTransfers', 'renderMaintenance', 'renderCertificates',
           'renderBOMSection', 'renderNotifications', 'updateKPIs', 'updateReportKPIs',
           'updateCertKPIs', 'updateMaintKPIs', 'updateTransferKPIs', 'checkMaintAlerts',
@@ -11524,7 +12300,7 @@ Instructions:
         try {
           showToast('Connecting to database…', 'info');
 
-          const [aR, rR, coR, conR, mR, tR, cR, bR, uR, nR, prjR] = await Promise.all([
+          const [aR, rR, coR, conR, mR, tR, cR, bR, uR, nR, prjR, inspR] = await Promise.all([
             GET('/assets', { limit: 500 }),
             GET('/rigs'),
             GET('/companies'),
@@ -11536,6 +12312,7 @@ Instructions:
             GET('/users'),
             GET('/notifications'),
             GET('/projects', { limit: 500 }),
+            GET('/inspections', { limit: 1000 }),
           ]);
 
           // Mutate arrays in place — render functions always see live DB data
@@ -11552,6 +12329,7 @@ Instructions:
           refill(BOM_ITEMS, (bR.data || []).map(normB));
           refill(USERS, uR.data || []);
           if (typeof PROJECTS !== 'undefined') refill(PROJECTS, (prjR.data || []).map(normP));
+          if (typeof INSPECTIONS !== 'undefined') refill(INSPECTIONS, (inspR.data || []).map(normInsp));
           refill(NOTIFICATIONS, (nR.data || []).map(n => ({
             ...n, type: 'ni-' + n.kind, desc: n.description, read: n.is_read
           })));
