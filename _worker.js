@@ -252,6 +252,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       const f={};
       if(q.get('company'))         f.company         =`eq.${q.get('company')}`;
       if(q.get('inspection_type')) f.inspection_type =`eq.${q.get('inspection_type')}`;
+      if(q.get('rig_name'))        f.rig_name        =`eq.${q.get('rig_name')}`;
       return ok(await sbGet(SB,KEY,'inspections',{filters:f,order:'start_date.desc',limit:+(q.get('limit')||1000)}));
     }
     if(method==='GET')   return ok(await sbGet(SB,KEY,'inspections',{filters:{id:`eq.${id}`},single:true}));
