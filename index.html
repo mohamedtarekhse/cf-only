@@ -5569,9 +5569,28 @@ Asset Management System</textarea>
     ];
 
     // ── Visible column state (Set of keys) ──────────────────────────
+    const PROJECT_COLS = [
+      { key: 'projectId',   label: 'Project ID',    locked: true,  default: true,  sortKey: 'projectId'  },
+      { key: 'name',        label: 'Name',           locked: false, default: true,  sortKey: 'name'       },
+      { key: 'status',      label: 'Status',         locked: false, default: true,  sortKey: 'status'     },
+      { key: 'priority',    label: 'Priority',       locked: false, default: true,  sortKey: 'priority'   },
+      { key: 'company',     label: 'Company',        locked: false, default: true,  sortKey: 'company'    },
+      { key: 'rigName',     label: 'Rig',            locked: false, default: true,  sortKey: 'rigName'    },
+      { key: 'manager',     label: 'Manager',        locked: false, default: true,  sortKey: 'manager'    },
+      { key: 'startDate',   label: 'Start Date',     locked: false, default: true,  sortKey: 'startDate'  },
+      { key: 'endDate',     label: 'End Date',       locked: false, default: true,  sortKey: 'endDate'    },
+      { key: 'budget',      label: 'Budget (USD)',   locked: false, default: true,  sortKey: 'budget'     },
+      { key: 'progress',    label: 'Progress',       locked: false, default: true,  sortKey: 'progress'   },
+      { key: 'location',    label: 'Location',       locked: false, default: false, sortKey: 'location'   },
+      { key: 'spent',       label: 'Spent (USD)',    locked: false, default: false, sortKey: 'spent'      },
+      { key: 'linkedAssets',label: 'Linked Assets',  locked: false, default: false, sortKey: null         },
+      { key: 'description', label: 'Description',   locked: false, default: false, sortKey: null         },
+    ];
+
     const _colState = {
       asset:    new Set(ASSET_COLS.filter(c => c.default).map(c => c.key)),
       transfer: new Set(TRANSFER_COLS.filter(c => c.default).map(c => c.key)),
+      project:  new Set(PROJECT_COLS.filter(c => c.default).map(c => c.key)),
     };
 
     // Returns ordered array of visible column objects
@@ -5672,24 +5691,7 @@ Asset Management System</textarea>
     let prjPage = 1, prjPageSize = 50, prjSortKey = 'projectId', prjSortDir = 1;
     const _selectedProjects = new Set();
 
-    const PROJECT_COLS = [
-      { key: 'projectId',   label: 'Project ID',    locked: true,  default: true,  sortKey: 'projectId'  },
-      { key: 'name',        label: 'Name',           locked: false, default: true,  sortKey: 'name'       },
-      { key: 'status',      label: 'Status',         locked: false, default: true,  sortKey: 'status'     },
-      { key: 'priority',    label: 'Priority',       locked: false, default: true,  sortKey: 'priority'   },
-      { key: 'company',     label: 'Company',        locked: false, default: true,  sortKey: 'company'    },
-      { key: 'rigName',     label: 'Rig',            locked: false, default: true,  sortKey: 'rigName'    },
-      { key: 'manager',     label: 'Manager',        locked: false, default: true,  sortKey: 'manager'    },
-      { key: 'startDate',   label: 'Start Date',     locked: false, default: true,  sortKey: 'startDate'  },
-      { key: 'endDate',     label: 'End Date',       locked: false, default: true,  sortKey: 'endDate'    },
-      { key: 'budget',      label: 'Budget (USD)',   locked: false, default: true,  sortKey: 'budget'     },
-      { key: 'progress',    label: 'Progress',       locked: false, default: true,  sortKey: 'progress'   },
-      { key: 'location',    label: 'Location',       locked: false, default: false, sortKey: 'location'   },
-      { key: 'spent',       label: 'Spent (USD)',    locked: false, default: false, sortKey: 'spent'      },
-      { key: 'linkedAssets',label: 'Linked Assets',  locked: false, default: false, sortKey: null         },
-      { key: 'description', label: 'Description',   locked: false, default: false, sortKey: null         },
-    ];
-    _colState['project'] = new Set(PROJECT_COLS.filter(c => c.default).map(c => c.key));
+
 
     // ── Badges ──────────────────────────────────────────────────────
     function prjStatusBadge(s) {
