@@ -2709,29 +2709,37 @@
       const user = JSON.parse(raw);
       if (!user || !user.email) return;
 
-      // Restore user globals
+      // Set globals IMMEDIATELY (script runs before <body>) so __sessionRestored
+      // is true by the time the bottom IIFE checks it.
       window.__currentUser = user;
       window.__currentUserRole = user.role;
       window.__currentUserName = user.name;
-      window.__sessionRestored = true;   // flag for IIFE to pick up
+      window.__sessionRestored = true;
 
-      // Update shell bar
-      const nameEl = document.getElementById('shellUserName');
-      const roleEl = document.getElementById('shellUserRole');
-      const avatarEl = document.getElementById('shellUserAvatar');
-      if (nameEl) nameEl.textContent = user.name;
-      if (roleEl) roleEl.textContent = user.role;
-      if (avatarEl) {
-        const ini = user.initials
-          ? user.initials.toUpperCase().slice(0, 2)
-          : user.name.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase();
-        avatarEl.textContent = ini;
-        avatarEl.style.background = user.color || '#0070F2';
+      // Defer all DOM work until the body/loginScreen actually exist
+      function applySessionUI() {
+        const ls = document.getElementById('loginScreen');
+        if (ls) ls.style.display = 'none';
+
+        const nameEl   = document.getElementById('shellUserName');
+        const roleEl   = document.getElementById('shellUserRole');
+        const avatarEl = document.getElementById('shellUserAvatar');
+        if (nameEl) nameEl.textContent = user.name;
+        if (roleEl) roleEl.textContent = user.role;
+        if (avatarEl) {
+          const ini = user.initials
+            ? user.initials.toUpperCase().slice(0, 2)
+            : user.name.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase();
+          avatarEl.textContent = ini;
+          avatarEl.style.background = user.color || '#0070F2';
+        }
       }
 
-      // Hide login screen immediately
-      const ls = document.getElementById('loginScreen');
-      if (ls) ls.style.display = 'none';
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applySessionUI);
+      } else {
+        applySessionUI();
+      }
 
     } catch (e) {
       try { localStorage.removeItem('ams_user'); sessionStorage.removeItem('ams_user'); } catch (_) { }
@@ -3324,12 +3332,6 @@
               </select>
             </div>
             <div class="filter-group">
-              <label class="filter-label">Rig</label>
-              <select class="filter-select" id="inspFilterRig" onchange="applyInspectionFilters()">
-                <option value="">All Rigs</option>
-              </select>
-            </div>
-            <div class="filter-group">
               <label class="filter-label">Year</label>
               <select class="filter-select" id="inspFilterYear" onchange="applyInspectionFilters()">
                 <option value="">All Years</option>
@@ -3360,8 +3362,7 @@
                   <th class="checkbox-cell"><input type="checkbox" id="inspSelectAll" onchange="toggleInspectionSelectAll(this)"></th>
                   <th onclick="sortInspTable('startDate')" style="white-space:nowrap">Start Date <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortInspTable('endDate')" style="white-space:nowrap">End Date <i class="fas fa-sort sort-icon"></i></th>
-                  <th onclick="sortInspTable('company')" style="white-space:nowrap">Inspection Company Name <i class="fas fa-sort sort-icon"></i></th>
-                  <th onclick="sortInspTable('rigName')" style="white-space:nowrap">Rig <i class="fas fa-sort sort-icon"></i></th>
+                  <th onclick="sortInspTable('company')" style="white-space:nowrap">Company <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortInspTable('inspectionType')" style="white-space:nowrap">Type of Inspection <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortInspTable('costPerDay')" style="white-space:nowrap">Cost / Day (USD) <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortInspTable('totalCost')" style="white-space:nowrap">Joint Total Cost <i class="fas fa-sort sort-icon"></i></th>
@@ -4378,12 +4379,8 @@
             <input class="form-control" id="insp_end" type="date">
           </div>
           <div class="form-group">
-            <label class="form-label">Inspection Company Name <span style="color:#b00">*</span></label>
-            <input class="form-control" id="insp_company" placeholder="e.g. Halliburton, Schlumberger...">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Rig Name</label>
-            <select class="form-control" id="insp_rig"><option value="">— Select Rig —</option></select>
+            <label class="form-label">Company <span style="color:#b00">*</span></label>
+            <select class="form-control" id="insp_company"><option value="">— Select —</option></select>
           </div>
           <div class="form-group">
             <label class="form-label">Type of Inspection <span style="color:#b00">*</span></label>
@@ -7056,7 +7053,6 @@ Asset Management System</textarea>
         startDate:     r.start_date  || r.startDate  || '',
         endDate:       r.end_date    || r.endDate    || '',
         company:       r.company     || '',
-        rigName:       r.rig_name    || r.rigName    || '',
         inspectionType:r.inspection_type || r.inspectionType || '',
         costPerDay:    Number(r.cost_per_day  || r.costPerDay  || 0),
         totalCost:     Number(r.total_cost    || r.totalCost   || 0),
@@ -7090,20 +7086,9 @@ Asset Management System</textarea>
       if (typeSel && typeSel.options.length <= 1) {
         INSP_TYPES.forEach(t => typeSel.appendChild(new Option(t, t)));
       }
-      // Company filter — rebuilt from actual inspection data (free text)
       const coSel = document.getElementById('inspFilterCompany');
-      if (coSel) {
-        const currentVal = coSel.value;
-        coSel.innerHTML = '<option value="">All</option>';
-        const companies = [...new Set(INSPECTIONS.map(i => i.company).filter(Boolean))].sort();
-        companies.forEach(c => coSel.appendChild(new Option(c, c)));
-        coSel.value = currentVal;
-      }
-      // Rig filter — from RIGS list
-      const rigSel = document.getElementById('inspFilterRig');
-      if (rigSel && rigSel.options.length <= 1) {
-        const rigs = [...new Set(INSPECTIONS.map(i => i.rigName).filter(Boolean))].sort();
-        rigs.forEach(r => rigSel.appendChild(new Option(r, r)));
+      if (coSel && coSel.options.length <= 1) {
+        COMPANIES.forEach(c => coSel.appendChild(new Option(c.name, c.name)));
       }
       const yearSel = document.getElementById('inspFilterYear');
       if (yearSel && yearSel.options.length <= 1) {
@@ -7117,21 +7102,19 @@ Asset Management System</textarea>
       const q  = (document.getElementById('inspSearch')?.value || '').toLowerCase();
       const fT = document.getElementById('inspFilterType')?.value    || '';
       const fC = document.getElementById('inspFilterCompany')?.value || '';
-      const fR = document.getElementById('inspFilterRig')?.value     || '';
       const fY = document.getElementById('inspFilterYear')?.value    || '';
       filteredInspections = INSPECTIONS.filter(i => {
-        const hay = [i.company, i.po, i.serviceOrder, i.inspectionType, i.rigName, i.notes].join(' ').toLowerCase();
+        const hay = [i.company, i.po, i.serviceOrder, i.inspectionType, i.notes].join(' ').toLowerCase();
         return (!q || hay.includes(q))
           && (!fT || i.inspectionType === fT)
           && (!fC || i.company === fC)
-          && (!fR || i.rigName === fR)
           && (!fY || (i.startDate || '').startsWith(fY));
       });
       inspPage = 1;
       renderInspections();
     }
     function clearInspectionFilters() {
-      ['inspSearch', 'inspFilterType', 'inspFilterCompany', 'inspFilterRig', 'inspFilterYear'].forEach(id => {
+      ['inspSearch', 'inspFilterType', 'inspFilterCompany', 'inspFilterYear'].forEach(id => {
         const e = document.getElementById(id); if (e) e.value = '';
       });
       applyInspectionFilters();
@@ -7217,7 +7200,7 @@ Asset Management System</textarea>
 
       const tbody = document.getElementById('inspTbody');
       if (!page.length) {
-        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;padding:40px;color:var(--sap-text-muted)">
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--sap-text-muted)">
           <i class="fas fa-clipboard-check" style="font-size:28px;opacity:.3;display:block;margin-bottom:8px"></i>No inspections found</td></tr>`;
       } else {
         tbody.innerHTML = page.map(i => {
@@ -7229,7 +7212,6 @@ Asset Management System</textarea>
             <td style="font-size:12.5px;white-space:nowrap">${i.startDate || '—'}</td>
             <td style="font-size:12.5px;white-space:nowrap">${i.endDate || '—'}</td>
             <td style="font-size:12.5px;font-weight:500">${i.company || '—'}</td>
-            <td style="font-size:12.5px">${i.rigName ? `<span style="display:inline-block;padding:2px 10px;border-radius:12px;background:#EBF4FF;color:#0040B0;font-size:11.5px;font-weight:600">${i.rigName}</span>` : '—'}</td>
             <td>${inspTypeBadge(i.inspectionType)}</td>
             <td style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;text-align:right">${i.costPerDay ? '$' + i.costPerDay.toLocaleString() : '—'}</td>
             <td style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:600;text-align:right">${i.totalCost ? '$' + i.totalCost.toLocaleString() : '—'}</td>
@@ -7277,10 +7259,10 @@ Asset Management System</textarea>
       _inspEditId = id || null;
       document.getElementById('inspModalTitle').textContent = id ? 'Edit Inspection' : 'New Inspection';
 
-      // Populate rig dropdown
-      const rigSel = document.getElementById('insp_rig');
-      rigSel.innerHTML = '<option value="">— Select Rig —</option>';
-      (RIGS || []).forEach(r => rigSel.appendChild(new Option(r.name, r.name)));
+      // Populate company dropdown
+      const coSel = document.getElementById('insp_company');
+      coSel.innerHTML = '<option value="">— Select —</option>';
+      COMPANIES.forEach(c => coSel.appendChild(new Option(c.name, c.name)));
 
       // Populate type dropdown with unified list
       const typeSel = document.getElementById('insp_type');
@@ -7294,7 +7276,6 @@ Asset Management System</textarea>
         document.getElementById('insp_start').value     = insp.startDate || '';
         document.getElementById('insp_end').value       = insp.endDate   || '';
         document.getElementById('insp_company').value   = insp.company   || '';
-        document.getElementById('insp_rig').value       = insp.rigName   || '';
         document.getElementById('insp_type').value      = insp.inspectionType || '';
         document.getElementById('insp_costday').value   = insp.costPerDay  || '';
         document.getElementById('insp_totalcost').value = insp.totalCost   || '';
@@ -7302,11 +7283,11 @@ Asset Management System</textarea>
         document.getElementById('insp_so').value        = insp.serviceOrder|| '';
         document.getElementById('insp_notes').value     = insp.notes       || '';
       } else {
-        ['insp_editId','insp_start','insp_end','insp_company','insp_costday','insp_totalcost','insp_po','insp_so','insp_notes'].forEach(id => {
+        ['insp_editId','insp_start','insp_end','insp_costday','insp_totalcost','insp_po','insp_so','insp_notes'].forEach(id => {
           document.getElementById(id).value = '';
         });
-        document.getElementById('insp_rig').value  = '';
-        document.getElementById('insp_type').value = '';
+        document.getElementById('insp_company').value = '';
+        document.getElementById('insp_type').value    = '';
       }
 
       // Auto-calc total cost when dates or cost/day changes
@@ -7328,17 +7309,16 @@ Asset Management System</textarea>
 
     async function saveInspection() {
       const startDate = document.getElementById('insp_start').value;
-      const company   = document.getElementById('insp_company').value.trim();
+      const company   = document.getElementById('insp_company').value;
       const type      = document.getElementById('insp_type').value;
       if (!startDate) { showToast('Start date is required.', 'error'); return; }
-      if (!company)   { showToast('Inspection company name is required.', 'error'); return; }
+      if (!company)   { showToast('Company is required.', 'error'); return; }
       if (!type)      { showToast('Inspection type is required.', 'error'); return; }
 
       const payload = {
         start_date:     startDate,
         end_date:       document.getElementById('insp_end').value       || null,
         company,
-        rig_name:       document.getElementById('insp_rig').value       || null,
         inspection_type: type,
         cost_per_day:   parseFloat(document.getElementById('insp_costday').value)   || 0,
         total_cost:     parseFloat(document.getElementById('insp_totalcost').value) || 0,
