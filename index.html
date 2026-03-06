@@ -2864,6 +2864,7 @@
     <button class="nav-tab active" onclick="switchTab('assets', this)"><i class="fas fa-warehouse"></i> Assets</button>
     <button class="nav-tab" onclick="switchTab('contracts', this)"><i class="fas fa-file-contract"></i>
       Contracts</button>
+    <button class="nav-tab" id="tab-projects" onclick="switchTab('projects', this)"><i class="fas fa-layer-group"></i> Projects <span id="prjBadge" style="display:none;background:#0070F2;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:1px 6px;margin-left:4px">0</span></button>
     <button class="nav-tab" onclick="switchTab('transfers', this)"><i class="fas fa-exchange-alt"></i>
       Transfers</button>
     <button class="nav-tab" onclick="switchTab('rigs', this)"><i class="fas fa-oil-well"></i> Land Rigs</button>
@@ -3107,6 +3108,131 @@
               </thead>
               <tbody id="contractTbody"></tbody>
             </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ======= PROJECTS ======= -->
+    <div class="section" id="section-projects">
+      <div class="content">
+        <!-- KPIs -->
+        <div class="kpi-row">
+          <div class="kpi-card blue">
+            <div class="kpi-icon"><i class="fas fa-layer-group"></i></div>
+            <div class="kpi-label">Total Projects</div>
+            <div class="kpi-value" id="prjKpiTotal">0</div>
+            <div class="kpi-sub">All registered</div>
+          </div>
+          <div class="kpi-card green">
+            <div class="kpi-icon"><i class="fas fa-play-circle"></i></div>
+            <div class="kpi-label">Active</div>
+            <div class="kpi-value" id="prjKpiActive">0</div>
+            <div class="kpi-sub">In progress</div>
+          </div>
+          <div class="kpi-card orange">
+            <div class="kpi-icon"><i class="fas fa-pause-circle"></i></div>
+            <div class="kpi-label">On Hold</div>
+            <div class="kpi-value" id="prjKpiHold">0</div>
+            <div class="kpi-sub">Paused</div>
+          </div>
+          <div class="kpi-card red">
+            <div class="kpi-icon"><i class="fas fa-check-double"></i></div>
+            <div class="kpi-label">Completed</div>
+            <div class="kpi-value" id="prjKpiDone">0</div>
+            <div class="kpi-sub">Finished</div>
+          </div>
+          <div class="kpi-card" style="border-top:3px solid #6D28D9">
+            <div class="kpi-icon" style="background:#EDE9FE;color:#6D28D9"><i class="fas fa-coins"></i></div>
+            <div class="kpi-label">Total Budget</div>
+            <div class="kpi-value" id="prjKpiBudget" style="font-size:18px">$0</div>
+            <div class="kpi-sub">All projects</div>
+          </div>
+        </div>
+
+        <!-- Table Card -->
+        <div class="card" style="flex:1;display:flex;flex-direction:column">
+          <div class="card-header">
+            <span class="card-title"><i class="fas fa-layer-group" style="color:var(--sap-blue)"></i> Projects <span class="record-count" id="prjCount"></span></span>
+            <button class="btn btn-primary" onclick="openProjectModal()"><i class="fas fa-plus"></i> New Project</button>
+            <button class="btn btn-secondary" onclick="exportProjectsExcel()"><i class="fas fa-file-excel"></i> Export Excel</button>
+            <button class="btn btn-secondary" onclick="exportProjectsPDF()" style="background:#fff0f0;border-color:#c00;color:#c00"><i class="fas fa-file-pdf"></i> Export PDF</button>
+            <div class="col-picker-wrap" id="prjColPickerWrap">
+              <button class="col-picker-btn" id="prjColPickerBtn" onclick="toggleColPicker('project')"><i class="fas fa-columns"></i> Columns</button>
+              <div class="col-picker-panel" id="prjColPickerPanel"><div class="col-picker-title">Visible Columns</div></div>
+            </div>
+          </div>
+
+          <!-- Filter Bar -->
+          <div class="filter-bar">
+            <div class="filter-group search-wrap">
+              <label class="filter-label">Search</label>
+              <i class="search-icon fas fa-search"></i>
+              <input class="filter-input" id="prjSearch" placeholder="ID, name, manager, location..." oninput="applyProjectFilters()">
+            </div>
+            <div class="filter-group">
+              <label class="filter-label">Status</label>
+              <select class="filter-select" id="prjFilterStatus" onchange="applyProjectFilters()">
+                <option value="">All</option>
+                <option>Planning</option><option>Active</option>
+                <option>On Hold</option><option>Completed</option><option>Cancelled</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label class="filter-label">Priority</label>
+              <select class="filter-select" id="prjFilterPriority" onchange="applyProjectFilters()">
+                <option value="">All</option>
+                <option>Critical</option><option>High</option><option>Normal</option><option>Low</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label class="filter-label">Company</label>
+              <select class="filter-select" id="prjFilterCompany" onchange="applyProjectFilters()">
+                <option value="">All</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label class="filter-label">Rig</label>
+              <select class="filter-select" id="prjFilterRig" onchange="applyProjectFilters()">
+                <option value="">All Rigs</option>
+              </select>
+            </div>
+            <div class="filter-group" style="margin-left:auto">
+              <label class="filter-label">&nbsp;</label>
+              <button class="btn btn-ghost" onclick="clearProjectFilters()"><i class="fas fa-times"></i> Clear</button>
+            </div>
+          </div>
+
+          <!-- Bulk Bar -->
+          <div class="bulk-bar" id="prjBulkBar">
+            <span class="bulk-count" id="prjBulkCount">0</span>
+            <span class="bulk-label">projects selected</span>
+            <div class="bulk-sep"></div>
+            <button class="bulk-btn" onclick="openProjectMassEdit()"><i class="fas fa-edit"></i> Edit Selected</button>
+            <button class="bulk-btn danger" onclick="bulkDeleteProjects()"><i class="fas fa-trash"></i> Delete Selected</button>
+            <div class="bulk-spacer"></div>
+            <button class="bulk-close" onclick="clearProjectSelection()"><i class="fas fa-times"></i></button>
+          </div>
+
+          <!-- Table -->
+          <div class="table-wrap" style="flex:1">
+            <table id="projectTable">
+              <thead id="prjThead"></thead>
+              <tbody id="prjTbody"></tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <div class="pagination">
+            <div class="pag-info" id="prjPagInfo"></div>
+            <button class="pag-btn" id="prjBtnPrev" onclick="prjChangePage(-1)"><i class="fas fa-chevron-left"></i></button>
+            <div id="prjPagPages"></div>
+            <button class="pag-btn" id="prjBtnNext" onclick="prjChangePage(1)"><i class="fas fa-chevron-right"></i></button>
+            <select class="filter-select" style="height:28px;width:70px;margin-left:8px;font-size:12px" id="prjPageSizeSel" onchange="prjChangePageSize()">
+              <option>10</option><option>25</option><option selected>50</option><option>100</option>
+            </select>
+            <span style="color:var(--sap-text-muted);font-size:12px">per page</span>
           </div>
         </div>
       </div>
@@ -4054,6 +4180,162 @@
         <div style="display:flex;gap:8px">
           <button class="btn btn-secondary" onclick="closeModal('massEditModal')">Cancel</button>
           <button class="btn btn-primary" onclick="applyMassEdit()"><i class="fas fa-check"></i> Apply Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- PROJECT ADD/EDIT MODAL -->
+  <div class="modal-overlay" id="projectModal">
+    <div class="modal" style="width:700px;max-width:96vw">
+      <div class="modal-header">
+        <i class="fas fa-layer-group" style="color:var(--sap-blue);font-size:18px"></i>
+        <h2 id="projectModalTitle">New Project</h2>
+        <button class="shell-btn" style="color:var(--sap-text-muted)" onclick="closeModal('projectModal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="prj_editId">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="form-group">
+            <label class="form-label">Project ID <span style="color:#b00">*</span></label>
+            <input class="form-control" id="prj_id" placeholder="e.g. PRJ-2025-001">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Project Name <span style="color:#b00">*</span></label>
+            <input class="form-control" id="prj_name" placeholder="Project name">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-control" id="prj_status">
+              <option>Planning</option><option>Active</option>
+              <option>On Hold</option><option>Completed</option><option>Cancelled</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Priority</label>
+            <select class="form-control" id="prj_priority">
+              <option>Critical</option><option>High</option>
+              <option selected>Normal</option><option>Low</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Company</label>
+            <select class="form-control" id="prj_company"><option value="">— Select —</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Rig</label>
+            <select class="form-control" id="prj_rig"><option value="">— None —</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Location</label>
+            <input class="form-control" id="prj_location" placeholder="e.g. Field A, Block 3">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Project Manager</label>
+            <input class="form-control" id="prj_manager" placeholder="Manager name">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Start Date</label>
+            <input class="form-control" id="prj_start" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">End Date</label>
+            <input class="form-control" id="prj_end" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Budget (USD)</label>
+            <input class="form-control" id="prj_budget" type="number" min="0" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Progress (%)</label>
+            <input class="form-control" id="prj_progress" type="number" min="0" max="100" placeholder="0">
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label class="form-label">Description</label>
+            <textarea class="form-control" id="prj_desc" rows="2" placeholder="Project description..."></textarea>
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label class="form-label">Notes</label>
+            <textarea class="form-control" id="prj_notes" rows="2" placeholder="Additional notes..."></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('projectModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveProject()"><i class="fas fa-save"></i> Save Project</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROJECT MASS EDIT MODAL -->
+  <div class="modal-overlay" id="projectMassEditModal">
+    <div class="modal" style="width:520px;max-width:96vw">
+      <div class="modal-header">
+        <i class="fas fa-edit" style="color:var(--sap-blue);font-size:18px"></i>
+        <h2>Edit Selected Projects</h2>
+        <button class="shell-btn" style="color:var(--sap-text-muted)" onclick="closeModal('projectMassEditModal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div style="background:var(--sap-blue-light);border:1px solid #B3D4FF;border-radius:6px;padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px">
+          <i class="fas fa-info-circle" style="color:var(--sap-blue);flex-shrink:0"></i>
+          <span style="font-size:13px;color:#0040B0">Check the fields to update across <strong id="prjMassCount">0</strong> selected project(s).</span>
+        </div>
+        <div class="mass-edit-field" id="pmef-status">
+          <input type="checkbox" id="pmef_status_chk" onchange="togglePrjField('status')">
+          <label for="pmef_status_chk">Status</label>
+          <div class="field-ctrl">
+            <select class="form-control" id="pmef_status" disabled>
+              <option value="">— Select —</option>
+              <option>Planning</option><option>Active</option>
+              <option>On Hold</option><option>Completed</option><option>Cancelled</option>
+            </select>
+          </div>
+        </div>
+        <div class="mass-edit-field" id="pmef-priority">
+          <input type="checkbox" id="pmef_priority_chk" onchange="togglePrjField('priority')">
+          <label for="pmef_priority_chk">Priority</label>
+          <div class="field-ctrl">
+            <select class="form-control" id="pmef_priority" disabled>
+              <option value="">— Select —</option>
+              <option>Critical</option><option>High</option><option>Normal</option><option>Low</option>
+            </select>
+          </div>
+        </div>
+        <div class="mass-edit-field" id="pmef-company">
+          <input type="checkbox" id="pmef_company_chk" onchange="togglePrjField('company')">
+          <label for="pmef_company_chk">Company</label>
+          <div class="field-ctrl">
+            <select class="form-control" id="pmef_company" disabled><option value="">— Select —</option></select>
+          </div>
+        </div>
+        <div class="mass-edit-field" id="pmef-rig">
+          <input type="checkbox" id="pmef_rig_chk" onchange="togglePrjField('rig')">
+          <label for="pmef_rig_chk">Rig</label>
+          <div class="field-ctrl">
+            <select class="form-control" id="pmef_rig" disabled><option value="">— Select / Clear —</option></select>
+          </div>
+        </div>
+        <div class="mass-edit-field" id="pmef-manager">
+          <input type="checkbox" id="pmef_manager_chk" onchange="togglePrjField('manager')">
+          <label for="pmef_manager_chk">Manager</label>
+          <div class="field-ctrl">
+            <input class="form-control" id="pmef_manager" placeholder="New manager..." disabled>
+          </div>
+        </div>
+        <div class="mass-edit-field" id="pmef-location">
+          <input type="checkbox" id="pmef_location_chk" onchange="togglePrjField('location')">
+          <label for="pmef_location_chk">Location</label>
+          <div class="field-ctrl">
+            <input class="form-control" id="pmef_location" placeholder="New location..." disabled>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content:space-between">
+        <span style="font-size:12px;color:var(--sap-text-muted)" id="prjMassProgress"></span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" onclick="closeModal('projectMassEditModal')">Cancel</button>
+          <button class="btn btn-primary" onclick="applyProjectMassEdit()"><i class="fas fa-check"></i> Apply Changes</button>
         </div>
       </div>
     </div>
@@ -5294,14 +5576,14 @@ Asset Management System</textarea>
 
     // Returns ordered array of visible column objects
     function getVisibleCols(table) {
-      const defs = table === 'asset' ? ASSET_COLS : TRANSFER_COLS;
-      return defs.filter(c => _colState[table].has(c.key));
+      const defs = table === 'asset' ? ASSET_COLS : table === 'project' ? PROJECT_COLS : TRANSFER_COLS;
+      return defs.filter(c => (_colState[table] || new Set()).has(c.key));
     }
 
     // ── Build and populate picker panel ─────────────────────────────
     function buildColPickerPanel(table) {
-      const defs = table === 'asset' ? ASSET_COLS : TRANSFER_COLS;
-      const panelId = table === 'asset' ? 'assetColPickerPanel' : 'trColPickerPanel';
+      const defs = table === 'asset' ? ASSET_COLS : table === 'project' ? PROJECT_COLS : TRANSFER_COLS;
+      const panelId = table === 'asset' ? 'assetColPickerPanel' : table === 'project' ? 'prjColPickerPanel' : 'trColPickerPanel';
       const panel = document.getElementById(panelId);
       if (!panel) return;
       const state = _colState[table];
@@ -5329,8 +5611,8 @@ Asset Management System</textarea>
 
     // ── Toggle panel open/close ──────────────────────────────────────
     function toggleColPicker(table) {
-      const panelId = table === 'asset' ? 'assetColPickerPanel' : 'trColPickerPanel';
-      const btnId   = table === 'asset' ? 'assetColPickerBtn'   : 'trColPickerBtn';
+      const panelId = table === 'asset' ? 'assetColPickerPanel' : table === 'project' ? 'prjColPickerPanel' : 'trColPickerPanel';
+      const btnId   = table === 'asset' ? 'assetColPickerBtn'   : table === 'project' ? 'prjColPickerBtn' : 'trColPickerBtn';
       const panel = document.getElementById(panelId);
       const btn   = document.getElementById(btnId);
       const isOpen = panel.classList.contains('open');
@@ -5345,29 +5627,31 @@ Asset Management System</textarea>
     }
 
     function closeColPicker(table) {
-      const panelId = table === 'asset' ? 'assetColPickerPanel' : 'trColPickerPanel';
-      const btnId   = table === 'asset' ? 'assetColPickerBtn'   : 'trColPickerBtn';
+      const panelId = table === 'asset' ? 'assetColPickerPanel' : table === 'project' ? 'prjColPickerPanel' : 'trColPickerPanel';
+      const btnId   = table === 'asset' ? 'assetColPickerBtn'   : table === 'project' ? 'prjColPickerBtn' : 'trColPickerBtn';
       document.getElementById(panelId)?.classList.remove('open');
       document.getElementById(btnId)?.classList.remove('active');
     }
 
     // ── Toggle a single column ───────────────────────────────────────
     function toggleCol(table, key, visible) {
-      const defs = table === 'asset' ? ASSET_COLS : TRANSFER_COLS;
+      const defs = table === 'asset' ? ASSET_COLS : table === 'project' ? PROJECT_COLS : TRANSFER_COLS;
       const col = defs.find(c => c.key === key);
       if (col?.locked) return;
       if (visible) _colState[table].add(key);
       else _colState[table].delete(key);
       if (table === 'asset') renderAssets();
+      else if (table === 'project') renderProjects();
       else renderTransfers();
     }
 
     // ── Reset to defaults ────────────────────────────────────────────
     function resetColPicker(table) {
-      const defs = table === 'asset' ? ASSET_COLS : TRANSFER_COLS;
+      const defs = table === 'asset' ? ASSET_COLS : table === 'project' ? PROJECT_COLS : TRANSFER_COLS;
       _colState[table] = new Set(defs.filter(c => c.default).map(c => c.key));
-      buildColPickerPanel(table); // re-render checkboxes
+      buildColPickerPanel(table);
       if (table === 'asset') renderAssets();
+      else if (table === 'project') renderProjects();
       else renderTransfers();
     }
 
@@ -5378,6 +5662,495 @@ Asset Management System</textarea>
         document.querySelectorAll('.col-picker-btn.active').forEach(b => b.classList.remove('active'));
       }
     }, true);
+
+
+    // ══════════════════════════════════════════════════════════════════
+    //  PROJECTS MODULE
+    // ══════════════════════════════════════════════════════════════════
+    let PROJECTS = [];
+    let filteredProjects = [];
+    let prjPage = 1, prjPageSize = 50, prjSortKey = 'projectId', prjSortDir = 1;
+    const _selectedProjects = new Set();
+
+    const PROJECT_COLS = [
+      { key: 'projectId',   label: 'Project ID',    locked: true,  default: true,  sortKey: 'projectId'  },
+      { key: 'name',        label: 'Name',           locked: false, default: true,  sortKey: 'name'       },
+      { key: 'status',      label: 'Status',         locked: false, default: true,  sortKey: 'status'     },
+      { key: 'priority',    label: 'Priority',       locked: false, default: true,  sortKey: 'priority'   },
+      { key: 'company',     label: 'Company',        locked: false, default: true,  sortKey: 'company'    },
+      { key: 'rigName',     label: 'Rig',            locked: false, default: true,  sortKey: 'rigName'    },
+      { key: 'manager',     label: 'Manager',        locked: false, default: true,  sortKey: 'manager'    },
+      { key: 'startDate',   label: 'Start Date',     locked: false, default: true,  sortKey: 'startDate'  },
+      { key: 'endDate',     label: 'End Date',       locked: false, default: true,  sortKey: 'endDate'    },
+      { key: 'budget',      label: 'Budget (USD)',   locked: false, default: true,  sortKey: 'budget'     },
+      { key: 'progress',    label: 'Progress',       locked: false, default: true,  sortKey: 'progress'   },
+      { key: 'location',    label: 'Location',       locked: false, default: false, sortKey: 'location'   },
+      { key: 'spent',       label: 'Spent (USD)',    locked: false, default: false, sortKey: 'spent'      },
+      { key: 'linkedAssets',label: 'Linked Assets',  locked: false, default: false, sortKey: null         },
+      { key: 'description', label: 'Description',   locked: false, default: false, sortKey: null         },
+    ];
+    _colState['project'] = new Set(PROJECT_COLS.filter(c => c.default).map(c => c.key));
+
+    // ── Badges ──────────────────────────────────────────────────────
+    function prjStatusBadge(s) {
+      const m = {
+        'Planning':  { bg:'#EBF4FF',color:'#0040B0',icon:'drafting-compass' },
+        'Active':    { bg:'#E8F5EC',color:'#107E3E',icon:'play-circle'      },
+        'On Hold':   { bg:'#FFF3E0',color:'#E9730C',icon:'pause-circle'     },
+        'Completed': { bg:'#F0F0F0',color:'#354A5E',icon:'check-double'     },
+        'Cancelled': { bg:'#FDECEA',color:'#B00020',icon:'ban'              },
+      };
+      const v = m[s] || { bg:'#F5F6F7', color:'#6A6D70', icon:'circle' };
+      return `<span style="display:inline-flex;align-items:center;gap:5px;padding:2px 10px;border-radius:12px;background:${v.bg};color:${v.color};font-size:11.5px;font-weight:600"><i class="fas fa-${v.icon}" style="font-size:10px"></i>${s||'—'}</span>`;
+    }
+    const prjPriClass = { Critical:'priority-critical', High:'priority-high', Normal:'priority-normal', Low:'priority-low' };
+    function prjPriBadge(p) {
+      return `<span class="${prjPriClass[p]||'priority-normal'}">${p==='Critical'?'⚠ ':''}${p||'Normal'}</span>`;
+    }
+    function prjProgressBar(pct) {
+      const p = Math.min(100, Math.max(0, Number(pct)||0));
+      const c = p>=80?'#107E3E':p>=40?'#0070F2':'#E9730C';
+      return `<div style="display:flex;align-items:center;gap:6px;min-width:110px">
+        <div style="flex:1;height:6px;background:#E8E8E8;border-radius:4px;overflow:hidden">
+          <div style="width:${p}%;height:100%;background:${c};border-radius:4px"></div>
+        </div>
+        <span style="font-size:11.5px;font-weight:700;color:${c};min-width:30px;text-align:right">${p}%</span>
+      </div>`;
+    }
+
+    // ── Normalize project row from API ──────────────────────────────
+    function normP(p) {
+      return { ...p,
+        projectId: p.project_id || p.projectId || '',
+        rigName:   p.rig_name   || p.rigName   || '',
+        startDate: p.start_date || p.startDate || '',
+        endDate:   p.end_date   || p.endDate   || '',
+        budget:    Number(p.budget||0),
+        spent:     Number(p.spent||0),
+        progress:  Number(p.progress||0),
+      };
+    }
+
+    // ── KPIs ────────────────────────────────────────────────────────
+    function updateProjectKPIs() {
+      document.getElementById('prjKpiTotal').textContent  = PROJECTS.length;
+      document.getElementById('prjKpiActive').textContent = PROJECTS.filter(p=>p.status==='Active').length;
+      document.getElementById('prjKpiHold').textContent   = PROJECTS.filter(p=>p.status==='On Hold').length;
+      document.getElementById('prjKpiDone').textContent   = PROJECTS.filter(p=>p.status==='Completed').length;
+      const tot = PROJECTS.reduce((s,p)=>s+p.budget,0);
+      const el = document.getElementById('prjKpiBudget');
+      if (el) el.textContent = tot>=1e6?'$'+(tot/1e6).toFixed(1)+'M':'$'+tot.toLocaleString();
+      const active = PROJECTS.filter(p=>p.status==='Active').length;
+      const badge  = document.getElementById('prjBadge');
+      if (badge) { badge.textContent=active; badge.style.display=active?'':'none'; }
+    }
+
+    // ── Filters ─────────────────────────────────────────────────────
+    function applyProjectFilters() {
+      const q  = (document.getElementById('prjSearch')?.value||'').toLowerCase();
+      const fS = document.getElementById('prjFilterStatus')?.value||'';
+      const fP = document.getElementById('prjFilterPriority')?.value||'';
+      const fC = document.getElementById('prjFilterCompany')?.value||'';
+      const fR = document.getElementById('prjFilterRig')?.value||'';
+      filteredProjects = PROJECTS.filter(p => {
+        const hay = [p.projectId,p.name,p.manager||'',p.location||'',p.company||'',p.description||''].join(' ').toLowerCase();
+        return (!q||hay.includes(q)) && (!fS||p.status===fS) && (!fP||p.priority===fP) && (!fC||p.company===fC) && (!fR||p.rigName===fR);
+      });
+      prjPage = 1;
+      renderProjects();
+    }
+    function clearProjectFilters() {
+      ['prjSearch','prjFilterStatus','prjFilterPriority','prjFilterCompany','prjFilterRig'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+      applyProjectFilters();
+    }
+
+    // ── Sort ────────────────────────────────────────────────────────
+    function sortProjectTable(key) {
+      if (prjSortKey===key) prjSortDir*=-1; else { prjSortKey=key; prjSortDir=1; }
+      filteredProjects.sort((a,b)=>{
+        let va=a[key]??'', vb=b[key]??'';
+        if(['budget','spent','progress'].includes(key)){va=Number(va);vb=Number(vb);}
+        return va>vb?prjSortDir:va<vb?-prjSortDir:0;
+      });
+      renderProjects();
+    }
+
+    // ── Pagination ──────────────────────────────────────────────────
+    function prjChangePage(d){ prjPage+=d; renderProjects(); }
+    function prjChangePageSize(){ prjPageSize=parseInt(document.getElementById('prjPageSizeSel').value); prjPage=1; renderProjects(); }
+
+    // ── Selection ───────────────────────────────────────────────────
+    function onPrjCheck(cb, id) {
+      if(cb.checked) _selectedProjects.add(id); else _selectedProjects.delete(id);
+      syncPrjBulkBar();
+    }
+    function toggleProjectSelectAll(cb) {
+      document.querySelectorAll('#prjTbody input[type=checkbox]').forEach(c=>{
+        c.checked=cb.checked;
+        const id=c.dataset.prjId;
+        if(id){ if(cb.checked)_selectedProjects.add(id); else _selectedProjects.delete(id); }
+      });
+      syncPrjBulkBar();
+    }
+    function syncPrjBulkBar() {
+      const n=_selectedProjects.size;
+      const bar=document.getElementById('prjBulkBar');
+      if(bar) bar.classList.toggle('visible',n>0);
+      const cnt=document.getElementById('prjBulkCount');
+      if(cnt) cnt.textContent=n;
+      const cbs=document.querySelectorAll('#prjTbody input[type=checkbox]');
+      const hdr=document.getElementById('prjSelectAll');
+      if(hdr&&cbs.length>0){
+        const chk=[...cbs].filter(c=>c.checked).length;
+        hdr.checked=chk===cbs.length; hdr.indeterminate=chk>0&&chk<cbs.length;
+      }
+    }
+    function clearProjectSelection() {
+      _selectedProjects.clear();
+      document.querySelectorAll('#prjTbody input[type=checkbox]').forEach(c=>c.checked=false);
+      const hdr=document.getElementById('prjSelectAll');
+      if(hdr){hdr.checked=false;hdr.indeterminate=false;}
+      syncPrjBulkBar();
+    }
+
+    // ── Render ──────────────────────────────────────────────────────
+    function renderProjects() {
+      // Populate filter dropdowns on first render
+      const coSel=document.getElementById('prjFilterCompany');
+      if(coSel&&coSel.options.length<=1) COMPANIES.forEach(c=>coSel.appendChild(new Option(c.name,c.name)));
+      const rigSel=document.getElementById('prjFilterRig');
+      if(rigSel&&rigSel.options.length<=1) RIGS.forEach(r=>rigSel.appendChild(new Option(r.name,r.name)));
+
+      const total=filteredProjects.length;
+      const start=(prjPage-1)*prjPageSize;
+      const end=Math.min(start+prjPageSize,total);
+      const page=filteredProjects.slice(start,end);
+      const cols=getVisibleCols('project');
+
+      // Build thead
+      const thead=document.getElementById('prjThead');
+      if(thead) thead.innerHTML='<tr>'+
+        '<th class="checkbox-cell"><input type="checkbox" id="prjSelectAll" onchange="toggleProjectSelectAll(this)"></th>'+
+        cols.map(c=>c.sortKey?`<th onclick="sortProjectTable('${c.sortKey}')">${c.label} <i class="fas fa-sort sort-icon"></i></th>`:`<th>${c.label}</th>`).join('')+
+        '<th>Actions</th></tr>';
+
+      const tbody=document.getElementById('prjTbody');
+      if(!page.length){
+        tbody.innerHTML=`<tr><td colspan="${cols.length+2}" style="text-align:center;padding:40px;color:var(--sap-text-muted)"><i class="fas fa-layer-group" style="font-size:28px;opacity:.3;display:block;margin-bottom:8px"></i>No projects found</td></tr>`;
+      } else {
+        tbody.innerHTML=page.map(p=>{
+          const linkedCount = ASSETS.filter(a => a.rigName===p.rigName || a.company===p.company).length;
+          const cells=cols.map(c=>{
+            switch(c.key){
+              case 'projectId':    return `<td><span class="tag blue" style="font-family:'IBM Plex Mono',monospace;font-size:11px">${p.projectId}</span></td>`;
+              case 'name':         return `<td style="font-weight:600;font-size:13px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(p.name||'').replace(/"/g,'&quot;')}">${p.name}</td>`;
+              case 'status':       return `<td>${prjStatusBadge(p.status)}</td>`;
+              case 'priority':     return `<td>${prjPriBadge(p.priority)}</td>`;
+              case 'company':      return `<td style="font-size:12.5px">${p.company||'—'}</td>`;
+              case 'rigName':      return `<td style="font-size:12.5px">${p.rigName||'—'}</td>`;
+              case 'manager':      return `<td style="font-size:12.5px">${p.manager||'—'}</td>`;
+              case 'startDate':    return `<td style="font-size:12px;color:var(--sap-text-muted)">${p.startDate||'—'}</td>`;
+              case 'endDate':      return `<td style="font-size:12px;color:var(--sap-text-muted)">${p.endDate||'—'}</td>`;
+              case 'budget':       return `<td style="font-family:'IBM Plex Mono',monospace;font-size:12.5px">$${p.budget.toLocaleString()}</td>`;
+              case 'spent':        return `<td style="font-family:'IBM Plex Mono',monospace;font-size:12.5px">$${p.spent.toLocaleString()}</td>`;
+              case 'progress':     return `<td>${prjProgressBar(p.progress)}</td>`;
+              case 'location':     return `<td style="font-size:12.5px">${p.location||'—'}</td>`;
+              case 'linkedAssets': return `<td><span class="tag blue" style="font-size:11px">${linkedCount}</span></td>`;
+              case 'description':  return `<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="${(p.description||'').replace(/"/g,'&quot;')}">${p.description||'—'}</td>`;
+              default:             return `<td>—</td>`;
+            }
+          }).join('');
+          return `<tr style="cursor:pointer" onclick="openProjectDetail('${p.projectId}')" ${_selectedProjects.has(p.projectId)?'class="selected"':''}>
+            <td class="checkbox-cell"><input type="checkbox" data-prj-id="${p.projectId}" ${_selectedProjects.has(p.projectId)?'checked':''} onclick="event.stopPropagation();onPrjCheck(this,'${p.projectId}')"></td>
+            ${cells}
+            <td onclick="event.stopPropagation()" style="white-space:nowrap">
+              <button class="btn btn-ghost btn-icon" title="View" onclick="openProjectDetail('${p.projectId}')"><i class="fas fa-eye"></i></button>
+              <button class="btn btn-ghost btn-icon" title="Edit" onclick="openProjectModal('${p.projectId}')"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-ghost btn-icon" title="Delete" style="color:var(--sap-error)" onclick="deleteProject('${p.projectId}')"><i class="fas fa-trash"></i></button>
+            </td>
+          </tr>`;
+        }).join('');
+      }
+
+      document.getElementById('prjCount').textContent=`(${total} records)`;
+      // Render pagination
+      const pages=Math.ceil(total/prjPageSize)||1;
+      const pgDiv=document.getElementById('prjPagPages');
+      if(pgDiv){
+        pgDiv.innerHTML='';
+        const maxPg=Math.min(pages,7);
+        for(let i=1;i<=maxPg;i++){
+          const btn=document.createElement('button');
+          btn.className='pag-btn'+(i===prjPage?' active':'');
+          btn.textContent=i;
+          btn.onclick=(function(pg){return()=>{prjPage=pg;renderProjects();};})(i);
+          pgDiv.appendChild(btn);
+        }
+      }
+      const pi=document.getElementById('prjPagInfo');
+      if(pi) pi.textContent=total?`Showing ${start+1}–${end} of ${total}`:'No records';
+      if(document.getElementById('prjBtnPrev')) document.getElementById('prjBtnPrev').disabled=prjPage<=1;
+      if(document.getElementById('prjBtnNext')) document.getElementById('prjBtnNext').disabled=prjPage>=pages;
+      updateProjectKPIs();
+      syncPrjBulkBar();
+    }
+
+    function initProjects(){
+      filteredProjects=[...PROJECTS];
+      renderProjects();
+    }
+
+    // ── Project detail (inline toast + highlight linked assets) ─────
+    function openProjectDetail(id) {
+      const p=PROJECTS.find(x=>x.projectId===id); if(!p) return;
+      const linked=ASSETS.filter(a=>a.rigName===p.rigName||a.company===p.company);
+      showToast(`${p.name} · ${p.status} · ${p.progress}% · Budget: $${p.budget.toLocaleString()} · ${linked.length} linked assets`,'info');
+    }
+
+    // ── Add / Edit modal ────────────────────────────────────────────
+    let _prjEditId=null;
+    function openProjectModal(id) {
+      _prjEditId=id||null;
+      document.getElementById('projectModalTitle').textContent=_prjEditId?'Edit Project':'New Project';
+      // Populate dropdowns
+      const coSel=document.getElementById('prj_company');
+      coSel.innerHTML='<option value="">— Select —</option>';
+      COMPANIES.forEach(c=>coSel.appendChild(new Option(c.name,c.name)));
+      const rigSel=document.getElementById('prj_rig');
+      rigSel.innerHTML='<option value="">— None —</option>';
+      RIGS.forEach(r=>rigSel.appendChild(new Option(r.name,r.name)));
+
+      if(_prjEditId){
+        const p=PROJECTS.find(x=>x.projectId===_prjEditId); if(!p) return;
+        document.getElementById('prj_editId').value=p.projectId;
+        document.getElementById('prj_id').value=p.projectId;
+        document.getElementById('prj_id').readOnly=true;
+        document.getElementById('prj_name').value=p.name||'';
+        document.getElementById('prj_status').value=p.status||'Planning';
+        document.getElementById('prj_priority').value=p.priority||'Normal';
+        document.getElementById('prj_company').value=p.company||'';
+        document.getElementById('prj_rig').value=p.rigName||'';
+        document.getElementById('prj_location').value=p.location||'';
+        document.getElementById('prj_manager').value=p.manager||'';
+        document.getElementById('prj_start').value=p.startDate||'';
+        document.getElementById('prj_end').value=p.endDate||'';
+        document.getElementById('prj_budget').value=p.budget||0;
+        document.getElementById('prj_progress').value=p.progress||0;
+        document.getElementById('prj_desc').value=p.description||'';
+        document.getElementById('prj_notes').value=p.notes||'';
+      } else {
+        document.getElementById('prj_editId').value='';
+        document.getElementById('prj_id').readOnly=false;
+        ['prj_id','prj_name','prj_location','prj_manager','prj_start','prj_end','prj_desc','prj_notes'].forEach(i=>{document.getElementById(i).value='';});
+        document.getElementById('prj_budget').value='0';
+        document.getElementById('prj_progress').value='0';
+        document.getElementById('prj_status').value='Planning';
+        document.getElementById('prj_priority').value='Normal';
+        document.getElementById('prj_company').value='';
+        document.getElementById('prj_rig').value='';
+      }
+      openModal('projectModal');
+    }
+
+    async function saveProject() {
+      const id=(document.getElementById('prj_editId').value||document.getElementById('prj_id').value).trim();
+      const name=document.getElementById('prj_name').value.trim();
+      if(!id){showToast('Project ID is required.','error');return;}
+      if(!name){showToast('Project Name is required.','error');return;}
+      const payload={
+        project_id:id, name,
+        status:    document.getElementById('prj_status').value,
+        priority:  document.getElementById('prj_priority').value,
+        company:   document.getElementById('prj_company').value,
+        rig_name:  document.getElementById('prj_rig').value,
+        location:  document.getElementById('prj_location').value.trim(),
+        manager:   document.getElementById('prj_manager').value.trim(),
+        start_date:document.getElementById('prj_start').value||null,
+        end_date:  document.getElementById('prj_end').value||null,
+        budget:    parseFloat(document.getElementById('prj_budget').value)||0,
+        progress:  parseInt(document.getElementById('prj_progress').value)||0,
+        description:document.getElementById('prj_desc').value.trim(),
+        notes:     document.getElementById('prj_notes').value.trim(),
+      };
+      try{
+        if(_prjEditId){
+          if(typeof PUT!=='undefined'){const r=await PUT(`/projects/${_prjEditId}`,payload);const idx=PROJECTS.findIndex(x=>x.projectId===_prjEditId);if(idx>=0)PROJECTS[idx]=normP(r.data||payload);}
+          else{const idx=PROJECTS.findIndex(x=>x.projectId===_prjEditId);if(idx>=0)Object.assign(PROJECTS[idx],normP(payload));}
+          showToast('Project updated ✓','success');
+        } else {
+          if(typeof POST!=='undefined'){const r=await POST('/projects',payload);PROJECTS.push(normP(r.data||payload));}
+          else{PROJECTS.push(normP(payload));}
+          showToast('Project created ✓','success');
+        }
+        closeModal('projectModal');
+        filteredProjects=[...PROJECTS];
+        applyProjectFilters();
+      }catch(e){showToast('Save failed: '+e.message,'error');}
+    }
+
+    // ── Delete ──────────────────────────────────────────────────────
+    async function deleteProject(id,silent){
+      const p=PROJECTS.find(x=>x.projectId===id); if(!p) return;
+      if(!silent&&!confirm(`Delete project "${p.name}"?  This cannot be undone.`)) return;
+      try{
+        if(typeof DELETE!=='undefined') await DELETE(`/projects/${id}`);
+        PROJECTS.splice(PROJECTS.findIndex(x=>x.projectId===id),1);
+        filteredProjects=filteredProjects.filter(x=>x.projectId!==id);
+        _selectedProjects.delete(id);
+        renderProjects();
+        if(!silent) showToast(`Project ${id} deleted ✓`,'warning');
+      }catch(e){showToast('Delete failed: '+e.message,'error');}
+    }
+
+    // ── Bulk delete ─────────────────────────────────────────────────
+    async function bulkDeleteProjects(){
+      const ids=[..._selectedProjects]; if(!ids.length) return;
+      if(!confirm(`Delete ${ids.length} project(s)? This cannot be undone.`)) return;
+      showToast(`Deleting ${ids.length} project(s)…`,'info');
+      let deleted=0,failed=0;
+      if(typeof DELETE!=='undefined'){
+        const results=await Promise.allSettled(ids.map(id=>DELETE(`/projects/${id}`)));
+        deleted=results.filter(r=>r.status==='fulfilled').length;
+        failed=results.filter(r=>r.status==='rejected').length;
+        ids.forEach(id=>{PROJECTS.splice(PROJECTS.findIndex(x=>x.projectId===id),1);filteredProjects=filteredProjects.filter(x=>x.projectId!==id);});
+      } else {
+        ids.forEach(id=>{PROJECTS.splice(PROJECTS.findIndex(x=>x.projectId===id),1);filteredProjects=filteredProjects.filter(x=>x.projectId!==id);deleted++;});
+      }
+      _selectedProjects.clear();
+      renderProjects();
+      showToast(failed?`Deleted ${deleted}, ${failed} failed.`:`${deleted} project(s) deleted ✓`,failed?'warning':'success');
+    }
+
+    // ── Mass edit ───────────────────────────────────────────────────
+    function openProjectMassEdit(){
+      const ids=[..._selectedProjects]; if(!ids.length) return;
+      document.getElementById('prjMassCount').textContent=ids.length;
+      document.getElementById('prjMassProgress').textContent='';
+      ['status','priority','company','rig','manager','location'].forEach(f=>{
+        const chk=document.getElementById(`pmef_${f}_chk`);
+        const ctrl=document.getElementById(`pmef_${f}`);
+        const row=document.getElementById(`pmef-${f}`);
+        if(chk)chk.checked=false; if(ctrl){ctrl.disabled=true;ctrl.value='';} if(row)row.classList.remove('active');
+      });
+      const coSel=document.getElementById('pmef_company');
+      coSel.innerHTML='<option value="">— Select —</option>';
+      COMPANIES.forEach(c=>coSel.appendChild(new Option(c.name,c.name)));
+      const rigSel=document.getElementById('pmef_rig');
+      rigSel.innerHTML='<option value="">— Select / Clear —</option>';
+      RIGS.forEach(r=>rigSel.appendChild(new Option(r.name,r.name)));
+      openModal('projectMassEditModal');
+    }
+    function togglePrjField(f){
+      const chk=document.getElementById(`pmef_${f}_chk`);
+      const ctrl=document.getElementById(`pmef_${f}`);
+      const row=document.getElementById(`pmef-${f}`);
+      const on=chk.checked;
+      if(ctrl)ctrl.disabled=!on; if(row)row.classList.toggle('active',on); if(on&&ctrl)ctrl.focus();
+    }
+    async function applyProjectMassEdit(){
+      const ids=[..._selectedProjects]; if(!ids.length){showToast('No projects selected.','warning');return;}
+      const fMap={status:'status',priority:'priority',company:'company',rig:'rig_name',manager:'manager',location:'location'};
+      const changes={};
+      Object.entries(fMap).forEach(([f,key])=>{
+        const chk=document.getElementById(`pmef_${f}_chk`);
+        const ctrl=document.getElementById(`pmef_${f}`);
+        if(chk?.checked&&ctrl) changes[key]=ctrl.value;
+      });
+      if(!Object.keys(changes).length){showToast('Check at least one field.','warning');return;}
+      document.getElementById('prjMassProgress').textContent='Applying…';
+      let updated=0,failed=0;
+      if(typeof PUT!=='undefined'){
+        const results=await Promise.allSettled(ids.map(async id=>{
+          const p=PROJECTS.find(x=>x.projectId===id); if(!p) throw new Error('Not found');
+          const payload={project_id:p.projectId,name:p.name,
+            status:   changes.status   ??p.status,
+            priority: changes.priority ??p.priority,
+            company:  changes.company  ??p.company,
+            rig_name: changes.rig_name ??p.rigName,
+            location: changes.location ??p.location,
+            manager:  changes.manager  ??p.manager,
+            budget:p.budget,progress:p.progress,
+          };
+          const res=await PUT(`/projects/${id}`,payload);
+          const idx=PROJECTS.findIndex(x=>x.projectId===id);
+          if(idx>=0) PROJECTS[idx]=normP({...PROJECTS[idx],...payload,...(res.data||{})});
+        }));
+        updated=results.filter(r=>r.status==='fulfilled').length;
+        failed=results.filter(r=>r.status==='rejected').length;
+      } else {
+        ids.forEach(id=>{
+          const idx=PROJECTS.findIndex(x=>x.projectId===id); if(idx<0){failed++;return;}
+          if(changes.status)   PROJECTS[idx].status=changes.status;
+          if(changes.priority) PROJECTS[idx].priority=changes.priority;
+          if(changes.company!==undefined) PROJECTS[idx].company=changes.company;
+          if(changes.rig_name!==undefined) PROJECTS[idx].rigName=changes.rig_name;
+          if(changes.location!==undefined) PROJECTS[idx].location=changes.location;
+          if(changes.manager!==undefined)  PROJECTS[idx].manager=changes.manager;
+          updated++;
+        });
+      }
+      filteredProjects=[...PROJECTS];
+      _selectedProjects.clear();
+      closeModal('projectMassEditModal');
+      applyProjectFilters();
+      const labels={status:'Status',priority:'Priority',company:'Company',rig_name:'Rig',location:'Location',manager:'Manager'};
+      const changedFields=Object.keys(changes).map(k=>labels[k]||k).join(', ');
+      showToast(failed?`Updated ${updated}, ${failed} failed. (${changedFields})`:`${updated} project(s) updated ✓  (${changedFields})`,failed?'warning':'success');
+    }
+
+    // ── Export Excel ────────────────────────────────────────────────
+    function exportProjectsExcel(){
+      const data=filteredProjects.length<PROJECTS.length?filteredProjects:PROJECTS;
+      if(!data.length){showToast('No data to export.','warning');return;}
+      const ws=XLSX.utils.json_to_sheet(data.map(p=>({
+        'Project ID':p.projectId,'Name':p.name,'Status':p.status,'Priority':p.priority,
+        'Company':p.company||'','Rig':p.rigName||'','Manager':p.manager||'',
+        'Location':p.location||'','Start Date':p.startDate||'','End Date':p.endDate||'',
+        'Budget (USD)':p.budget,'Spent (USD)':p.spent,'Progress (%)':p.progress,
+        'Description':p.description||'',
+      })));
+      ws['!cols']=[12,30,12,10,20,15,20,20,12,12,14,14,12,40].map(w=>({wch:w}));
+      const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Projects');
+      const suffix=filteredProjects.length<PROJECTS.length?`_filtered_${filteredProjects.length}`:`_all_${PROJECTS.length}`;
+      XLSX.writeFile(wb,`Projects${suffix}.xlsx`);
+      showToast(`Exported ${data.length} project(s) ✓`,'success');
+    }
+
+    // ── Export PDF ──────────────────────────────────────────────────
+    function exportProjectsPDF(){
+      const data=filteredProjects.length<PROJECTS.length?filteredProjects:PROJECTS;
+      if(!data.length){showToast('No data to export.','warning');return;}
+      const {jsPDF}=window.jspdf;
+      const doc=new jsPDF({orientation:'landscape',unit:'pt',format:'a4'});
+      const W=doc.internal.pageSize.getWidth();
+      doc.setFillColor(53,74,94); doc.rect(0,0,W,36,'F');
+      doc.setTextColor(255,255,255); doc.setFontSize(13); doc.setFont('helvetica','bold');
+      doc.text('Asset Management System — Projects Report',14,24);
+      doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(200,200,200);
+      const note=filteredProjects.length<PROJECTS.length?`Filtered: ${filteredProjects.length} of ${PROJECTS.length}`:`Total: ${PROJECTS.length}`;
+      doc.text(`${note}   |   ${new Date().toLocaleString('en-GB',{dateStyle:'medium',timeStyle:'short'})}`,14,33);
+      doc.autoTable({
+        startY:44,
+        head:[['Project ID','Name','Status','Priority','Company','Rig','Manager','Start','End','Budget','Progress']],
+        body:data.map(p=>[p.projectId,p.name,p.status,p.priority||'Normal',p.company||'',p.rigName||'',
+          p.manager||'',p.startDate||'',p.endDate||'',
+          '$'+p.budget.toLocaleString(),(p.progress||0)+'%']),
+        styles:{fontSize:7.5,cellPadding:3,textColor:[50,54,58]},
+        headStyles:{fillColor:[0,112,242],textColor:255,fontStyle:'bold',fontSize:8},
+        alternateRowStyles:{fillColor:[245,246,247]},
+        columnStyles:{9:{halign:'right'},10:{halign:'center'}},
+        margin:{left:14,right:14},
+        didDrawPage:function(){
+          const pg=doc.internal.getCurrentPageInfo().pageNumber;
+          const tot=doc.internal.getNumberOfPages();
+          doc.setFontSize(7);doc.setTextColor(150);
+          doc.text(`Page ${pg} of ${tot}`,W-14,doc.internal.pageSize.getHeight()-8,{align:'right'});
+        }
+      });
+      const suffix=filteredProjects.length<PROJECTS.length?`filtered_${filteredProjects.length}`:`all`;
+      doc.save(`Projects_${suffix}.pdf`);
+      showToast(`Exported ${data.length} project(s) to PDF ✓`,'success');
+    }
 
     window.onload = function () {
       renderNotifications();
@@ -5398,6 +6171,7 @@ Asset Management System</textarea>
       updateCertKPIs();
       initTransfers();
       initMaintenance();
+      initProjects();
       // Apply role-based UI restrictions after all data is loaded
       if (typeof applyRoleUI === 'function') applyRoleUI();
       window.__bootstrapDone = true;
@@ -10130,7 +10904,7 @@ Instructions:
       function rerenderAll() {
         if (typeof filteredAssets !== 'undefined') filteredAssets = [...ASSETS];
         rerender(
-          'renderAssets', 'renderContracts', 'renderRigs', 'renderCompanies',
+          'renderAssets', 'renderContracts', 'renderRigs', 'renderCompanies', 'renderProjects',
           'renderUsers', 'renderTransfers', 'renderMaintenance', 'renderCertificates',
           'renderBOMSection', 'renderNotifications', 'updateKPIs', 'updateReportKPIs',
           'updateCertKPIs', 'updateMaintKPIs', 'updateTransferKPIs', 'checkMaintAlerts',
@@ -10146,7 +10920,7 @@ Instructions:
         try {
           showToast('Connecting to database…', 'info');
 
-          const [aR, rR, coR, conR, mR, tR, cR, bR, uR, nR] = await Promise.all([
+          const [aR, rR, coR, conR, mR, tR, cR, bR, uR, nR, prjR] = await Promise.all([
             GET('/assets', { limit: 500 }),
             GET('/rigs'),
             GET('/companies'),
@@ -10157,6 +10931,7 @@ Instructions:
             GET('/bom', { limit: 1000 }),
             GET('/users'),
             GET('/notifications'),
+            GET('/projects', { limit: 500 }),
           ]);
 
           // Mutate arrays in place — render functions always see live DB data
@@ -10172,6 +10947,7 @@ Instructions:
           refill(CERTIFICATES, (cR.data || []).map(normC));
           refill(BOM_ITEMS, (bR.data || []).map(normB));
           refill(USERS, uR.data || []);
+          if (typeof PROJECTS !== 'undefined') refill(PROJECTS, (prjR.data || []).map(normP));
           refill(NOTIFICATIONS, (nR.data || []).map(n => ({
             ...n, type: 'ni-' + n.kind, desc: n.description, read: n.is_read
           })));
