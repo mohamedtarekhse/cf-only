@@ -272,6 +272,23 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     return respond({ success:true, id: data.id, recipients: recipients.length });
   }
 
+
+  // PROJECTS
+  if (res==='projects') {
+    if(method==='GET'&&!id){
+      const f={};
+      if(q.get('status'))   f.status  =`eq.${q.get('status')}`;
+      if(q.get('rig_name')) f.rig_name=`eq.${q.get('rig_name')}`;
+      if(q.get('company'))  f.company =`eq.${q.get('company')}`;
+      if(q.get('priority')) f.priority=`eq.${q.get('priority')}`;
+      return ok(await sbGet(SB,KEY,'projects',{filters:f,order:'created_at.desc',limit:+(q.get('limit')||500)}));
+    }
+    if(method==='GET')   return ok(await sbGet(SB,KEY,'projects',{filters:{project_id:`eq.${id}`},single:true}));
+    if(method==='POST')  { if(!body.project_id) body.project_id='PRJ-'+Date.now().toString().slice(-8); return ok(await sbPost(SB,KEY,'projects',body)); }
+    if(method==='PUT')   { const {id:_i,project_id:_p,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'projects',{project_id:`eq.${id}`},u)); }
+    if(method==='DELETE'){ const r=await sbDelete(SB,KEY,'projects',{project_id:`eq.${id}`}); if(r.error)return err500(r.error); return ok({deleted:id}); }
+  }
+
   // NOTIFICATIONS
   if (res==='notifications') {
     if(method==='PATCH'&&id==='mark-all-read') return ok(await sbPatch(SB,KEY,'notifications',{is_read:`eq.false`},{is_read:true}));
