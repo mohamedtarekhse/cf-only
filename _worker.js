@@ -5,6 +5,7 @@
  * Cloudflare Pages → Settings → Environment Variables:
  *   SUPABASE_URL              = https://tetbgjfltggmejqwntez.supabase.co
  *   SUPABASE_SERVICE_ROLE_KEY = sb_publishable_uSHDoMEafLUF1FzAQCVn0Q_JBKTd1Br
+ *   RESEND_API_KEY             = re_N2Xokoux_21WeXMSYAbdSz9mnMd5avo5e
  */
 
 export default {
@@ -20,7 +21,7 @@ export default {
       if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY)
         return respond({ success:false, error:'Supabase secrets not configured in Cloudflare Pages environment variables.' }, 500);
       try {
-        return await router(path, method, url, request, env.SUPABASE_URL.replace(/\/$/,''), env.SUPABASE_SERVICE_ROLE_KEY);
+        return await router(path, method, url, request, env.SUPABASE_URL.replace(/\/$/,''), env.SUPABASE_SERVICE_ROLE_KEY, env);
       } catch(err) {
         console.error(err);
         return respond({ success:false, error: err.message||'Internal error' }, 500);
@@ -90,7 +91,7 @@ async function parseRes(r, single) {
 
 // ── Router ────────────────────────────────────────────────────────────────────
 
-async function router(path, method, url, request, SB, KEY) {
+async function router(path, method, url, request, SB, KEY, env={}) {
   const q    = url.searchParams;
   const seg  = path.replace(/^\/api\/?/,'').split('/');
   const res  = seg[0];
@@ -245,20 +246,30 @@ async function router(path, method, url, request, SB, KEY) {
     if(method==='DELETE'){const r=await sbDelete(SB,KEY,'app_users',{id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
   }
 
-  // PROJECTS
-  if (res==='projects') {
-    if(method==='GET'&&!id){
-      const f={};
-      if(q.get('status'))   f.status  =`eq.${q.get('status')}`;
-      if(q.get('rig_name')) f.rig_name=`eq.${q.get('rig_name')}`;
-      if(q.get('company'))  f.company =`eq.${q.get('company')}`;
-      if(q.get('priority')) f.priority=`eq.${q.get('priority')}`;
-      return ok(await sbGet(SB,KEY,'projects',{filters:f,order:'created_at.desc',limit:+(q.get('limit')||500)}));
-    }
-    if(method==='GET')   return ok(await sbGet(SB,KEY,'projects',{filters:{project_id:`eq.${id}`},single:true}));
-    if(method==='POST')  { if(!body.project_id) body.project_id='PRJ-'+Date.now().toString().slice(-8); return ok(await sbPost(SB,KEY,'projects',body)); }
-    if(method==='PUT')   { const {id:_i,project_id:_p,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'projects',{project_id:`eq.${id}`},u)); }
-    if(method==='DELETE'){ const r=await sbDelete(SB,KEY,'projects',{project_id:`eq.${id}`}); if(r.error)return err500(r.error); return ok({deleted:id}); }
+
+  // SEND EMAIL (via Resend)
+  if (res === 'send-email') {
+    if (method !== 'POST') return respond({ success:false, error:'POST only' }, 405);
+    const RESEND_KEY = env.RESEND_API_KEY || 're_N2Xokoux_21WeXMSYAbdSz9mnMd5avo5e';
+    const { to, subject, html, text, from_name } = body;
+    if (!to || !subject || (!html && !text)) return respond({ success:false, error:'Missing to/subject/html' }, 400);
+    const recipients = Array.isArray(to) ? to : to.split(/[;,]/).map(s=>s.trim()).filter(Boolean);
+    if (!recipients.length) return respond({ success:false, error:'No valid recipients' }, 400);
+    const payload = {
+      from: `${from_name || 'Asset Management System'} <alerts@resend.dev>`,
+      to: recipients,
+      subject,
+      ...(html ? { html } : {}),
+      ...(text ? { text } : {}),
+    };
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await r.json();
+    if (!r.ok) return respond({ success:false, error: data.message || data.name || 'Resend error', detail: data }, r.status);
+    return respond({ success:true, id: data.id, recipients: recipients.length });
   }
 
   // NOTIFICATIONS

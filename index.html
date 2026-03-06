@@ -2529,6 +2529,25 @@
         font-size: 14px;
       }
     }
+
+    /* ── INSPECTION ALERT RULES ── */
+    .alert-tab {
+      height: 38px; padding: 0 16px; border: none; background: none;
+      border-bottom: 2px solid transparent; font-size: 13px; font-weight: 500;
+      color: var(--sap-text-muted); cursor: pointer; display: flex; align-items: center; gap: 6px;
+      transition: color .15s, border-color .15s;
+    }
+    .alert-tab.active { color: var(--sap-blue); border-bottom-color: var(--sap-blue); font-weight: 600; }
+    .alert-tab:hover:not(.active) { color: var(--sap-text); background: #f5f6f7; }
+    .alert-rule-card { border: 1px solid var(--sap-border); border-radius: 8px; padding: 12px 16px; display: flex; align-items: flex-start; gap: 12px; background: #fff; transition: box-shadow .15s; }
+    .alert-rule-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+    .alert-rule-card.disabled { opacity: .5; }
+    .alert-rule-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 16px; }
+    .alert-active-item { border: 1px solid; border-radius: 8px; padding: 10px 14px; display: flex; align-items: flex-start; gap: 10px; margin-bottom:6px; }
+    .alert-active-item.warning { background: #FFF8E1; border-color: #FFB300; }
+    .alert-active-item.error   { background: #FDECEA; border-color: #B00020; }
+    .alert-active-item.info    { background: #EBF4FF; border-color: #0070F2; }
+    .insp-banner { display:flex;align-items:center;gap:10px;background:#FFF3E0;border:1px solid #FFB300;border-radius:6px;padding:8px 14px;font-size:13px;margin-bottom:12px;cursor:pointer; }
   </style>
 </head>
 <script>
@@ -2833,11 +2852,15 @@
       <button class="shell-btn" id="refreshBtn" onclick="refreshDatabase()" title="Refresh Database" style="position:relative">
         <i class="fas fa-sync-alt" id="refreshIcon"></i>
       </button>
+      <button class="shell-btn" onclick="toggleNotif()" title="Notifications" style="position:relative">
         <i class="fas fa-bell"></i>
-        <span class="badge" id="notifBadge">4</span>
+        <span class="badge" id="notifBadge" style="display:none">0</span>
       </button>
       <button class="shell-btn" onclick="openEmailModal()" title="Send Email Alert">
         <i class="fas fa-envelope"></i>
+      </button>
+      <button class="shell-btn" onclick="openAlertRulesModal()" title="Inspection Alert Rules" style="position:relative">
+        <i class="fas fa-sliders-h"></i>
       </button>
       <button class="shell-btn" title="Settings">
         <i class="fas fa-cog"></i>
@@ -4336,6 +4359,139 @@
         <div style="display:flex;gap:8px">
           <button class="btn btn-secondary" onclick="closeModal('projectMassEditModal')">Cancel</button>
           <button class="btn btn-primary" onclick="applyProjectMassEdit()"><i class="fas fa-check"></i> Apply Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- INSPECTION ALERT RULES MODAL -->
+  <div class="modal-overlay" id="alertRulesModal">
+    <div class="modal" style="width:680px;max-width:96vw">
+      <div class="modal-header">
+        <i class="fas fa-bell" style="color:var(--sap-blue);font-size:18px"></i>
+        <h2>Inspection Alert Rules</h2>
+        <button class="shell-btn" style="color:var(--sap-text-muted)" onclick="closeModal('alertRulesModal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body" style="padding:0">
+        <!-- Tabs -->
+        <div style="display:flex;border-bottom:1px solid var(--sap-border);padding:0 20px;gap:0">
+          <button class="alert-tab active" id="aTab-rules" onclick="switchAlertTab('rules')"><i class="fas fa-list-ul"></i> Alert Rules</button>
+          <button class="alert-tab" id="aTab-active" onclick="switchAlertTab('active')"><i class="fas fa-exclamation-triangle"></i> Active Alerts <span id="activeAlertCount" style="background:#B00;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:1px 6px;margin-left:4px">0</span></button>
+          <button class="alert-tab" id="aTab-new" onclick="switchAlertTab('new')"><i class="fas fa-plus"></i> New Rule</button>
+        </div>
+
+        <!-- Rules List Pane -->
+        <div id="alertPane-rules" style="padding:16px 20px;min-height:320px">
+          <div id="alertRulesList" style="display:flex;flex-direction:column;gap:10px"></div>
+          <div id="alertRulesEmpty" style="display:none;text-align:center;padding:40px;color:var(--sap-text-muted)">
+            <i class="fas fa-bell-slash" style="font-size:32px;opacity:.3;display:block;margin-bottom:8px"></i>
+            No alert rules yet. Click "New Rule" to create one.
+          </div>
+        </div>
+
+        <!-- Active Alerts Pane -->
+        <div id="alertPane-active" style="display:none;padding:16px 20px;min-height:320px">
+          <div id="activeAlertsList" style="display:flex;flex-direction:column;gap:8px"></div>
+          <div id="activeAlertsEmpty" style="display:none;text-align:center;padding:40px;color:var(--sap-text-muted)">
+            <i class="fas fa-check-circle" style="font-size:32px;opacity:.3;color:#107E3E;display:block;margin-bottom:8px"></i>
+            No active alerts — all inspections are on schedule.
+          </div>
+        </div>
+
+        <!-- New / Edit Rule Pane -->
+        <div id="alertPane-new" style="display:none;padding:20px;min-height:320px">
+          <input type="hidden" id="alertRuleEditId">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div class="form-group" style="grid-column:1/-1">
+              <label class="form-label">Rule Name <span style="color:#b00">*</span></label>
+              <input class="form-control" id="ar_name" placeholder="e.g. BOP Pressure Test Alert">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Inspection Type <span style="color:#b00">*</span></label>
+              <select class="form-control" id="ar_type">
+                <option value="">— Select —</option>
+                <option>Annual Inspection</option>
+                <option>6-Month Inspection</option>
+                <option>Quarterly Inspection</option>
+                <option>Monthly Inspection</option>
+                <option>BOP Pressure Test</option>
+                <option>Hydrostatic Test</option>
+                <option>Load Test</option>
+                <option>NDT Inspection</option>
+                <option>ATEX/IECEX Inspection</option>
+                <option>Fire Extinguisher Service</option>
+                <option>SCBA Service</option>
+                <option>Well Control</option>
+                <option>Calibration</option>
+                <option>Custom</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Applies To</label>
+              <select class="form-control" id="ar_scope">
+                <option value="all">All Assets</option>
+                <option value="category">Specific Category</option>
+                <option value="rig">Specific Rig</option>
+                <option value="company">Specific Company</option>
+              </select>
+            </div>
+            <div class="form-group" id="ar_scopeValueGroup" style="display:none">
+              <label class="form-label" id="ar_scopeValueLabel">Value</label>
+              <select class="form-control" id="ar_scopeValue"></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Alert Interval (days before due) <span style="color:#b00">*</span></label>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px" id="ar_intervalWrap">
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" name="ar_interval" value="7" style="accent-color:var(--sap-blue)"> 7 days</label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" name="ar_interval" value="14" checked style="accent-color:var(--sap-blue)"> 14 days</label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" name="ar_interval" value="30" checked style="accent-color:var(--sap-blue)"> 30 days</label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" name="ar_interval" value="60" style="accent-color:var(--sap-blue)"> 60 days</label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" name="ar_interval" value="90" style="accent-color:var(--sap-blue)"> 90 days</label>
+              </div>
+              <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
+                <span style="font-size:12px;color:var(--sap-text-muted)">Custom:</span>
+                <input class="form-control" id="ar_customInterval" type="number" min="1" max="365" placeholder="e.g. 45" style="width:90px">
+                <span style="font-size:12px;color:var(--sap-text-muted)">days</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Severity</label>
+              <select class="form-control" id="ar_severity">
+                <option value="warning">⚠ Warning</option>
+                <option value="error">🔴 Critical</option>
+                <option value="info">ℹ Info</option>
+              </select>
+            </div>
+            <div class="form-group" style="grid-column:1/-1">
+              <label class="form-label">Notify Via</label>
+              <div style="display:flex;gap:16px;margin-top:4px;flex-wrap:wrap">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="ar_notifBell" checked style="accent-color:var(--sap-blue)"> <i class="fas fa-bell" style="color:var(--sap-blue)"></i> In-App Bell</label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="ar_notifEmail" style="accent-color:var(--sap-blue)"> <i class="fas fa-envelope" style="color:#107E3E"></i> Email</label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="ar_notifBanner" style="accent-color:var(--sap-blue)"> <i class="fas fa-flag" style="color:#E9730C"></i> Dashboard Banner</label>
+              </div>
+            </div>
+            <div class="form-group" id="ar_emailGroup" style="display:none;grid-column:1/-1">
+              <label class="form-label">Email Recipients (semicolon-separated)</label>
+              <input class="form-control" id="ar_email" placeholder="ops@company.com; safety@company.com">
+            </div>
+            <div class="form-group" style="grid-column:1/-1">
+              <label class="form-label">Enabled</label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:4px">
+                <input type="checkbox" id="ar_enabled" checked style="accent-color:var(--sap-blue);width:16px;height:16px">
+                <span style="font-size:13px">Rule is active</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content:space-between">
+        <div style="display:flex;gap:8px" id="alertRulesFooterLeft">
+          <button class="btn btn-ghost" onclick="runAndEmail()"><i class="fas fa-play"></i> Run Now &amp; Send Emails</button>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" onclick="closeModal('alertRulesModal')">Close</button>
+          <button class="btn btn-primary" id="alertRuleSaveBtn" onclick="saveAlertRule()" style="display:none"><i class="fas fa-save"></i> Save Rule</button>
         </div>
       </div>
     </div>
@@ -6153,6 +6309,452 @@ Asset Management System</textarea>
       doc.save(`Projects_${suffix}.pdf`);
       showToast(`Exported ${data.length} project(s) to PDF ✓`,'success');
     }
+
+
+    // ══════════════════════════════════════════════════════════════════
+    //  INSPECTION ALERT RULES ENGINE
+    // ══════════════════════════════════════════════════════════════════
+    let ALERT_RULES = JSON.parse(localStorage.getItem('ams_alert_rules') || '[]');
+
+    function saveAlertRules() {
+      try { localStorage.setItem('ams_alert_rules', JSON.stringify(ALERT_RULES)); } catch(e){}
+    }
+
+    // ── Modal tab switch ────────────────────────────────────────────
+    function switchAlertTab(tab) {
+      ['rules','active','new'].forEach(t => {
+        document.getElementById('alertPane-' + t).style.display = t === tab ? 'block' : 'none';
+        document.getElementById('aTab-' + t).classList.toggle('active', t === tab);
+      });
+      const saveBtn = document.getElementById('alertRuleSaveBtn');
+      if (saveBtn) saveBtn.style.display = tab === 'new' ? '' : 'none';
+      if (tab === 'rules') renderAlertRulesList();
+      if (tab === 'active') renderActiveAlerts();
+      if (tab === 'new') resetAlertRuleForm();
+    }
+
+    function openAlertRulesModal() {
+      switchAlertTab('rules');
+      openModal('alertRulesModal');
+      runAllAlertRules();
+    }
+
+    // ── Scope value dropdown ────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function() {
+      const scopeSel = document.getElementById('ar_scope');
+      const notifEmail = document.getElementById('ar_notifEmail');
+      if (scopeSel) scopeSel.addEventListener('change', updateScopeValueDropdown);
+      if (notifEmail) notifEmail.addEventListener('change', function() {
+        const g = document.getElementById('ar_emailGroup');
+        if (g) g.style.display = this.checked ? 'block' : 'none';
+      });
+    });
+
+    function updateScopeValueDropdown() {
+      const scope = document.getElementById('ar_scope').value;
+      const grp = document.getElementById('ar_scopeValueGroup');
+      const lbl = document.getElementById('ar_scopeValueLabel');
+      const sel = document.getElementById('ar_scopeValue');
+      grp.style.display = scope === 'all' ? 'none' : '';
+      sel.innerHTML = '';
+      if (scope === 'category') {
+        lbl.textContent = 'Category';
+        ['Tubular','Handling Tools','Well Head Equipment','Well Control Equipment','Safety Equipment','Generators','Agitators','Compressors','Engines','AC Motors','Centrifugal Pumps','Drilling Equipment','Hoisting Equipment','Winches'].forEach(c => sel.appendChild(new Option(c,c)));
+      } else if (scope === 'rig') {
+        lbl.textContent = 'Rig';
+        RIGS.forEach(r => sel.appendChild(new Option(r.name, r.name)));
+      } else if (scope === 'company') {
+        lbl.textContent = 'Company';
+        COMPANIES.forEach(c => sel.appendChild(new Option(c.name, c.name)));
+      }
+    }
+
+    // ── Reset new-rule form ─────────────────────────────────────────
+    function resetAlertRuleForm(rule) {
+      document.getElementById('alertRuleEditId').value = rule ? rule.id : '';
+      document.getElementById('ar_name').value = rule ? rule.name : '';
+      document.getElementById('ar_type').value = rule ? rule.type : '';
+      document.getElementById('ar_scope').value = rule ? (rule.scope || 'all') : 'all';
+      document.getElementById('ar_severity').value = rule ? (rule.severity || 'warning') : 'warning';
+      document.getElementById('ar_notifBell').checked = rule ? rule.notifBell !== false : true;
+      document.getElementById('ar_notifEmail').checked = rule ? !!rule.notifEmail : false;
+      document.getElementById('ar_notifBanner').checked = rule ? !!rule.notifBanner : false;
+      document.getElementById('ar_email').value = rule ? (rule.emailRecipients || '') : '';
+      document.getElementById('ar_enabled').checked = rule ? rule.enabled !== false : true;
+      document.getElementById('ar_emailGroup').style.display = (rule && rule.notifEmail) ? '' : 'none';
+      // intervals
+      document.querySelectorAll('input[name="ar_interval"]').forEach(cb => {
+        cb.checked = rule ? (rule.intervals || [14,30]).includes(parseInt(cb.value)) : [14,30].includes(parseInt(cb.value));
+      });
+      document.getElementById('ar_customInterval').value = rule ? (rule.customInterval || '') : '';
+      updateScopeValueDropdown();
+      if (rule && rule.scopeValue) {
+        setTimeout(() => { const s = document.getElementById('ar_scopeValue'); if(s) s.value = rule.scopeValue; }, 50);
+      }
+    }
+
+    function editAlertRule(id) {
+      const rule = ALERT_RULES.find(r => r.id === id);
+      if (!rule) return;
+      switchAlertTab('new');
+      resetAlertRuleForm(rule);
+      document.getElementById('aTab-new').innerHTML = '<i class="fas fa-edit"></i> Edit Rule';
+    }
+
+    // ── Save rule ───────────────────────────────────────────────────
+    function saveAlertRule() {
+      const name = document.getElementById('ar_name').value.trim();
+      const type = document.getElementById('ar_type').value;
+      if (!name) { showToast('Rule name is required.', 'error'); return; }
+      if (!type) { showToast('Select an inspection type.', 'error'); return; }
+
+      const intervals = [...document.querySelectorAll('input[name="ar_interval"]:checked')].map(c => parseInt(c.value));
+      const custom = parseInt(document.getElementById('ar_customInterval').value);
+      if (!isNaN(custom) && custom > 0) intervals.push(custom);
+      if (!intervals.length) { showToast('Select at least one alert interval.', 'error'); return; }
+
+      const editId = document.getElementById('alertRuleEditId').value;
+      const rule = {
+        id: editId || 'rule-' + Date.now(),
+        name, type,
+        scope: document.getElementById('ar_scope').value,
+        scopeValue: document.getElementById('ar_scopeValue').value,
+        intervals: [...new Set(intervals)].sort((a,b)=>a-b),
+        customInterval: parseInt(document.getElementById('ar_customInterval').value) || null,
+        severity: document.getElementById('ar_severity').value,
+        notifBell: document.getElementById('ar_notifBell').checked,
+        notifEmail: document.getElementById('ar_notifEmail').checked,
+        notifBanner: document.getElementById('ar_notifBanner').checked,
+        emailRecipients: document.getElementById('ar_email').value.trim(),
+        enabled: document.getElementById('ar_enabled').checked,
+        createdAt: editId ? (ALERT_RULES.find(r=>r.id===editId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
+      };
+
+      if (editId) {
+        const idx = ALERT_RULES.findIndex(r => r.id === editId);
+        if (idx >= 0) ALERT_RULES[idx] = rule; else ALERT_RULES.push(rule);
+      } else {
+        ALERT_RULES.push(rule);
+      }
+      saveAlertRules();
+      showToast('Alert rule saved ✓', 'success');
+      switchAlertTab('rules');
+      document.getElementById('aTab-new').innerHTML = '<i class="fas fa-plus"></i> New Rule';
+      runAllAlertRules();
+    }
+
+    // ── Delete rule ─────────────────────────────────────────────────
+    function deleteAlertRule(id) {
+      if (!confirm('Delete this alert rule?')) return;
+      ALERT_RULES = ALERT_RULES.filter(r => r.id !== id);
+      saveAlertRules();
+      renderAlertRulesList();
+      showToast('Rule deleted ✓', 'warning');
+    }
+
+    function toggleAlertRule(id) {
+      const r = ALERT_RULES.find(x => x.id === id);
+      if (r) { r.enabled = !r.enabled; saveAlertRules(); renderAlertRulesList(); }
+    }
+
+    // ── Render rules list ───────────────────────────────────────────
+    function renderAlertRulesList() {
+      const list = document.getElementById('alertRulesList');
+      const empty = document.getElementById('alertRulesEmpty');
+      if (!ALERT_RULES.length) {
+        list.innerHTML = ''; empty.style.display = '';
+        return;
+      }
+      empty.style.display = 'none';
+      const sevColor = { warning:'#E9730C', error:'#B00020', info:'#0070F2' };
+      const sevIcon  = { warning:'exclamation-triangle', error:'exclamation-circle', info:'info-circle' };
+      list.innerHTML = ALERT_RULES.map(r => {
+        const intervals = r.intervals.join(', ') + ' days';
+        const notifIcons = [r.notifBell?'<i class="fas fa-bell" title="In-app" style="color:#0070F2"></i>':'',
+          r.notifEmail?'<i class="fas fa-envelope" title="Email" style="color:#107E3E"></i>':'',
+          r.notifBanner?'<i class="fas fa-flag" title="Banner" style="color:#E9730C"></i>':''].filter(Boolean).join(' ');
+        const scopeText = r.scope === 'all' ? 'All assets' : r.scope + ': ' + (r.scopeValue || '');
+        return `<div class="alert-rule-card ${r.enabled?'':'disabled'}">
+          <div class="alert-rule-icon" style="background:${sevColor[r.severity] || '#E9730C'}22;color:${sevColor[r.severity] || '#E9730C'}">
+            <i class="fas fa-${sevIcon[r.severity] || 'exclamation-triangle'}"></i>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:13.5px;margin-bottom:2px">${r.name}</div>
+            <div style="font-size:12px;color:var(--sap-text-muted);margin-bottom:4px">
+              <span style="background:#EBF4FF;color:#0040B0;border-radius:4px;padding:1px 7px;font-weight:600">${r.type}</span>
+              &nbsp;·&nbsp;${scopeText}&nbsp;·&nbsp;Alert: ${intervals}
+            </div>
+            <div style="font-size:12px;display:flex;align-items:center;gap:8px">${notifIcons}</div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+            <label style="cursor:pointer;display:flex;align-items:center;gap:4px;font-size:12px">
+              <input type="checkbox" ${r.enabled?'checked':''} style="accent-color:var(--sap-blue)" onchange="toggleAlertRule('${r.id}')">
+              On
+            </label>
+            <button class="btn btn-ghost btn-icon" title="Send test email" onclick="testRuleEmail('${r.id}')" style="color:#107E3E"><i class="fas fa-paper-plane"></i></button>
+            <button class="btn btn-ghost btn-icon" onclick="editAlertRule('${r.id}')"><i class="fas fa-edit"></i></button>
+            <button class="btn btn-ghost btn-icon" style="color:var(--sap-error)" onclick="deleteAlertRule('${r.id}')"><i class="fas fa-trash"></i></button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // ── Core: run all rules against certs + maint schedules ─────────
+    let _lastAlertResults = [];
+    // Track sent emails today to avoid spam (key → date string)
+    let _emailSentLog = JSON.parse(sessionStorage.getItem('ams_email_log') || '{}');
+
+    function saveEmailLog() {
+      try { sessionStorage.setItem('ams_email_log', JSON.stringify(_emailSentLog)); } catch(e) {}
+    }
+
+    function runAllAlertRules(sendEmails = false) {
+      const today = new Date(); today.setHours(0,0,0,0);
+      const todayStr = today.toISOString().slice(0, 10);
+      _lastAlertResults = [];
+
+      // Group email alerts per rule so one email per rule, not one per asset
+      const emailQueue = {}; // ruleId → { rule, alerts[] }
+
+      ALERT_RULES.filter(r => r.enabled).forEach(rule => {
+        let assets = [...ASSETS];
+        if (rule.scope === 'category' && rule.scopeValue) assets = assets.filter(a => a.category === rule.scopeValue);
+        if (rule.scope === 'rig'      && rule.scopeValue) assets = assets.filter(a => a.rigName === rule.scopeValue);
+        if (rule.scope === 'company'  && rule.scopeValue) assets = assets.filter(a => a.company === rule.scopeValue);
+        const assetIds = new Set(assets.map(a => a.assetId));
+
+        const matchingCerts = CERTIFICATES.filter(c =>
+          assetIds.has(c.assetId) &&
+          (c.inspectionType || '').toLowerCase().includes(rule.type.toLowerCase().slice(0, 10))
+        );
+        const matchingMaint = MAINT_SCHEDULES.filter(m =>
+          assetIds.has(m.assetId) &&
+          (m.type || m.task || '').toLowerCase().includes(rule.type.toLowerCase().slice(0, 10))
+        );
+
+        [...matchingCerts.map(c => ({ id: c.certId, assetId: c.assetId, label: c.certType || rule.type, dueDate: c.nextInspection, source: 'cert' })),
+         ...matchingMaint.map(m => ({ id: m.id, assetId: m.assetId, label: m.task || rule.type, dueDate: m.nextDue, source: 'maint' }))
+        ].forEach(item => {
+          if (!item.dueDate) return;
+          const due = new Date(item.dueDate); due.setHours(0,0,0,0);
+          const daysLeft = Math.ceil((due - today) / 86400000);
+          const asset = ASSETS.find(a => a.assetId === item.assetId);
+          const assetName = asset ? asset.name : item.assetId;
+
+          rule.intervals.forEach(interval => {
+            if (daysLeft <= interval && daysLeft >= -30) {
+              const isOverdue = daysLeft < 0;
+              const alertKey = `${rule.id}:${item.id}:${interval}`;
+              const alertObj = {
+                ruleId: rule.id, ruleName: rule.name, ruleType: rule.type,
+                severity: isOverdue ? 'error' : rule.severity,
+                assetId: item.assetId, assetName, label: item.label,
+                daysLeft, isOverdue, source: item.source,
+                notifBell: rule.notifBell, notifEmail: rule.notifEmail, notifBanner: rule.notifBanner,
+                emailRecipients: rule.emailRecipients,
+                alertKey,
+              };
+              _lastAlertResults.push(alertObj);
+
+              // In-app bell notification
+              if (rule.notifBell) {
+                const title = isOverdue ? `${item.label} OVERDUE` : `${item.label} Due in ${daysLeft}d`;
+                const desc  = `${assetName} — ${isOverdue ? Math.abs(daysLeft)+' days past due' : daysLeft+' days remaining'}`;
+                if (!NOTIFICATIONS.some(n => n.title === title && n.desc === desc)) {
+                  addNotification(isOverdue ? 'error' : rule.severity, isOverdue ? 'exclamation-circle' : 'clock', title, desc, 'Now');
+                }
+              }
+
+              // Queue for email (grouped per rule)
+              if (rule.notifEmail && rule.emailRecipients) {
+                if (!emailQueue[rule.id]) emailQueue[rule.id] = { rule, alerts: [] };
+                emailQueue[rule.id].alerts.push(alertObj);
+              }
+            }
+          });
+        });
+      });
+
+      // Fire emails — one per rule, deduplicated per day
+      if (sendEmails || false) {
+        Object.values(emailQueue).forEach(({ rule, alerts }) => {
+          const emailKey = `${rule.id}:${todayStr}`;
+          if (_emailSentLog[emailKey]) return; // already sent today
+          _emailSentLog[emailKey] = todayStr;
+          saveEmailLog();
+          sendInspectionEmail(rule, alerts).catch(e => console.warn('Email failed:', e));
+        });
+      }
+
+      const badge = document.getElementById('activeAlertCount');
+      if (badge) badge.textContent = _lastAlertResults.length;
+    }
+
+    // ── Build HTML email and POST to /api/send-email ─────────────────
+    async function sendInspectionEmail(rule, alerts) {
+      if (!alerts.length || !rule.emailRecipients) return;
+      const todayStr = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' });
+      const overdueCount = alerts.filter(a => a.isOverdue).length;
+      const dueCount     = alerts.filter(a => !a.isOverdue).length;
+      const sevColor     = rule.severity === 'error' ? '#B00020' : rule.severity === 'info' ? '#0070F2' : '#E9730C';
+      const subject      = overdueCount
+        ? `🔴 OVERDUE: ${rule.name} — ${overdueCount} asset(s) past due`
+        : `⚠ Inspection Due: ${rule.name} — ${dueCount} asset(s) need attention`;
+
+      const rows = alerts.map(a => {
+        const color = a.isOverdue ? '#B00020' : a.daysLeft <= 7 ? '#E9730C' : '#354A5E';
+        const status = a.isOverdue
+          ? `<span style="color:#B00020;font-weight:700">OVERDUE (${Math.abs(a.daysLeft)}d past)</span>`
+          : `<span style="color:#E9730C;font-weight:600">Due in ${a.daysLeft} day(s)</span>`;
+        return `<tr style="border-bottom:1px solid #E8E8E8">
+          <td style="padding:10px 12px;font-size:13px;font-weight:600;color:#1a2e44">${a.assetName}</td>
+          <td style="padding:10px 12px;font-size:12px;color:#354A5E">${a.assetId}</td>
+          <td style="padding:10px 12px;font-size:12px;color:#354A5E">${a.label}</td>
+          <td style="padding:10px 12px;font-size:12px">${status}</td>
+        </tr>`;
+      }).join('');
+
+      const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#F5F6F7;font-family:'Segoe UI',Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#F5F6F7;padding:32px 0">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.10)">
+
+  <!-- Header -->
+  <tr><td style="background:linear-gradient(90deg,#0d1b2a,#1a3a5c);padding:28px 32px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="background:#0070F2;border-radius:8px;width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;margin-right:12px">
+        <span style="color:#fff;font-size:20px">⚙</span>
+      </div>
+      <div>
+        <div style="color:#fff;font-size:18px;font-weight:700">Asset Management System</div>
+        <div style="color:#90B4D4;font-size:12px;margin-top:2px">Inspection Alert — ${todayStr}</div>
+      </div>
+    </div>
+  </td></tr>
+
+  <!-- Alert Banner -->
+  <tr><td style="background:${sevColor};padding:14px 32px">
+    <div style="color:#fff;font-size:15px;font-weight:700">${subject.replace('🔴 ','').replace('⚠ ','')}</div>
+    <div style="color:rgba(255,255,255,.85);font-size:12px;margin-top:3px">Rule: ${rule.name} &nbsp;·&nbsp; Type: ${rule.type}</div>
+  </td></tr>
+
+  <!-- Summary pills -->
+  <tr><td style="padding:20px 32px 8px">
+    <table><tr>
+      <td style="background:#FDECEA;border-radius:6px;padding:10px 18px;text-align:center;margin-right:12px">
+        <div style="font-size:22px;font-weight:800;color:#B00020">${overdueCount}</div>
+        <div style="font-size:11px;color:#B00020;font-weight:600">OVERDUE</div>
+      </td>
+      <td width="12"></td>
+      <td style="background:#FFF3E0;border-radius:6px;padding:10px 18px;text-align:center">
+        <div style="font-size:22px;font-weight:800;color:#E9730C">${dueCount}</div>
+        <div style="font-size:11px;color:#E9730C;font-weight:600">DUE SOON</div>
+      </td>
+      <td width="12"></td>
+      <td style="background:#EBF4FF;border-radius:6px;padding:10px 18px;text-align:center">
+        <div style="font-size:22px;font-weight:800;color:#0040B0">${alerts.length}</div>
+        <div style="font-size:11px;color:#0040B0;font-weight:600">TOTAL</div>
+      </td>
+    </tr></table>
+  </td></tr>
+
+  <!-- Table -->
+  <tr><td style="padding:12px 32px 24px">
+    <div style="font-size:13px;font-weight:700;color:#354A5E;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Affected Assets</div>
+    <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #E8E8E8;border-radius:6px;overflow:hidden">
+      <thead>
+        <tr style="background:#F5F6F7">
+          <th style="padding:9px 12px;font-size:11.5px;font-weight:700;color:#6A6D70;text-align:left">Asset Name</th>
+          <th style="padding:9px 12px;font-size:11.5px;font-weight:700;color:#6A6D70;text-align:left">Asset ID</th>
+          <th style="padding:9px 12px;font-size:11.5px;font-weight:700;color:#6A6D70;text-align:left">Inspection</th>
+          <th style="padding:9px 12px;font-size:11.5px;font-weight:700;color:#6A6D70;text-align:left">Status</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </td></tr>
+
+  <!-- Footer -->
+  <tr><td style="background:#F5F6F7;padding:16px 32px;border-top:1px solid #E8E8E8">
+    <p style="font-size:11.5px;color:#6A6D70;margin:0">This is an automated alert from your Asset Management System.<br>
+    Log in to review and take action on these items.</p>
+  </td></tr>
+
+</table>
+</td></tr></table>
+</body></html>`;
+
+      await POST('/send-email', {
+        to: rule.emailRecipients,
+        subject,
+        html,
+        from_name: 'Asset Management — Inspection Alerts',
+      });
+    }
+
+    // ── Manual "Send Test Email" for a rule ──────────────────────────
+    async function testRuleEmail(ruleId) {
+      const rule = ALERT_RULES.find(r => r.id === ruleId);
+      if (!rule) return;
+      if (!rule.emailRecipients) { showToast('Add email recipients to this rule first.', 'warning'); return; }
+      showToast('Sending test email…', 'info');
+      try {
+        // Build a fake alert for testing
+        const testAlerts = [{
+          assetId: 'TEST-001', assetName: 'Test Asset (Sample)',
+          label: rule.type, daysLeft: 14, isOverdue: false,
+          severity: rule.severity,
+        }];
+        await sendInspectionEmail(rule, testAlerts);
+        showToast('Test email sent to ' + rule.emailRecipients + ' ✓', 'success');
+      } catch(e) {
+        showToast('Email failed: ' + e.message, 'error');
+      }
+    }
+
+    // ── Render active alerts pane ───────────────────────────────────
+    function renderActiveAlerts() {
+      runAllAlertRules();
+      const list = document.getElementById('activeAlertsList');
+      const empty = document.getElementById('activeAlertsEmpty');
+      if (!_lastAlertResults.length) {
+        list.innerHTML = ''; empty.style.display = ''; return;
+      }
+      empty.style.display = 'none';
+      const bg = { error:'#FDECEA', warning:'#FFF8E1', info:'#EBF4FF' };
+      const bd = { error:'#B00020', warning:'#E9730C', info:'#0070F2' };
+      const ic = { error:'exclamation-circle', warning:'clock', info:'info-circle' };
+      list.innerHTML = _lastAlertResults.map(a =>
+        `<div class="alert-active-item ${a.severity}">
+          <i class="fas fa-${ic[a.severity]||'clock'}" style="color:${bd[a.severity]};font-size:16px;margin-top:2px;flex-shrink:0"></i>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:13px">${a.label} — ${a.assetName}</div>
+            <div style="font-size:12px;color:#354A5E;margin-top:2px">
+              ${a.isOverdue
+                ? `<span style="color:#B00020;font-weight:700">OVERDUE by ${Math.abs(a.daysLeft)} day(s)</span>`
+                : `<span style="color:#E9730C;font-weight:600">Due in ${a.daysLeft} day(s)</span>`}
+              &nbsp;·&nbsp; Rule: <em>${a.ruleName}</em>
+            </div>
+          </div>
+          <span style="font-size:11px;background:${bd[a.severity]};color:#fff;border-radius:4px;padding:2px 8px;flex-shrink:0">${a.severity.toUpperCase()}</span>
+        </div>`
+      ).join('');
+    }
+
+
+    function runAndEmail() {
+      runAllAlertRules(true);
+      const count = _lastAlertResults.filter(a => a.notifEmail).length;
+      showToast(count > 0 ? `Alerts checked — emails sent for ${count} item(s) ✓` : 'Alerts checked — no email alerts triggered.', count > 0 ? 'success' : 'info');
+      renderActiveAlerts();
+    }
+
+    // Auto-run alert rules on page load and after bootstrap
+    window.addEventListener('load', function() {
+      setTimeout(runAllAlertRules, 1500);
+    });
 
     window.onload = function () {
       renderNotifications();
@@ -10911,7 +11513,7 @@ Instructions:
           'renderBOMSection', 'renderNotifications', 'updateKPIs', 'updateReportKPIs',
           'updateCertKPIs', 'updateMaintKPIs', 'updateTransferKPIs', 'checkMaintAlerts',
           'populateBomSelects', 'populateFormSelects', 'populateCompanyFilters',
-          'renderMaintRigSelector'
+          'renderMaintRigSelector', 'runAllAlertRules'
         );
       }
 
@@ -10955,6 +11557,7 @@ Instructions:
           })));
 
           rerenderAll();
+          if (typeof runAllAlertRules === 'function') runAllAlertRules(true);
           showToast('Database connected ✓  (' + ASSETS.length + ' assets loaded)', 'success');
           console.log('[AssetAPI] Bootstrap complete');
 
