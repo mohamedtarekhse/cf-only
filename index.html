@@ -3236,7 +3236,7 @@
             </div>
 
             <div class="filter-group">
-              <label class="filter-label">Rig</label>
+              <label class="filter-label">Assigned Rig</label>
               <select class="filter-select" id="filterRig" onchange="applyFilters()">
                 <option value="">All Rigs</option>
                 <option value="Rig 1">Rig 1</option>
@@ -3253,6 +3253,17 @@
                 <option value="Rig 12">Rig 12</option>
                 <option value="Rig 13">Rig 13</option>
                 <option value="Rig 14">Rig 14</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label class="filter-label">Workshop</label>
+              <select class="filter-select" id="filterWorkshop" onchange="applyFilters()">
+                <option value="">All Workshops</option>
+                <option>Workshop A</option>
+                <option>Workshop B</option>
+                <option>Main Yard Workshop</option>
+                <option>Mechanical Shop</option>
+                <option>Electrical Shop</option>
               </select>
             </div>
             <div class="filter-group" style="margin-left:auto">
@@ -3278,7 +3289,8 @@
             <table id="assetTable">
               <thead id="assetThead">
                 <tr>
-                  <th class="checkbox-cell"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"></th>
+                  <th class="checkbox-cell"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)">
+                  </th>
                   <th onclick="sortTable('assetId')">Asset ID <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortTable('name')">Asset Name <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortTable('category')">Category <i class="fas fa-sort sort-icon"></i></th>
@@ -3287,7 +3299,8 @@
                   <th onclick="sortTable('location')">Location <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortTable('status')">Status <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortTable('value')">Value (USD) <i class="fas fa-sort sort-icon"></i></th>
-                  <th onclick="sortTable('acquisitionDate')">Acquisition Date <i class="fas fa-sort sort-icon"></i></th>
+                  <th onclick="sortTable('acquisitionDate')">Acquisition Date <i class="fas fa-sort sort-icon"></i>
+                  </th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -3459,14 +3472,15 @@
             </div>
 
             <div class="filter-group">
-              <label class="filter-label">Rig</label>
+              <label class="filter-label">Assigned Rig</label>
               <select class="filter-select" id="prjFilterRig" onchange="applyProjectFilters()">
                 <option value="">All Rigs</option>
               </select>
             </div>
             <div class="filter-group" style="margin-left:auto">
               <label class="filter-label">&nbsp;</label>
-              <button class="btn btn-ghost" onclick="clearProjectFilters()"><i class="fas fa-times"></i> Clear</button>
+              <button class="btn btn-ghost" onclick="clearProjectFilters()"><i class="fas fa-times"></i>
+                Clear</button>
             </div>
           </div>
 
@@ -3475,7 +3489,8 @@
             <span class="bulk-count" id="prjBulkCount">0</span>
             <span class="bulk-label">projects selected</span>
             <div class="bulk-sep"></div>
-            <button class="bulk-btn" onclick="openProjectMassEdit()"><i class="fas fa-edit"></i> Edit Selected</button>
+            <button class="bulk-btn" onclick="openProjectMassEdit()"><i class="fas fa-edit"></i> Edit
+              Selected</button>
             <button class="bulk-btn danger" onclick="bulkDeleteProjects()"><i class="fas fa-trash"></i> Delete
               Selected</button>
             <div class="bulk-spacer"></div>
@@ -3853,7 +3868,8 @@
             </div>
             <div class="filter-group" style="margin-left:auto">
               <label class="filter-label">&nbsp;</label>
-              <button class="btn btn-ghost" onclick="clearTransferFilters()"><i class="fas fa-times"></i> Clear</button>
+              <button class="btn btn-ghost" onclick="clearTransferFilters()"><i class="fas fa-times"></i>
+                Clear</button>
             </div>
           </div>
 
@@ -3915,7 +3931,8 @@
             </div>
           </div>
           <div class="kpi-card red">
-            <div class="kpi-icon" style="background:#FDECEA;color:#B00"><i class="fas fa-exclamation-circle"></i></div>
+            <div class="kpi-icon" style="background:#FDECEA;color:#B00"><i class="fas fa-exclamation-circle"></i>
+            </div>
             <div>
               <div class="kpi-label">Overdue</div>
               <div class="kpi-value" id="mKpiOverdue" style="color:#B00">0</div>
@@ -4102,7 +4119,8 @@
           <div class="card-header">
             <span class="card-title"><i class="fas fa-certificate" style="color:var(--sap-blue)"></i> Certificate
               Registry <span class="record-count" id="certCount"></span></span>
-            <button id="btnNewCert" class="btn btn-primary" onclick="openAddCertModal()"><i class="fas fa-plus"></i> New
+            <button id="btnNewCert" class="btn btn-primary" onclick="openAddCertModal()"><i class="fas fa-plus"></i>
+              New
               Certificate</button>
             <button class="btn btn-secondary" onclick="exportCertificates()"><i class="fas fa-file-excel"></i> Export
               Excel</button>
@@ -4186,7 +4204,8 @@
                   </th>
                   <th onclick="sortCertTable('nextInspection')">Next Inspection <i class="fas fa-sort sort-icon"></i>
                   </th>
-                  <th onclick="sortCertTable('daysUntilNext')">Days Until Due <i class="fas fa-sort sort-icon"></i></th>
+                  <th onclick="sortCertTable('daysUntilNext')">Days Until Due <i class="fas fa-sort sort-icon"></i>
+                  </th>
                   <th>Alert</th>
                   <th>Certificate</th>
                   <th>Actions</th>
@@ -4337,7 +4356,8 @@
               style="color:var(--sap-success)"></i> Assets Report</button>
           <button class="btn btn-secondary" onclick="exportContracts()"><i class="fas fa-file-excel"
               style="color:var(--sap-success)"></i> Contracts Report</button>
-          <button class="btn btn-secondary"><i class="fas fa-file-pdf" style="color:var(--sap-error)"></i> Asset Summary
+          <button class="btn btn-secondary"><i class="fas fa-file-pdf" style="color:var(--sap-error)"></i> Asset
+            Summary
             PDF</button>
           <button class="btn btn-secondary" onclick="openEmailModal()"><i class="fas fa-envelope"
               style="color:var(--sap-blue)"></i> Email Report</button>
@@ -4463,7 +4483,8 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeModal('addContractModal')">Cancel</button>
-        <button class="btn btn-primary" onclick="saveContractEntry()"><i class="fas fa-save"></i> Save Contract</button>
+        <button class="btn btn-primary" onclick="saveContractEntry()"><i class="fas fa-save"></i> Save
+          Contract</button>
       </div>
     </div>
   </div>
@@ -4505,7 +4526,7 @@
         <!-- Rig -->
         <div class="mass-edit-field" id="mef-rig">
           <input type="checkbox" id="mef_rig_chk" onchange="toggleMassField('rig')">
-          <label for="mef_rig_chk">Rig</label>
+          <label for="mef_rig_chk">Assigned Rig</label>
           <div class="field-ctrl">
             <select class="form-control" id="mef_rig" disabled>
               <option value="">— Select / Clear —</option>
@@ -4577,7 +4598,8 @@
         <span style="font-size:12px;color:var(--sap-text-muted)" id="massEditProgress"></span>
         <div style="display:flex;gap:8px">
           <button class="btn btn-secondary" onclick="closeModal('massEditModal')">Cancel</button>
-          <button class="btn btn-primary" onclick="applyMassEdit()"><i class="fas fa-check"></i> Apply Changes</button>
+          <button class="btn btn-primary" onclick="applyMassEdit()"><i class="fas fa-check"></i> Apply
+            Changes</button>
         </div>
       </div>
     </div>
@@ -5067,7 +5089,8 @@ Asset Management System</textarea>
           <label class="form-label">Attach</label>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox"
-                id="attachReport" checked style="accent-color:var(--sap-blue)"> Asset List (Excel)</label>
+                id="attachReport" checked style="accent-color:var(--sap-blue)"> Asset List
+              (Excel)</label>
             <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox"
                 id="attachSummary"> Summary Report</label>
           </div>
@@ -5127,13 +5150,24 @@ Asset Management System</textarea>
         </div>
 
         <div class="form-row">
-          <div class="form-group"><label class="form-label">Rig</label>
+          <div class="form-group"><label class="form-label">Assigned Rig</label>
             <select class="form-select" id="f_rig"></select>
+          </div>
+          <div class="form-group" id="group_workshop" style="display:none">
+            <label class="form-label">Workshop</label>
+            <select class="form-select" id="f_workshop">
+              <option value="">— Select Workshop —</option>
+              <option>Workshop A</option>
+              <option>Workshop B</option>
+              <option>Main Yard Workshop</option>
+              <option>Mechanical Shop</option>
+              <option>Electrical Shop</option>
+            </select>
           </div>
         </div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">Location</label>
-            <select class="form-select" id="f_location">
+            <select class="form-select" id="f_location" onchange="toggleWorkshopField()">
               <option value="">— Select Location —</option>
               <option>Workshop</option>
               <option>Assigned Rig</option>
@@ -5222,7 +5256,8 @@ Asset Management System</textarea>
           </div>
           <div id="popupBomTree"></div>
           <div style="padding:10px 14px;border-top:1px solid var(--sap-border)">
-            <button class="btn btn-ghost" onclick="openBomModal(currentAsset?.assetId)"><i class="fas fa-plus"></i> Add
+            <button class="btn btn-ghost" onclick="openBomModal(currentAsset?.assetId)"><i class="fas fa-plus"></i>
+              Add
               Component</button>
           </div>
         </div>
@@ -5300,7 +5335,8 @@ Asset Management System</textarea>
         <!-- Current Location (Read-only) -->
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label"><i class="fas fa-map-marker-alt" style="color:var(--sap-text-muted)"></i> Current
+            <label class="form-label"><i class="fas fa-map-marker-alt" style="color:var(--sap-text-muted)"></i>
+              Current
               Location</label>
             <div style="position:relative">
               <input class="form-input" id="tr_currentLoc" readonly
@@ -5310,7 +5346,8 @@ Asset Management System</textarea>
             </div>
           </div>
           <div class="form-group">
-            <label class="form-label"><i class="fas fa-map-pin" style="color:var(--sap-blue)"></i> Destination Location
+            <label class="form-label"><i class="fas fa-map-pin" style="color:var(--sap-blue)"></i> Destination
+              Location
               <span style="color:var(--sap-error)">*</span></label>
             <input class="form-input" id="tr_destination" placeholder="e.g. Warehouse B, Rig #12, Field Site A...">
           </div>
@@ -6216,7 +6253,8 @@ Asset Management System</textarea>
       { key: 'name', label: 'Asset Name', locked: false, default: true, sortKey: 'name' },
       { key: 'category', label: 'Category', locked: false, default: true, sortKey: 'category' },
 
-      { key: 'rigName', label: 'Rig', locked: false, default: true, sortKey: 'rigName' },
+      { key: 'rigName', label: 'Assigned Rig', locked: false, default: true, sortKey: 'rigName' },
+      { key: 'workshop', label: 'Workshop', locked: false, default: true, sortKey: 'workshop' },
       { key: 'location', label: 'Location', locked: false, default: true, sortKey: 'location' },
       { key: 'status', label: 'Status', locked: false, default: true, sortKey: 'status' },
 
@@ -7803,10 +7841,10 @@ Asset Management System</textarea>
       const q = document.getElementById('searchInput').value.toLowerCase();
       const status = document.getElementById('filterStatus').value;
       const cat = document.getElementById('filterCategory').value;
-
       const rig = document.getElementById('filterRig')?.value || '';
+      const wrk = document.getElementById('filterWorkshop')?.value || '';
       filteredAssets = ASSETS.filter(a => {
-        const searchFields = [a.assetId, a.name, a.location, a.serial || '', a.category,
+        const searchFields = [a.assetId, a.name, a.location, a.workshop || '', a.serial || '', a.category,
         a.status, a.rigName || '', a.inspectionType || '', a.lastInspection || '',
         a.notes || ''];
         const matchQ = !q || searchFields.some(f => f.toLowerCase().includes(q));
@@ -7814,7 +7852,8 @@ Asset Management System</textarea>
         const matchC = !cat || a.category === cat;
 
         const matchR = !rig || a.rigName === rig;
-        return matchQ && matchS && matchC && matchR;
+        const matchW = !wrk || a.workshop === wrk;
+        return matchQ && matchS && matchC && matchR && matchW;
       });
       currentPage = 1;
       renderAssets();
@@ -7824,9 +7863,9 @@ Asset Management System</textarea>
       document.getElementById('searchInput').value = '';
       document.getElementById('filterStatus').value = '';
       document.getElementById('filterCategory').value = '';
-
       const fr = document.getElementById('filterRig'); if (fr) fr.value = '';
-      activeAssetRig = '';
+      const fw = document.getElementById('filterWorkshop'); if (fw) fw.value = '';
+      currentPage = 1;
       applyFilters();
     }
 
@@ -7884,6 +7923,7 @@ Asset Management System</textarea>
               case 'category': return `<td>${a.category || '—'}</td>`;
 
               case 'rigName': return `<td>${a.rigName || '—'}</td>`;
+              case 'workshop': return `<td>${a.workshop || '—'}</td>`;
               case 'location': return `<td>${a.location || '—'}</td>`;
               case 'status': return `<td>${statusBadge(a.status)}</td>`;
 
@@ -8113,6 +8153,7 @@ Asset Management System</textarea>
             status: changes.status || asset.status,
 
             rig_name: changes.rig_name !== undefined ? changes.rig_name : asset.rigName,
+            workshop: asset.workshop || '',
             location: changes.location || asset.location,
             serial: asset.serial || '',
             notes: asset.notes || '',
@@ -8268,6 +8309,12 @@ Asset Management System</textarea>
       if (currentAsset) openAddAssetModal(currentAsset.assetId);
     }
 
+    function toggleWorkshopField() {
+      const loc = document.getElementById('f_location').value;
+      const group = document.getElementById('group_workshop');
+      if (group) group.style.display = (loc === 'Workshop') ? 'block' : 'none';
+    }
+
     // ══════════════════════════════════
     //  ADD / EDIT ASSET
     // ══════════════════════════════════
@@ -8285,7 +8332,8 @@ Asset Management System</textarea>
 
         document.getElementById('f_rig').value = a.rigName;
         document.getElementById('f_location').value = a.location;
-
+        document.getElementById('f_workshop').value = a.workshop || '';
+        toggleWorkshopField();
         document.getElementById('f_serial').value = a.serial;
         document.getElementById('f_notes').value = a.notes;
         document.getElementById('f_lastInspection').value = a.lastInspection || '';
@@ -8296,6 +8344,8 @@ Asset Management System</textarea>
         document.getElementById('f_assetId').value = 'AST-' + String(ASSETS.length + 1).padStart(3, '0');
         ['f_name', 'f_serial', 'f_notes', 'f_certLink'].forEach(f => document.getElementById(f).value = '');
         document.getElementById('f_location').value = '';
+        document.getElementById('f_workshop').value = '';
+        toggleWorkshopField();
         document.getElementById('f_lastInspection').value = '';
         document.getElementById('f_inspectionType').value = '';
       }
@@ -8313,7 +8363,7 @@ Asset Management System</textarea>
 
         rigName: document.getElementById('f_rig').value,
         location: document.getElementById('f_location').value,
-
+        workshop: document.getElementById('f_location').value === 'Workshop' ? document.getElementById('f_workshop').value : '',
         serial: document.getElementById('f_serial').value,
         notes: document.getElementById('f_notes').value,
         lastInspection: document.getElementById('f_lastInspection').value,
@@ -8361,7 +8411,7 @@ Asset Management System</textarea>
     function renderContractRows(list) {
       document.getElementById('contractTbody').innerHTML = list.map(c => `
     <tr>
-      <td><span class="tag blue">${c.id}</span></td>
+      <td><span class="tag blue">${c.contract_id || c.id}</span></td>
 
       <td>${c.rig}</td>
       <td>${c.assetCount}</td>
@@ -8458,7 +8508,7 @@ Asset Management System</textarea>
       const endFmt = c.end ? new Date(c.end).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
       const fields = [
         { label: 'Contract ID', value: c.id },
-        { label: 'Rig', value: c.rig || '—' },
+        { label: 'Assigned Rig', value: c.rig || '—' },
         { label: 'Contract Value', value: '$' + Number(c.value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 }) },
         { label: 'Start Date', value: startFmt },
         { label: 'End Date', value: endFmt },
@@ -8812,7 +8862,7 @@ Asset Management System</textarea>
       const data = (typeof filteredAssets !== 'undefined' && filteredAssets.length > 0 ? filteredAssets : ASSETS);
       const ws = XLSX.utils.json_to_sheet(data.map(a => ({
         'Asset ID': a.assetId, 'Name': a.name, 'Category': a.category,
-        'Rig': a.rigName, 'Location': a.location,
+        'Assigned Rig': a.rigName, 'Workshop': a.workshop, 'Location': a.location,
         'Status': a.status, 'Serial': a.serial,
         'Last Inspection': a.lastInspection || '', 'Inspection Type': a.inspectionType || '',
         'Certificate Link': a.certLink || '', 'Notes': a.notes
@@ -8848,10 +8898,10 @@ Asset Management System</textarea>
 
       doc.autoTable({
         startY: 46,
-        head: [['Asset ID', 'Name', 'Category', 'Rig', 'Location', 'Status', 'Serial']],
+        head: [['Asset ID', 'Name', 'Category', 'Assigned Rig', 'Workshop', 'Location', 'Status', 'Serial']],
         body: data.map(a => [
           a.assetId || '', a.name || '', a.category || '',
-          a.rigName || '', a.location || '', a.status || '', a.serial || ''
+          a.rigName || '', a.workshop || '', a.location || '', a.status || '', a.serial || ''
         ]),
         styles: { fontSize: 7.5, cellPadding: 4, font: 'helvetica', textColor: [50, 54, 58] },
         headStyles: { fillColor: [0, 112, 242], textColor: 255, fontStyle: 'bold', fontSize: 8 },
@@ -12239,7 +12289,8 @@ Instructions:
           <div id="bomTrSelectedList"
             style="display:flex;flex-direction:column;gap:4px;max-height:160px;overflow-y:auto"></div>
           <div id="bomTrSelectedEmpty"
-            style="color:var(--sap-text-muted);font-size:12.5px;font-style:italic;display:none">No parts selected.</div>
+            style="color:var(--sap-text-muted);font-size:12.5px;font-style:italic;display:none">No parts selected.
+          </div>
         </div>
 
         <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
@@ -12401,6 +12452,7 @@ Instructions:
         return {
           ...a,
           assetId: a.asset_id, rigName: a.rig_name,
+          workshop: a.workshop,
           lastInspection: a.last_inspection,
           inspectionType: a.inspection_type,
           certLink: a.cert_link
@@ -12433,6 +12485,15 @@ Instructions:
           returnDate: t.return_date || t.returnDate || null,
           opsApproval: { by: t.ops_approved_by, date: t.ops_approved_date, action: t.ops_action, comment: t.ops_comment },
           mgrApproval: { by: t.mgr_approved_by, date: t.mgr_approved_date, action: t.mgr_action, comment: t.mgr_comment }
+        };
+      }
+      function normR(r) {
+        return {
+          ...r,
+          name: r.rig_name,
+          type: r.rig_type,
+          depth: r.depth_rating,
+          hp: r.hp
         };
       }
       function normC(c) {
@@ -12502,7 +12563,7 @@ Instructions:
 
           // Mutate arrays in place — render functions always see live DB data
           refill(ASSETS, (aR.data || []).map(normA));
-          refill(RIGS, rR.data || []);
+          refill(RIGS, (rR.data || []).map(normR));
 
           refill(CONTRACTS, (conR.data || []).map(c => ({
             ...c,
@@ -12550,6 +12611,7 @@ Instructions:
 
           rig_name: document.getElementById('f_rig').value,
           location: document.getElementById('f_location').value,
+          workshop: document.getElementById('f_location').value === 'Workshop' ? document.getElementById('f_workshop').value : '',
           serial: document.getElementById('f_serial').value,
           notes: document.getElementById('f_notes').value,
           last_inspection: document.getElementById('f_lastInspection').value || null,
@@ -12997,8 +13059,9 @@ Instructions:
               name: r['Name'] || r['Asset Name'] || 'Imported Asset',
               category: r['Category'] || 'Other',
 
-              rig_name: r['Rig'] || r['Rig Name'] || '',
+              rig_name: r['Assigned Rig'] || r['Rig'] || r['Rig Name'] || '',
               location: r['Location'] || '',
+              workshop: r['Workshop'] || '',
               status: r['Status'] || 'Active',
               serial: r['Serial'] || r['Serial Number'] || '',
               notes: r['Notes'] || '',
