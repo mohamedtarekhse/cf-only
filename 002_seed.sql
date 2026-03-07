@@ -5,7 +5,7 @@
 
 
 -- ─── RIGS ─────────────────────────────────────────────────────────────────────
-INSERT INTO rigs (id,name,type,location,depth,hp,status) VALUES
+INSERT INTO rigs (id,rig_name,rig_type,location,depth_rating,hp,status) VALUES
   ('RIG01','Rig 1', 'AC Drive',   'Ghawar Field – Block A',    '25,000 ft',2000,'Active'),
   ('RIG02','Rig 2', 'Mechanical', 'Ghawar Field – Block B',    '20,000 ft',1500,'Active'),
   ('RIG03','Rig 3', 'Electric',   'Permian Basin, TX',         '30,000 ft',3000,'Active'),
@@ -21,8 +21,8 @@ INSERT INTO rigs (id,name,type,location,depth,hp,status) VALUES
   ('RIG13','Rig 13','Electric',   'Haradh Gas Field',          '32,000 ft',3000,'Active'),
   ('RIG14','Rig 14','AC Drive',   'Hawiyah Gas Field',         '28,000 ft',2500,'Standby')
 ON CONFLICT (id) DO UPDATE SET
-  name=EXCLUDED.name, type=EXCLUDED.type,
-  location=EXCLUDED.location, depth=EXCLUDED.depth, hp=EXCLUDED.hp, status=EXCLUDED.status;
+  rig_name=EXCLUDED.rig_name, rig_type=EXCLUDED.rig_type,
+  location=EXCLUDED.location, depth_rating=EXCLUDED.depth_rating, hp=EXCLUDED.hp, status=EXCLUDED.status;
 
 -- ─── CONTRACTS ────────────────────────────────────────────────────────────────
 INSERT INTO contracts (contract_id,rig_id,value,start_date,end_date,status) VALUES
