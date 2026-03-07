@@ -223,7 +223,7 @@ INSERT INTO notifications (icon,kind,title,description,time_label,is_read) VALUE
 ON CONFLICT DO NOTHING;
 
 -- ─── VERIFY ───────────────────────────────────────────────────────────────────
-UNION ALL SELECT 'rigs'        ,COUNT(*) FROM rigs
+SELECT 'rigs' AS table_name, COUNT(*) AS row_count FROM rigs
 UNION ALL SELECT 'assets'      ,COUNT(*) FROM assets
 UNION ALL SELECT 'contracts'   ,COUNT(*) FROM contracts
 UNION ALL SELECT 'bom_items'   ,COUNT(*) FROM bom_items
