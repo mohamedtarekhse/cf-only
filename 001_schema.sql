@@ -25,14 +25,14 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ── Land Rigs ───────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS rigs (
-  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id            TEXT PRIMARY KEY,
   rig_name      TEXT NOT NULL UNIQUE,
   rig_type      TEXT,
   location      TEXT,
   status        TEXT DEFAULT 'Active'
                   CHECK (status IN ('Active','Idle','Maintenance','Retired')),
   hp            INTEGER,
-  depth_rating  INTEGER,
+  depth_rating  TEXT,
   notes         TEXT,
   created_at    TIMESTAMPTZ DEFAULT NOW(),
   updated_at    TIMESTAMPTZ DEFAULT NOW()
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS rigs (
 CREATE TABLE IF NOT EXISTS contracts (
   id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   contract_id   TEXT NOT NULL UNIQUE,
-  rig_id        UUID REFERENCES rigs(id) ON DELETE SET NULL,
+  rig_id        TEXT REFERENCES rigs(id) ON DELETE SET NULL,
   start_date    DATE,
   end_date      DATE,
   value         NUMERIC(14,2) DEFAULT 0,
@@ -51,6 +51,13 @@ CREATE TABLE IF NOT EXISTS contracts (
   notes         TEXT,
   created_at    TIMESTAMPTZ DEFAULT NOW(),
   updated_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ── Contract Assets (junction) ───────────────────────────────
+CREATE TABLE IF NOT EXISTS contract_assets (
+  contract_id   TEXT REFERENCES contracts(contract_id) ON DELETE CASCADE,
+  asset_id      TEXT REFERENCES assets(asset_id) ON DELETE CASCADE,
+  PRIMARY KEY (contract_id, asset_id)
 );
 
 -- ── Assets (master table) ───────────────────────────────────
@@ -62,10 +69,9 @@ CREATE TABLE IF NOT EXISTS assets (
   status           TEXT DEFAULT 'Active'
                      CHECK (status IN ('Active','Maintenance','Inactive','Contracted','Retired')),
   rig_name         TEXT,
+  workshop         TEXT,
   location         TEXT,
   serial           TEXT,
-  value            NUMERIC(14,2) DEFAULT 0,
-  acquisition_date DATE,
   last_inspection  DATE,
   inspection_type  TEXT,
   cert_link        TEXT,
@@ -98,26 +104,37 @@ CREATE TABLE IF NOT EXISTS bom_items (
   created_at   TIMESTAMPTZ DEFAULT NOW()
 );
 
--- ── Maintenance Schedules ───────────────────────────────────
-CREATE TABLE IF NOT EXISTS maintenance (
-  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  sched_id   TEXT NOT NULL UNIQUE,
-  asset_id   TEXT NOT NULL REFERENCES assets(asset_id) ON DELETE CASCADE,
-  task       TEXT NOT NULL,
-  type       TEXT DEFAULT 'Inspection',
-  priority   TEXT DEFAULT 'Normal',
-  freq_days  INTEGER DEFAULT 90,
-  last_done  DATE,
-  next_due   DATE NOT NULL,
-  technician TEXT,
-  hours      NUMERIC(8,2),
-  cost       NUMERIC(10,2),
-  status     TEXT DEFAULT 'Scheduled'
-               CHECK (status IN ('Scheduled','In Progress','Completed','Overdue','Cancelled')),
-  alert_days INTEGER DEFAULT 14,
-  notes      TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+-- ── Maintenance Schedules ─────────────────────────────────────
+CREATE TABLE IF NOT EXISTS maintenance_schedules (
+  id            TEXT PRIMARY KEY,
+  asset_id      TEXT NOT NULL REFERENCES assets(asset_id) ON DELETE CASCADE,
+  task          TEXT NOT NULL,
+  type          TEXT,
+  freq          INTEGER DEFAULT 90,
+  last_done     DATE,
+  next_due      DATE,
+  tech          TEXT,
+  hours         NUMERIC(6,2) DEFAULT 0,
+  cost          NUMERIC(10,2) DEFAULT 0,
+  priority      TEXT DEFAULT 'Normal',
+  alert_days    INTEGER DEFAULT 14,
+  status        TEXT DEFAULT 'Scheduled',
+  notes         TEXT,
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ── Maintenance Logs ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS maintenance_logs (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  schedule_id     TEXT REFERENCES maintenance_schedules(id) ON DELETE CASCADE,
+  completion_date DATE NOT NULL,
+  performed_by    TEXT NOT NULL,
+  hours           NUMERIC(6,2),
+  cost            NUMERIC(10,2),
+  parts_used      TEXT,
+  notes           TEXT,
+  created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ── Certificates ────────────────────────────────────────────
@@ -159,7 +176,7 @@ CREATE TABLE IF NOT EXISTS transfers (
 );
 
 -- ── Users ───────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE IF NOT EXISTS app_users (
   id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   email      TEXT NOT NULL UNIQUE,
   name       TEXT NOT NULL,
@@ -729,23 +746,24 @@ $$;
 -- ============================================================
 
 -- ── Active assets per category ──────────────────────────────
+DROP VIEW IF EXISTS v_assets_by_category;
 CREATE OR REPLACE VIEW v_assets_by_category AS
 SELECT
   category,
   COUNT(*)                                          AS total,
   COUNT(*) FILTER (WHERE status = 'Active')         AS active,
   COUNT(*) FILTER (WHERE status = 'Maintenance')    AS in_maintenance,
-  COUNT(*) FILTER (WHERE status = 'Inactive')       AS inactive,
-  ROUND(SUM(value),2)                           AS total_value_usd
+  COUNT(*) FILTER (WHERE status = 'Inactive')       AS inactive
 FROM assets
 GROUP BY category
 ORDER BY category;
 
 -- ── Assets expiring inspection within 30 days ───────────────
+DROP VIEW IF EXISTS v_expiring_inspections;
 CREATE OR REPLACE VIEW v_expiring_inspections AS
 SELECT
   a.asset_id, a.name, a.category, a.rig_name, a.location,
-  a.last_inspection, a.acquisition_date,
+  a.last_inspection,
   c.next_inspection,
   c.next_inspection - CURRENT_DATE AS days_remaining,
   inspection_status(c.next_inspection) AS status
@@ -755,16 +773,18 @@ WHERE c.next_inspection <= CURRENT_DATE + INTERVAL '30 days'
 ORDER BY c.next_inspection;
 
 -- ── Full generator inventory ─────────────────────────────────
+DROP VIEW IF EXISTS v_generators_full;
 CREATE OR REPLACE VIEW v_generators_full AS
 SELECT
   a.asset_id, a.name, a.serial, a.rig_name, a.location, a.status,
-  a.value, g.power_kva, g.voltage_v, g.frequency_hz,
+  g.power_kva, g.voltage_v, g.frequency_hz,
   g.fuel_type, g.engine_model, g.run_hours,
   g.last_service, g.next_service
 FROM eq_generators g
 JOIN assets a ON a.asset_id = g.asset_id;
 
 -- ── Full pump inventory ──────────────────────────────────────
+DROP VIEW IF EXISTS v_pumps_full;
 CREATE OR REPLACE VIEW v_pumps_full AS
 SELECT
   a.asset_id, a.name, a.serial, a.rig_name, a.location, a.status,

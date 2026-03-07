@@ -25,45 +25,44 @@ ON CONFLICT (id) DO UPDATE SET
   location=EXCLUDED.location, depth=EXCLUDED.depth, hp=EXCLUDED.hp, status=EXCLUDED.status;
 
 -- ─── CONTRACTS ────────────────────────────────────────────────────────────────
-INSERT INTO contracts (id,rig,value,start_date,end_date,status) VALUES
-  ('CON-2024-001','ADC Rig #7',        4800000,'2024-01-15','2025-01-14','Active'),
-  ('CON-2024-002','NABORS 1250-E',     3200000,'2024-03-01','2025-03-01','Active'),
-  ('CON-2024-003','KJO Land Rig #3',   6100000,'2023-07-01','2024-07-01','Expired'),
-  ('CON-2025-001','Patterson Rig #55', 1950000,'2025-01-10','2026-01-10','Pending')
-ON CONFLICT (id) DO UPDATE SET
-  rig=EXCLUDED.rig, value=EXCLUDED.value,
+INSERT INTO contracts (contract_id,rig_id,value,start_date,end_date,status) VALUES
+  ('CON-2024-001','RIG07', 4800000,'2024-01-15','2025-01-14','Active'),
+  ('CON-2024-002','RIG12', 3200000,'2024-03-01','2025-03-01','Active'),
+  ('CON-2024-003','RIG03', 6100000,'2023-07-01','2024-07-01','Expired'),
+  ('CON-2025-001','RIG05', 1950000,'2025-01-10','2026-01-10','Pending')
+ON CONFLICT (contract_id) DO UPDATE SET
+  rig_id=EXCLUDED.rig_id, value=EXCLUDED.value,
   start_date=EXCLUDED.start_date, end_date=EXCLUDED.end_date, status=EXCLUDED.status;
 
 -- ─── ASSETS ───────────────────────────────────────────────────────────────────
-INSERT INTO assets (asset_id,name,category,rig_name,location,status,value,acquisition_date,serial,notes,last_inspection,inspection_type,cert_link) VALUES
-  ('AST-001','Top Drive System',          'Well Head Equipment',    'Rig 1', 'Assigned Rig', 'Contracted', 1200000,'2021-03-15','TD-7821',   'High-capacity 1000T top drive',          '2024-10-01','Cat III',                 'https://example.com/cert/AST-001'),
-  ('AST-002','BOP Stack 18-3/4"',         'Well Control Equipment', 'Rig 1', 'Assigned Rig', 'Contracted',  850000,'2020-07-20','BOP-4422',  'Cameron BOP Stack',                      '2024-09-15','Pressure Test',           'https://example.com/cert/AST-002'),
-  ('AST-003','Derrick Structure 142''',   'Handling Tools',         'Rig 2', 'Workshop',     'Active',     2100000,'2018-05-01','DRK-0078',  'IRI 142ft mast structure',               '2024-08-20','Cat IV',                  ''),
-  ('AST-004','Mud Pumps (3x)',             'Well Control Equipment', 'Rig 2', 'Sukhna Yard',  'Maintenance', 620000,'2019-11-05','MP-1103',   'National 14-P-220 pumps',                '2024-07-10','Pressure Test',           'https://example.com/cert/AST-004'),
-  ('AST-005','Drawworks 1500HP',          'Handling Tools',         'Rig 3', 'Assigned Rig', 'Active',     1800000,'2020-08-12','DW-3312',   'National 1500HP drawworks',              '2024-11-01','Calibration',             'https://example.com/cert/AST-005'),
-  ('AST-006','CAT 3516 Generator Set',    'Well Head Equipment',    'Rig 3', 'Free Zone',    'Active',      480000,'2022-01-10','GEN-7712',  '2000kW prime power generator',           '2024-06-15','Calibration',             ''),
-  ('AST-007','Casing Running Tool',       'Handling Tools',         'Rig 4', 'Workshop',     'Inactive',    130000,'2020-03-15','CRT-9910',  'Hydraulic CRT for 13-3/8" casing',      '2024-05-20','Cat III',                 'https://example.com/cert/AST-007'),
-  ('AST-008','H2S Detection System',      'Well Control Equipment', 'Rig 4', 'Assigned Rig', 'Active',       75000,'2022-06-15','SFT-2291',  'Multi-point H2S gas detection',          '2024-10-20','Calibration',             ''),
-  ('AST-009','Rotary Table 37.5"',        'Well Head Equipment',    'Rig 5', 'Assigned Rig', 'Active',      320000,'2021-06-20','RT-5501',   '37.5" rotary table 500T capacity',       '2024-09-01','Cat IV',                  'https://example.com/cert/AST-009'),
-  ('AST-010','Emergency Fire Suppression','Well Control Equipment', 'Rig 5', 'Sukhna Yard',  'Active',       88000,'2023-05-20','SFT-4451',  'Dry chemical fire suppression',          NULL,        '',                        ''),
-  ('AST-011','Tubular String 5" DP',      'Tubular',                'Rig 6', 'Free Zone',    'Active',      145000,'2021-09-01','TUB-8811',  '5" drill pipe string',                   '2024-11-10','Tubular Inspection DS1',  'https://example.com/cert/AST-011'),
-  ('AST-012','Rig Mover & Substructure',  'Handling Tools',         'Rig 6', 'Assigned Rig', 'Active',      950000,'2019-03-10','RMV-0601',  'Self-propelled walking system',          '2024-08-01','Cat III',                 ''),
-  ('AST-013','Drill Collar 8" Slick DC',  'Tubular',                'Rig 7', 'Sukhna Yard',  'Active',       95000,'2023-02-28','DC-0341',   '8" slick drill collars x12',             '2024-10-15','Wall Thickness',           'https://example.com/cert/AST-013'),
-  ('AST-014','Heavy Weight Drill Pipe',   'Tubular',                'Rig 7', 'Free Zone',    'Maintenance',  42000,'2021-11-15','HWDP-1102', '5" HWDP 30 joints',                      '2024-09-20','Tubular Inspection DS1',  'https://example.com/cert/AST-014'),
-  ('AST-015','Drilling Jars – Hydraulic', 'Well Control Equipment', 'Rig 8', 'Assigned Rig', 'Active',      210000,'2022-12-01','JAR-3301',  'Hydraulic drilling jars set',            '2024-07-05','Pressure Test',           ''),
-  ('AST-016','Wellhead Christmas Tree',   'Well Head Equipment',    'Rig 9', 'Workshop',     'Active',     1050000,'2022-04-18','WHD-9901',  'Wellhead Christmas tree 5K psi',         '2024-11-05','Pressure Test',           'https://example.com/cert/AST-016'),
-  ('AST-017','Accumulator Unit 120 Gal',  'Well Control Equipment', 'Rig 9', 'Sukhna Yard',  'Active',      185000,'2021-07-22','ACC-0091',  '120 gal hydraulic accumulator',          '2024-08-12','Pressure Test',           ''),
-  ('AST-018','Centrifugal Pump Set',      'Well Control Equipment', 'Rig 10','Workshop',     'Active',      160000,'2023-01-15','CP-1001',   '3x centrifugal charge pumps',            '2024-07-22','Pressure Test',           ''),
-  ('AST-019','SCR Control House',         'Well Head Equipment',    'Rig 11','Sukhna Yard',  'Maintenance', 420000,'2020-09-30','SCR-1101',  'Silicon controlled rectifier house',     '2024-06-10','Calibration',             ''),
-  ('AST-020','BOP Annular 13-5/8"',       'Well Control Equipment', 'Rig 12','Assigned Rig', 'Active',      740000,'2021-02-14','BOP-1201',  '13-5/8" 10K annular BOP',                '2024-11-01','Pressure Test',           'https://example.com/cert/AST-020'),
-  ('AST-021','Tubing String 2-7/8"',      'Tubular',                'Rig 12','Free Zone',    'Active',       95000,'2022-08-05','TUB-1201',  '2-7/8" EUE tubing 200 joints',           '2024-10-05','Tubular Inspection DS1',  'https://example.com/cert/AST-021'),
-  ('AST-022','Iron Roughneck',            'Handling Tools',         'Rig 13','Assigned Rig', 'Active',      580000,'2022-11-20','IRN-1301',  'Automated iron roughneck 60k ft-lb',     '2024-09-12','Cat III',                 ''),
-  ('AST-023','Shale Shaker 4-Panel',      'Well Control Equipment', 'Rig 14','Workshop',     'Standby',     220000,'2023-06-01','SS-1401',   '4-panel linear motion shaker',           NULL,        '',                        ''),
-  ('AST-024','Casing Hanger Tool',        'Well Head Equipment',    'Rig 14','Sukhna Yard',  'Active',      195000,'2022-03-10','CSH-1401',  'Casing hanger running tool',             '2024-08-30','Cat IV',                  'https://example.com/cert/AST-024')
+INSERT INTO assets (asset_id,name,category,rig_name,location,status,serial,notes,last_inspection,inspection_type,cert_link) VALUES
+  ('AST-001','Top Drive System',          'Well Head Equipment',    'Rig 1', 'Assigned Rig', 'Contracted', 'TD-7821',   'High-capacity 1000T top drive',          '2024-10-01','Cat III',                 'https://example.com/cert/AST-001'),
+  ('AST-002','BOP Stack 18-3/4"',         'Well Control Equipment', 'Rig 1', 'Assigned Rig', 'Contracted', 'BOP-4422',  'Cameron BOP Stack',                      '2024-09-15','Pressure Test',           'https://example.com/cert/AST-002'),
+  ('AST-003','Derrick Structure 142''',   'Handling Tools',         'Rig 2', 'Workshop',     'Active',     'DRK-0078',  'IRI 142ft mast structure',               '2024-08-20','Cat IV',                  ''),
+  ('AST-004','Mud Pumps (3x)',             'Well Control Equipment', 'Rig 2', 'Sukhna Yard',  'Maintenance', 'MP-1103',   'National 14-P-220 pumps',                '2024-07-10','Pressure Test',           'https://example.com/cert/AST-004'),
+  ('AST-005','Drawworks 1500HP',          'Handling Tools',         'Rig 3', 'Assigned Rig', 'Active',     'DW-3312',   'National 1500HP drawworks',              '2024-11-01','Calibration',             'https://example.com/cert/AST-005'),
+  ('AST-006','CAT 3516 Generator Set',    'Well Head Equipment',    'Rig 3', 'Free Zone',    'Active',      'GEN-7712',  '2000kW prime power generator',           '2024-06-15','Calibration',             ''),
+  ('AST-007','Casing Running Tool',       'Handling Tools',         'Rig 4', 'Workshop',     'Inactive',    'CRT-9910',  'Hydraulic CRT for 13-3/8" casing',      '2024-05-20','Cat III',                 'https://example.com/cert/AST-007'),
+  ('AST-008','H2S Detection System',      'Well Control Equipment', 'Rig 4', 'Assigned Rig', 'Active',       'SFT-2291',  'Multi-point H2S gas detection',          '2024-10-20','Calibration',             ''),
+  ('AST-009','Rotary Table 37.5"',        'Well Head Equipment',    'Rig 5', 'Assigned Rig', 'Active',      'RT-5501',   '37.5" rotary table 500T capacity',       '2024-09-01','Cat IV',                  'https://example.com/cert/AST-009'),
+  ('AST-010','Emergency Fire Suppression','Well Control Equipment', 'Rig 5', 'Sukhna Yard',  'Active',       'SFT-4451',  'Dry chemical fire suppression',          NULL,        '',                        ''),
+  ('AST-011','Tubular String 5" DP',      'Tubular',                'Rig 6', 'Free Zone',    'Active',      'TUB-8811',  '5" drill pipe string',                   '2024-11-10','Tubular Inspection DS1',  'https://example.com/cert/AST-011'),
+  ('AST-012','Rig Mover & Substructure',  'Handling Tools',         'Rig 6', 'Assigned Rig', 'Active',      'RMV-0601',  'Self-propelled walking system',          '2024-08-01','Cat III',                 ''),
+  ('AST-013','Drill Collar 8" Slick DC',  'Tubular',                'Rig 7', 'Sukhna Yard',  'Active',       'DC-0341',   '8" slick drill collars x12',             '2024-10-15','Wall Thickness',           'https://example.com/cert/AST-013'),
+  ('AST-014','Heavy Weight Drill Pipe',   'Tubular',                'Rig 7', 'Free Zone',    'Maintenance',  'HWDP-1102', '5" HWDP 30 joints',                      '2024-09-20','Tubular Inspection DS1',  'https://example.com/cert/AST-014'),
+  ('AST-015','Drilling Jars – Hydraulic', 'Well Control Equipment', 'Rig 8', 'Assigned Rig', 'Active',      'JAR-3301',  'Hydraulic drilling jars set',            '2024-07-05','Pressure Test',           ''),
+  ('AST-016','Wellhead Christmas Tree',   'Well Head Equipment',    'Rig 9', 'Workshop',     'Active',     'WHD-9901',  'Wellhead Christmas tree 5K psi',         '2024-11-05','Pressure Test',           'https://example.com/cert/AST-016'),
+  ('AST-017','Accumulator Unit 120 Gal',  'Well Control Equipment', 'Rig 9', 'Sukhna Yard',  'Active',      'ACC-0091',  '120 gal hydraulic accumulator',          '2024-08-12','Pressure Test',           ''),
+  ('AST-018','Centrifugal Pump Set',      'Well Control Equipment', 'Rig 10','Workshop',     'Active',      'CP-1001',   '3x centrifugal charge pumps',            '2024-07-22','Pressure Test',           ''),
+  ('AST-019','SCR Control House',         'Well Head Equipment',    'Rig 11','Sukhna Yard',  'Maintenance', 'SCR-1101',  'Silicon controlled rectifier house',     '2024-06-10','Calibration',             ''),
+  ('AST-020','BOP Annular 13-5/8"',       'Well Control Equipment', 'Rig 12','Assigned Rig', 'Active',      'BOP-1201',  '13-5/8" 10K annular BOP',                '2024-11-01','Pressure Test',           'https://example.com/cert/AST-020'),
+  ('AST-021','Tubing String 2-7/8"',      'Tubular',                'Rig 12','Free Zone',    'Active',       'TUB-1201',  '2-7/8" EUE tubing 200 joints',           '2024-10-05','Tubular Inspection DS1',  'https://example.com/cert/AST-021'),
+  ('AST-022','Iron Roughneck',            'Handling Tools',         'Rig 13','Assigned Rig', 'Active',      'IRN-1301',  'Automated iron roughneck 60k ft-lb',     '2024-09-12','Cat III',                 ''),
+  ('AST-023','Shale Shaker 4-Panel',      'Well Control Equipment', 'Rig 14','Workshop',     'Standby',     'SS-1401',   '4-panel linear motion shaker',           NULL,        '',                        ''),
+  ('AST-024','Casing Hanger Tool',        'Well Head Equipment',    'Rig 14','Sukhna Yard',  'Active',      'CSH-1401',  'Casing hanger running tool',             '2024-08-30','Cat IV',                  'https://example.com/cert/AST-024')
 ON CONFLICT (asset_id) DO UPDATE SET
   name=EXCLUDED.name, category=EXCLUDED.category,
   rig_name=EXCLUDED.rig_name, location=EXCLUDED.location, status=EXCLUDED.status,
-  value=EXCLUDED.value, acquisition_date=EXCLUDED.acquisition_date,
   serial=EXCLUDED.serial, notes=EXCLUDED.notes,
   last_inspection=EXCLUDED.last_inspection, inspection_type=EXCLUDED.inspection_type,
   cert_link=EXCLUDED.cert_link;
