@@ -3,34 +3,18 @@
 --  Reference Data — Oil & Gas Land Drilling Operations
 --
 --  ORDER:
---    1. Companies
---    2. Locations  (Rigs, Yards, Repair Facilities)
---    3. Categories (Equipment Types)
+--    1. Locations  (Rigs, Yards, Repair Facilities)
+--    2. Categories (Equipment Types)
+--    3. Sample Assets
+--    4. Sample Certificates
+--    5. Sample Inspections
 --
 --  Safe to re-run — uses INSERT ... ON CONFLICT DO NOTHING
 -- ============================================================
 
 
 -- ────────────────────────────────────────────────────────────
---  1. COMPANIES
--- ────────────────────────────────────────────────────────────
-INSERT INTO companies (name, short_code, country, contact_email, active)
-VALUES
-  ('National Drilling Company',       'NDC',   'Egypt', 'ops@ndc.com.eg',       TRUE),
-  ('Egyptian Drilling Company',       'EDC',   'Egypt', 'ops@edc.com.eg',       TRUE),
-  ('Weatherford International',       'WFT',   'Egypt', 'egypt@weatherford.com', TRUE),
-  ('Schlumberger / SLB',              'SLB',   'Egypt', 'egypt@slb.com',        TRUE),
-  ('Halliburton',                     'HAL',   'Egypt', 'egypt@halliburton.com', TRUE),
-  ('Baker Hughes',                    'BKR',   'Egypt', 'egypt@bakerhughes.com', TRUE),
-  ('ENPPI',                           'ENPPI', 'Egypt', 'info@enppi.com',        TRUE),
-  ('General Petroleum Company',       'GPC',   'Egypt', 'info@gpc.com.eg',       TRUE),
-  ('Petrobel',                        'PBL',   'Egypt', 'info@petrobel.com',     TRUE),
-  ('Third Party Inspection Body',     'TPIB',  'Egypt', 'certs@tpib.com',        TRUE)
-ON CONFLICT (name) DO NOTHING;
-
-
--- ────────────────────────────────────────────────────────────
---  2. LOCATIONS
+--  1. LOCATIONS
 -- ────────────────────────────────────────────────────────────
 
 -- ── Land Rigs ───────────────────────────────────────────────
@@ -70,7 +54,7 @@ ON CONFLICT (code) DO NOTHING;
 
 
 -- ────────────────────────────────────────────────────────────
---  3. EQUIPMENT CATEGORIES
+--  2. EQUIPMENT CATEGORIES
 --  default_cert_validity_days = standard recertification interval
 --  default_alert_days         = alert before expiry
 -- ────────────────────────────────────────────────────────────
@@ -128,15 +112,11 @@ ON CONFLICT (code) DO NOTHING;
 
 
 -- ────────────────────────────────────────────────────────────
---  4. SAMPLE ASSETS (10 representative equipment records)
+--  3. SAMPLE ASSETS (10 representative equipment records)
 --  Covers the most critical categories in Oil & Gas drilling
 -- ────────────────────────────────────────────────────────────
-
--- Get company id for NDC
 DO $$
 DECLARE
-  v_ndc_id   UUID;
-  v_edc_id   UUID;
   v_rig1_id  UUID;
   v_rig2_id  UUID;
   v_rig3_id  UUID;
@@ -148,8 +128,6 @@ DECLARE
   v_sv_cat   UUID;
   v_tds_cat  UUID;
 BEGIN
-  SELECT id INTO v_ndc_id   FROM companies  WHERE short_code = 'NDC';
-  SELECT id INTO v_edc_id   FROM companies  WHERE short_code = 'EDC';
   SELECT id INTO v_rig1_id  FROM locations  WHERE code = 'RIG-01';
   SELECT id INTO v_rig2_id  FROM locations  WHERE code = 'RIG-02';
   SELECT id INTO v_rig3_id  FROM locations  WHERE code = 'RIG-03';
@@ -164,25 +142,25 @@ BEGIN
   INSERT INTO assets
     (name, category_id, category_name, manufacturer, model, serial_number,
      location_id, location_code, location_name,
-     status, company_id, acquisition_date, supplier_name)
+     status, acquisition_date, supplier_name)
   VALUES
-    ('BOP Stack 13-5/8" 10K',   v_bop_cat,  'BOP Equipment',   'Cameron',     'Type U',        'CAM-2019-00142', v_rig1_id, 'RIG-01', 'Rig 1  — Western Desert', 'Active', v_ndc_id, '2019-03-15', 'Cameron Egypt'),
-    ('BOP Stack 11" 5K',        v_bop_cat,  'BOP Equipment',   'Hydril',      'GXL',           'HYD-2020-00891', v_rig2_id, 'RIG-02', 'Rig 2  — Sinai',          'Active', v_ndc_id, '2020-06-01', 'Hydril Middle East'),
-    ('Top Drive 500T',          v_tds_cat,  'Top Drive System','Canrig',      '1275AC',        'CNR-2021-00034', v_rig3_id, 'RIG-03', 'Rig 3  — Gulf of Suez',   'Active', v_ndc_id, '2021-01-10', 'Canrig Drilling Tech'),
-    ('Air Hoist 5T',            v_lift_cat, 'Lifting Equipment','Ingersoll Rand','ML500',       'IR-2020-05512',  v_rig1_id, 'RIG-01', 'Rig 1  — Western Desert', 'Active', v_edc_id, '2020-09-20', 'IR Egypt'),
-    ('Crown Block 500T',        v_lift_cat, 'Lifting Equipment','National Oilwell','CB-500',    'NOV-2018-00221', v_rig3_id, 'RIG-03', 'Rig 3  — Gulf of Suez',   'Active', v_ndc_id, '2018-05-12', 'NOV Egypt'),
-    ('Drill Pipe 5" DP Grade E',v_ds_cat,   'Drill String',    'Tenaris',     'TenarisHydril', 'TEN-2022-1000',  v_rig1_id, 'RIG-01', 'Rig 1  — Western Desert', 'Active', v_ndc_id, '2022-02-01', 'Tenaris'),
-    ('Mud Gas Separator',       v_pv_cat,   'Pressure Vessels','CROSCO',      'MGS-24',        'CRS-2019-00045', v_rig2_id, 'RIG-02', 'Rig 2  — Sinai',          'Active', v_edc_id, '2019-11-30', 'CROSCO'),
-    ('IBOP Safety Valve 5"',    v_sv_cat,   'Safety Valves',   'Smith Bits',  'IBOP-5',        'SMB-2021-00312', v_rig1_id, 'RIG-01', 'Rig 1  — Western Desert', 'Active', v_ndc_id, '2021-07-15', 'Smith International'),
-    ('BOP Stack 13-3/8" 3K',    v_bop_cat,  'BOP Equipment',   'Shaffer',     'LWS',           'SHA-2017-00098', v_yard_id, 'YARD-CAI','Cairo Laydown Yard',     'Standby',v_edc_id, '2017-04-01', 'Shaffer NOV'),
-    ('Travelling Block 350T',   v_lift_cat, 'Lifting Equipment','Varco',       'TB-350',        'VAR-2020-00667', v_rig2_id, 'RIG-02', 'Rig 2  — Sinai',          'Active', v_ndc_id, '2020-03-18', 'Varco International')
+    ('BOP Stack 13-5/8" 10K',   v_bop_cat,  'BOP Equipment',   'Cameron',        'Type U',        'CAM-2019-00142', v_rig1_id, 'RIG-01', 'Rig 1  — Western Desert', 'Active',  '2019-03-15', 'Cameron Egypt'),
+    ('BOP Stack 11" 5K',        v_bop_cat,  'BOP Equipment',   'Hydril',         'GXL',           'HYD-2020-00891', v_rig2_id, 'RIG-02', 'Rig 2  — Sinai',          'Active',  '2020-06-01', 'Hydril Middle East'),
+    ('Top Drive 500T',          v_tds_cat,  'Top Drive System','Canrig',         '1275AC',        'CNR-2021-00034', v_rig3_id, 'RIG-03', 'Rig 3  — Gulf of Suez',   'Active',  '2021-01-10', 'Canrig Drilling Tech'),
+    ('Air Hoist 5T',            v_lift_cat, 'Lifting Equipment','Ingersoll Rand', 'ML500',         'IR-2020-05512',  v_rig1_id, 'RIG-01', 'Rig 1  — Western Desert', 'Active',  '2020-09-20', 'IR Egypt'),
+    ('Crown Block 500T',        v_lift_cat, 'Lifting Equipment','National Oilwell','CB-500',       'NOV-2018-00221', v_rig3_id, 'RIG-03', 'Rig 3  — Gulf of Suez',   'Active',  '2018-05-12', 'NOV Egypt'),
+    ('Drill Pipe 5" DP Grade E',v_ds_cat,   'Drill String',    'Tenaris',        'TenarisHydril', 'TEN-2022-1000',  v_rig1_id, 'RIG-01', 'Rig 1  — Western Desert', 'Active',  '2022-02-01', 'Tenaris'),
+    ('Mud Gas Separator',       v_pv_cat,   'Pressure Vessels','CROSCO',         'MGS-24',        'CRS-2019-00045', v_rig2_id, 'RIG-02', 'Rig 2  — Sinai',          'Active',  '2019-11-30', 'CROSCO'),
+    ('IBOP Safety Valve 5"',    v_sv_cat,   'Safety Valves',   'Smith Bits',     'IBOP-5',        'SMB-2021-00312', v_rig1_id, 'RIG-01', 'Rig 1  — Western Desert', 'Active',  '2021-07-15', 'Smith International'),
+    ('BOP Stack 13-3/8" 3K',    v_bop_cat,  'BOP Equipment',   'Shaffer',        'LWS',           'SHA-2017-00098', v_yard_id, 'YARD-CAI','Cairo Laydown Yard',     'Standby', '2017-04-01', 'Shaffer NOV'),
+    ('Travelling Block 350T',   v_lift_cat, 'Lifting Equipment','Varco',          'TB-350',        'VAR-2020-00667', v_rig2_id, 'RIG-02', 'Rig 2  — Sinai',          'Active',  '2020-03-18', 'Varco International')
   ON CONFLICT (asset_id) DO NOTHING;
 
 END $$;
 
 
 -- ────────────────────────────────────────────────────────────
---  5. SAMPLE CERTIFICATES
+--  4. SAMPLE CERTIFICATES
 --  Spread across Valid / Expiring Soon / Expired statuses
 --  so the dashboard shows meaningful data immediately
 -- ────────────────────────────────────────────────────────────
@@ -333,7 +311,7 @@ END $$;
 
 
 -- ────────────────────────────────────────────────────────────
---  6. SAMPLE INSPECTIONS (upcoming schedule)
+--  5. SAMPLE INSPECTIONS (upcoming schedule)
 -- ────────────────────────────────────────────────────────────
 DO $$
 DECLARE
@@ -382,7 +360,6 @@ END $$;
 --  Run these to confirm seed data loaded correctly
 -- ────────────────────────────────────────────────────────────
 /*
-SELECT COUNT(*) AS companies   FROM companies;
 SELECT COUNT(*) AS locations   FROM locations;
 SELECT COUNT(*) AS categories  FROM categories;
 SELECT COUNT(*) AS assets      FROM assets;

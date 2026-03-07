@@ -5,7 +5,7 @@
 --
 --  ARCHITECTURE:
 --    1. Extensions & Helpers
---    2. Reference Tables   (companies, locations, categories)
+--    2. Reference Tables   (locations, categories)
 --    3. Core Tables        (assets, certificates, inspections)
 --    4. Operations Tables  (transfers, maintenance, alerts)
 --    5. Auth & Users       (users, roles, sessions)
@@ -35,23 +35,6 @@ $$ LANGUAGE plpgsql;
 --  2. REFERENCE TABLES
 -- ────────────────────────────────────────────────────────────
 
--- ── Companies (owners / contractors) ────────────────────────
-CREATE TABLE IF NOT EXISTS companies (
-  id            UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name          TEXT        NOT NULL UNIQUE,
-  short_code    TEXT        UNIQUE,
-  country       TEXT        DEFAULT 'Egypt',
-  contact_name  TEXT,
-  contact_email TEXT,
-  contact_phone TEXT,
-  active        BOOLEAN     DEFAULT TRUE,
-  created_at    TIMESTAMPTZ DEFAULT NOW(),
-  updated_at    TIMESTAMPTZ DEFAULT NOW()
-);
-DROP TRIGGER IF EXISTS trg_companies_updated_at ON companies;
-CREATE TRIGGER trg_companies_updated_at
-  BEFORE UPDATE ON companies FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-
 -- ── Location Types ──────────────────────────────────────────
 -- Rigs, Yards, Repair Facilities all live in one table
 -- with a type discriminator for filtering
@@ -60,7 +43,6 @@ CREATE TABLE IF NOT EXISTS locations (
   code          TEXT        NOT NULL UNIQUE,   -- e.g. RIG-01, YARD-CAIRO, REP-MAADI
   name          TEXT        NOT NULL,
   type          TEXT        NOT NULL CHECK (type IN ('Rig','Yard','Repair Facility')),
-  company_id    UUID        REFERENCES companies(id) ON DELETE SET NULL,
   area          TEXT,                           -- geographic area / field
   status        TEXT        DEFAULT 'Active'
                   CHECK (status IN ('Active','Idle','Maintenance','Retired')),
@@ -136,7 +118,6 @@ CREATE TABLE IF NOT EXISTS assets (
                         )),
   cert_expiry_date    DATE,                          -- nearest upcoming expiry
   -- Acquisition
-  company_id          UUID        REFERENCES companies(id) ON DELETE SET NULL,
   acquisition_date    DATE,
   po_number           TEXT,                          -- purchase order ref
   -- Traceability
@@ -718,11 +699,9 @@ SELECT
   (a.cert_expiry_date - CURRENT_DATE) AS days_to_expiry,
   a.location_code,
   a.location_name,
-  l.type          AS location_type,
-  c.name          AS company_name
+  l.type          AS location_type
 FROM assets a
 LEFT JOIN locations l ON a.location_id = l.id
-LEFT JOIN companies c ON a.company_id  = c.id
 WHERE a.status NOT IN ('Retired','Scrapped')
 ORDER BY a.cert_expiry_date ASC NULLS LAST;
 
@@ -815,7 +794,6 @@ ORDER BY t.requested_at DESC;
 --  9. ROW LEVEL SECURITY
 -- ────────────────────────────────────────────────────────────
 
-ALTER TABLE companies           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE locations           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE categories          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE assets              ENABLE ROW LEVEL SECURITY;
@@ -829,7 +807,6 @@ ALTER TABLE audit_log           ENABLE ROW LEVEL SECURITY;
 
 -- Service role (Worker) bypasses RLS — open policy for API use
 -- In production replace with JWT-based policies per role
-DROP POLICY IF EXISTS "allow_all_companies"          ON companies;
 DROP POLICY IF EXISTS "allow_all_locations"          ON locations;
 DROP POLICY IF EXISTS "allow_all_categories"         ON categories;
 DROP POLICY IF EXISTS "allow_all_assets"             ON assets;
@@ -841,7 +818,6 @@ DROP POLICY IF EXISTS "allow_all_maintenance_orders" ON maintenance_orders;
 DROP POLICY IF EXISTS "allow_all_user_profiles"      ON user_profiles;
 DROP POLICY IF EXISTS "allow_all_audit_log"          ON audit_log;
 
-CREATE POLICY "allow_all_companies"          ON companies          FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "allow_all_locations"          ON locations          FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "allow_all_categories"         ON categories         FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "allow_all_assets"             ON assets             FOR ALL USING (true) WITH CHECK (true);

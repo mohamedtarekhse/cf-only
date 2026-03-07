@@ -1672,10 +1672,6 @@
           <select id="af-location"></select>
         </div>
         <div class="form-group">
-          <label>Company / Owner</label>
-          <select id="af-company"></select>
-        </div>
-        <div class="form-group">
           <label>Acquisition Date</label>
           <input id="af-acquisition" type="date">
         </div>
@@ -2020,7 +2016,6 @@ let allTransfers   = [];
 let allAlerts      = [];
 let allLocations   = [];
 let allCategories  = [];
-let allCompanies   = [];
 let currentAssetId = null;
 let currentCertId  = null;
 let currentInspId  = null;
@@ -2103,7 +2098,7 @@ async function initApp() {
   document.getElementById('user-avatar').textContent = name.charAt(0).toUpperCase();
 
   // Load reference data
-  await Promise.all([loadCategories(), loadLocations(), loadCompanies()]);
+  await Promise.all([loadCategories(), loadLocations()]);
   loadDashboard();
   loadAssets();
 }
@@ -2160,11 +2155,6 @@ async function loadLocations() {
   allLocations.forEach(l => {
     locFilter.innerHTML += `<option value="${l.id}">${l.name}</option>`;
   });
-}
-
-async function loadCompanies() {
-  const data = await GET('/companies');
-  allCompanies = data?.data || [];
 }
 
 // ═══════════════════════════════════════════════
@@ -2382,13 +2372,6 @@ function openAssetModal(assetId = null) {
     locSel.innerHTML += `<option value="${l.id}">[${l.type}] ${l.name}</option>`;
   });
 
-  // Populate company dropdown
-  const coSel = document.getElementById('af-company');
-  coSel.innerHTML = '<option value="">Select company…</option>';
-  allCompanies.forEach(c => {
-    coSel.innerHTML += `<option value="${c.id}">${c.name}</option>`;
-  });
-
   if (assetId) {
     const a = allAssets.find(x => x.id === assetId);
     if (a) {
@@ -2404,11 +2387,10 @@ function openAssetModal(assetId = null) {
       document.getElementById('af-notes').value       = a.notes || '';
       catSel.value = a.category_id || '';
       locSel.value = a.location_id || '';
-      coSel.value  = a.company_id  || '';
     }
   } else {
     document.querySelectorAll('#asset-modal input, #asset-modal textarea').forEach(el => el.value = '');
-    catSel.value = ''; locSel.value = ''; coSel.value = '';
+    catSel.value = ''; locSel.value = '';
   }
 
   openModal('asset-modal');
@@ -2423,7 +2405,6 @@ async function saveAsset() {
     serial_number:    document.getElementById('af-serial').value.trim(),
     part_number:      document.getElementById('af-part').value.trim(),
     location_id:      document.getElementById('af-location').value,
-    company_id:       document.getElementById('af-company').value,
     acquisition_date: document.getElementById('af-acquisition').value || null,
     po_number:        document.getElementById('af-po').value.trim(),
     supplier_name:    document.getElementById('af-supplier').value.trim(),
@@ -2482,7 +2463,6 @@ async function viewAsset(id) {
       ${detailRow('Serial Number', a.serial_number)}
       ${detailRow('Part Number',   a.part_number)}
       ${detailRow('Location',      a.location_name)}
-      ${detailRow('Company',       a.company_name)}
       ${detailRow('Acquisition',   a.acquisition_date)}
       ${detailRow('PO Number',     a.po_number)}
       ${detailRow('Supplier',      a.supplier_name)}

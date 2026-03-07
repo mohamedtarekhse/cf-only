@@ -27,8 +27,6 @@
  *   GET    /api/locations/:id
  *   POST   /api/locations
  *   PUT    /api/locations/:id
- *   ── Companies ──
- *   GET    /api/companies
  *   ── Categories ──
  *   GET    /api/categories
  *   ── Assets ──
@@ -239,9 +237,6 @@ async function router(path, method, url, request, SB, KEY, env) {
     if (method === 'PUT'  &&  p2) return updateLocation(p2, body, SB, KEY);
   }
 
-  // ── /api/companies ──────────────────────────────────────────
-  if (p1 === 'companies' && method === 'GET') return listCompanies(SB, KEY);
-
   // ── /api/categories ─────────────────────────────────────────
   if (p1 === 'categories' && method === 'GET') return listCategories(SB, KEY);
 
@@ -419,17 +414,6 @@ async function updateLocation(id, body, SB, KEY) {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  COMPANIES
-// ─────────────────────────────────────────────────────────────
-async function listCompanies(SB, KEY) {
-  const data = await sbSelect(SB, KEY, 'companies', {
-    filters: { active: 'eq.true' },
-    order: 'name.asc',
-  });
-  return respond({ success: true, data });
-}
-
-// ─────────────────────────────────────────────────────────────
 //  CATEGORIES
 // ─────────────────────────────────────────────────────────────
 async function listCategories(SB, KEY) {
@@ -466,7 +450,7 @@ async function listAssets(url, SB, KEY) {
     select: `id,asset_id,name,category_name,manufacturer,serial_number,
              status,cert_status,cert_expiry_date,
              location_id,location_code,location_name,
-             company_id,acquisition_date,notes`,
+             acquisition_date,notes`,
     filters,
     order: 'cert_expiry_date.asc.nullslast',
     limit,
