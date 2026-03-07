@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS inspections (
   id               BIGSERIAL PRIMARY KEY,
   start_date       DATE          NOT NULL,
   end_date         DATE,
-
+  company          TEXT,
   inspection_type  TEXT          CHECK (inspection_type IN (
                      'Cat IV','Annual Inspection','6-Month Inspection',
                      'Quarterly Inspection','Monthly Inspection','Weekly Inspection',
@@ -32,7 +32,7 @@ CREATE TRIGGER trg_inspections_updated_at
   BEFORE UPDATE ON inspections
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_inspections();
 
-
+CREATE INDEX IF NOT EXISTS idx_inspections_company ON inspections (company);
 CREATE INDEX IF NOT EXISTS idx_inspections_type    ON inspections (inspection_type);
 CREATE INDEX IF NOT EXISTS idx_inspections_start   ON inspections (start_date DESC);
 
