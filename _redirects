@@ -1,1 +1,20 @@
-# No redirect rules — Worker handles all routing
+# ============================================================
+#  _redirects — Cloudflare Pages
+#  Asset Integrity & Certification Tracking System
+#
+#  Rules are evaluated top-to-bottom, first match wins.
+#
+#  The Worker (_worker.js) handles all /api/* routes.
+#  Everything else falls through to index.html (SPA).
+# ============================================================
+
+# ── API routes go to Worker (no redirect needed — Worker intercepts first)
+# These lines are defensive — Cloudflare Pages Worker takes priority anyway
+/api/*  /api/:splat  200
+
+# ── Health check passthrough
+/health  /health  200
+
+# ── SPA fallback — all unknown paths serve index.html
+# This ensures direct URL access works (e.g. bookmarked deep links)
+/*  /index.html  200

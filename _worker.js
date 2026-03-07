@@ -1,392 +1,1091 @@
 /**
  * _worker.js — Cloudflare Pages Worker
- * Calls Supabase REST API with explicit fetch() — no custom query builder.
+ * Asset Integrity & Certification Tracking System
+ * Oil & Gas — Land Drilling Operations
  *
- * Cloudflare Pages → Settings → Environment Variables:
- *   SUPABASE_URL              = https://tetbgjfltggmejqwntez.supabase.co
- *   SUPABASE_SERVICE_ROLE_KEY = sb_publishable_uSHDoMEafLUF1FzAQCVn0Q_JBKTd1Br
+ * SECRETS (set via wrangler or Cloudflare Dashboard):
+ *   SUPABASE_URL              = https://xxxx.supabase.co
+ *   SUPABASE_SERVICE_ROLE_KEY = your-service-role-key
+ *   API_SECRET_KEY            = your-internal-api-key
+ *   RESEND_API_KEY            = your-resend-api-key  (for email alerts)
+ *   ALERT_FROM_EMAIL          = alerts@yourdomain.com
+ *   ALERT_TO_EMAILS           = eng@co.com,mgr@co.com  (comma-separated)
+ *
+ * ROUTES:
+ *   GET    /health
+ *   ── Auth ──
+ *   POST   /api/auth/login
+ *   POST   /api/auth/logout
+ *   GET    /api/auth/me
+ *   ── Dashboard ──
+ *   GET    /api/dashboard/kpis
+ *   GET    /api/dashboard/equipment-by-location
+ *   GET    /api/dashboard/cert-expiry
+ *   GET    /api/dashboard/inspection-due
+ *   ── Locations ──
+ *   GET    /api/locations
+ *   GET    /api/locations/:id
+ *   POST   /api/locations
+ *   PUT    /api/locations/:id
+ *   ── Companies ──
+ *   GET    /api/companies
+ *   ── Categories ──
+ *   GET    /api/categories
+ *   ── Assets ──
+ *   GET    /api/assets
+ *   GET    /api/assets/:id
+ *   POST   /api/assets
+ *   PUT    /api/assets/:id
+ *   DELETE /api/assets/:id
+ *   ── Certificates ──
+ *   GET    /api/certificates
+ *   GET    /api/certificates/:id
+ *   GET    /api/assets/:id/certificates
+ *   POST   /api/certificates
+ *   PUT    /api/certificates/:id
+ *   ── Inspections ──
+ *   GET    /api/inspections
+ *   GET    /api/inspections/:id
+ *   POST   /api/inspections
+ *   PUT    /api/inspections/:id
+ *   ── Transfers ──
+ *   GET    /api/transfers
+ *   GET    /api/transfers/:id
+ *   POST   /api/transfers
+ *   PUT    /api/transfers/:id
+ *   ── Alerts ──
+ *   GET    /api/alerts
+ *   POST   /api/alerts/run          (manual trigger — also runs on cron)
+ *   PUT    /api/alerts/:id/ack
+ *   ── Maintenance ──
+ *   GET    /api/maintenance
+ *   GET    /api/maintenance/:id
+ *   POST   /api/maintenance
+ *   PUT    /api/maintenance/:id
+ *   ── Audit ──
+ *   GET    /api/audit
+ *   ── Users ──
+ *   GET    /api/users
+ *   POST   /api/users
+ *   PUT    /api/users/:id
  */
 
+// ─────────────────────────────────────────────────────────────
+//  CORS & RESPONSE HELPERS
+// ─────────────────────────────────────────────────────────────
+const CORS = {
+  'Access-Control-Allow-Origin':  '*',
+  'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-API-Key',
+};
+
+function respond(body, status = 200) {
+  return new Response(
+    body === null ? null : JSON.stringify(body),
+    { status, headers: { 'Content-Type': 'application/json', ...CORS } }
+  );
+}
+
+function err(msg, status = 400) {
+  return respond({ success: false, error: msg }, status);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  SUPABASE REST HELPERS
+// ─────────────────────────────────────────────────────────────
+function sbHeaders(key, extra = {}) {
+  return {
+    apikey: key,
+    Authorization: `Bearer ${key}`,
+    'Content-Type': 'application/json',
+    Prefer: 'return=representation',
+    ...extra,
+  };
+}
+
+async function sbSelect(base, key, table, {
+  select = '*', filters = {}, order = null,
+  limit = null, offset = null, single = false
+} = {}) {
+  const u = new URL(`${base}/rest/v1/${table}`);
+  u.searchParams.set('select', select);
+  for (const [k, v] of Object.entries(filters)) u.searchParams.append(k, v);
+  if (order)  u.searchParams.set('order', order);
+  if (limit)  u.searchParams.set('limit', String(limit));
+  if (offset) u.searchParams.set('offset', String(offset));
+  const h = sbHeaders(key);
+  if (single) h['Accept'] = 'application/vnd.pgjson';
+  const r = await fetch(u.toString(), { headers: h });
+  if (!r.ok) return { error: await r.text() };
+  return single ? r.json() : r.json();
+}
+
+async function sbRPC(base, key, fn, params = {}) {
+  const r = await fetch(`${base}/rest/v1/rpc/${fn}`, {
+    method: 'POST',
+    headers: sbHeaders(key),
+    body: JSON.stringify(params),
+  });
+  if (!r.ok) return { error: await r.text() };
+  return r.json();
+}
+
+async function sbInsert(base, key, table, body) {
+  const r = await fetch(`${base}/rest/v1/${table}`, {
+    method: 'POST',
+    headers: sbHeaders(key),
+    body: JSON.stringify(body),
+  });
+  const data = await r.json();
+  if (!r.ok) return { error: data };
+  return Array.isArray(data) ? data[0] : data;
+}
+
+async function sbUpdate(base, key, table, id, body) {
+  const r = await fetch(`${base}/rest/v1/${table}?id=eq.${id}`, {
+    method: 'PATCH',
+    headers: sbHeaders(key),
+    body: JSON.stringify(body),
+  });
+  const data = await r.json();
+  if (!r.ok) return { error: data };
+  return Array.isArray(data) ? data[0] : data;
+}
+
+async function sbDelete(base, key, table, id) {
+  const r = await fetch(`${base}/rest/v1/${table}?id=eq.${id}`, {
+    method: 'DELETE',
+    headers: sbHeaders(key),
+  });
+  if (!r.ok) return { error: await r.text() };
+  return { deleted: true };
+}
+
+// Query a Supabase VIEW directly
+async function sbView(base, key, view, params = {}) {
+  return sbSelect(base, key, view, params);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  MAIN EXPORT
+// ─────────────────────────────────────────────────────────────
 export default {
+  // HTTP requests
   async fetch(request, env) {
-    const url = new URL(request.url);
-    const path = url.pathname;
-    const method = request.method;
+    const url    = new URL(request.url);
+    const path   = url.pathname;
+    const method = request.method.toUpperCase();
 
     if (method === 'OPTIONS') return respond(null, 204);
-    if (path === '/health') return respond({ status:'ok', service:'Asset Management (Cloudflare Worker)', ts:new Date().toISOString() });
+    if (path === '/health')   return respond({ status: 'ok', service: 'Asset Integrity & Cert Tracking', ts: new Date().toISOString() });
 
-    if (path.startsWith('/api')) {
-      if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY)
-        return respond({ success:false, error:'Supabase secrets not configured in Cloudflare Pages environment variables.' }, 500);
-      try {
-        return await router(path, method, url, request, env.SUPABASE_URL.replace(/\/$/,''), env.SUPABASE_SERVICE_ROLE_KEY, env);
-      } catch(err) {
-        console.error(err);
-        return respond({ success:false, error: err.message||'Internal error' }, 500);
+    if (!path.startsWith('/api')) return env.ASSETS.fetch(request);
+
+    const SB  = (env.SUPABASE_URL || '').replace(/\/$/, '');
+    const KEY = env.SUPABASE_SERVICE_ROLE_KEY || '';
+
+    if (!SB || !KEY)
+      return err('Supabase secrets not configured', 500);
+
+    try {
+      return await router(path, method, url, request, SB, KEY, env);
+    } catch (e) {
+      console.error(e);
+      return err(e.message || 'Internal error', 500);
+    }
+  },
+
+  // Cron trigger — runs alert check every day at 06:00 UTC
+  async scheduled(event, env) {
+    const SB  = (env.SUPABASE_URL || '').replace(/\/$/, '');
+    const KEY = env.SUPABASE_SERVICE_ROLE_KEY || '';
+    if (SB && KEY) await runAlertCheck(SB, KEY, env);
+  },
+};
+
+// ─────────────────────────────────────────────────────────────
+//  ROUTER
+// ─────────────────────────────────────────────────────────────
+async function router(path, method, url, request, SB, KEY, env) {
+  const seg   = path.split('/').filter(Boolean); // ['api','assets','uuid']
+  const p1    = seg[1] || '';   // e.g. 'assets'
+  const p2    = seg[2] || '';   // e.g. uuid or sub-route
+  const p3    = seg[3] || '';   // e.g. 'certificates'
+
+  const body  = ['POST','PUT','PATCH'].includes(method)
+    ? await request.json().catch(() => ({}))
+    : {};
+
+  // ── /api/auth ───────────────────────────────────────────────
+  if (p1 === 'auth') {
+    if (p2 === 'login'  && method === 'POST')  return authLogin(body, SB, KEY);
+    if (p2 === 'logout' && method === 'POST')  return respond({ success: true });
+    if (p2 === 'me'     && method === 'GET')   return authMe(request, SB, KEY);
+  }
+
+  // ── /api/dashboard ──────────────────────────────────────────
+  if (p1 === 'dashboard') {
+    if (p2 === 'kpis')                  return dashKpis(SB, KEY);
+    if (p2 === 'equipment-by-location') return dashByLocation(SB, KEY);
+    if (p2 === 'cert-expiry')           return dashCertExpiry(SB, KEY, url);
+    if (p2 === 'inspection-due')        return dashInspectionDue(SB, KEY);
+  }
+
+  // ── /api/locations ──────────────────────────────────────────
+  if (p1 === 'locations') {
+    if (method === 'GET'  && !p2) return listLocations(url, SB, KEY);
+    if (method === 'GET'  &&  p2) return getLocation(p2, SB, KEY);
+    if (method === 'POST')        return createLocation(body, SB, KEY);
+    if (method === 'PUT'  &&  p2) return updateLocation(p2, body, SB, KEY);
+  }
+
+  // ── /api/companies ──────────────────────────────────────────
+  if (p1 === 'companies' && method === 'GET') return listCompanies(SB, KEY);
+
+  // ── /api/categories ─────────────────────────────────────────
+  if (p1 === 'categories' && method === 'GET') return listCategories(SB, KEY);
+
+  // ── /api/assets ─────────────────────────────────────────────
+  if (p1 === 'assets') {
+    if (method === 'GET'    && !p2)              return listAssets(url, SB, KEY);
+    if (method === 'GET'    &&  p2 && !p3)       return getAsset(p2, SB, KEY);
+    if (method === 'POST')                       return createAsset(body, SB, KEY);
+    if (method === 'PUT'    &&  p2)              return updateAsset(p2, body, SB, KEY);
+    if (method === 'DELETE' &&  p2)              return deleteAsset(p2, SB, KEY);
+    // /api/assets/:id/certificates
+    if (method === 'GET'    &&  p2 && p3 === 'certificates') return getAssetCerts(p2, SB, KEY);
+  }
+
+  // ── /api/certificates ───────────────────────────────────────
+  if (p1 === 'certificates') {
+    if (method === 'GET'  && !p2) return listCertificates(url, SB, KEY);
+    if (method === 'GET'  &&  p2) return getCertificate(p2, SB, KEY);
+    if (method === 'POST')        return createCertificate(body, SB, KEY);
+    if (method === 'PUT'  &&  p2) return updateCertificate(p2, body, SB, KEY);
+  }
+
+  // ── /api/inspections ────────────────────────────────────────
+  if (p1 === 'inspections') {
+    if (method === 'GET'  && !p2) return listInspections(url, SB, KEY);
+    if (method === 'GET'  &&  p2) return getInspection(p2, SB, KEY);
+    if (method === 'POST')        return createInspection(body, SB, KEY);
+    if (method === 'PUT'  &&  p2) return updateInspection(p2, body, SB, KEY, env);
+  }
+
+  // ── /api/transfers ──────────────────────────────────────────
+  if (p1 === 'transfers') {
+    if (method === 'GET'  && !p2) return listTransfers(url, SB, KEY);
+    if (method === 'GET'  &&  p2) return getTransfer(p2, SB, KEY);
+    if (method === 'POST')        return createTransfer(body, SB, KEY);
+    if (method === 'PUT'  &&  p2) return updateTransfer(p2, body, SB, KEY, env);
+  }
+
+  // ── /api/alerts ─────────────────────────────────────────────
+  if (p1 === 'alerts') {
+    if (method === 'GET'  && !p2)              return listAlerts(url, SB, KEY);
+    if (method === 'POST' && p2 === 'run')     return triggerAlerts(SB, KEY, env);
+    if (method === 'PUT'  && p3 === 'ack')     return ackAlert(p2, SB, KEY);
+  }
+
+  // ── /api/maintenance ────────────────────────────────────────
+  if (p1 === 'maintenance') {
+    if (method === 'GET'  && !p2) return listMaintenance(url, SB, KEY);
+    if (method === 'GET'  &&  p2) return getMaintenance(p2, SB, KEY);
+    if (method === 'POST')        return createMaintenance(body, SB, KEY);
+    if (method === 'PUT'  &&  p2) return updateMaintenance(p2, body, SB, KEY);
+  }
+
+  // ── /api/audit ──────────────────────────────────────────────
+  if (p1 === 'audit' && method === 'GET') return listAudit(url, SB, KEY);
+
+  // ── /api/users ──────────────────────────────────────────────
+  if (p1 === 'users') {
+    if (method === 'GET')         return listUsers(SB, KEY);
+    if (method === 'POST')        return createUser(body, SB, KEY);
+    if (method === 'PUT' && p2)   return updateUser(p2, body, SB, KEY);
+  }
+
+  return err('Not found', 404);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  AUTH
+// ─────────────────────────────────────────────────────────────
+async function authLogin({ email, password }, SB, KEY) {
+  if (!email || !password) return err('email and password required');
+  const r = await fetch(`${SB}/auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: { apikey: KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await r.json();
+  if (!r.ok) return err(data.error_description || data.msg || 'Login failed', 401);
+
+  // Fetch profile
+  const profile = await sbSelect(SB, KEY, 'user_profiles', {
+    filters: { email: `eq.${email}` }, single: false
+  });
+
+  return respond({
+    success: true,
+    access_token: data.access_token,
+    user: {
+      id:    data.user?.id,
+      email: data.user?.email,
+      profile: Array.isArray(profile) ? profile[0] : profile,
+    },
+  });
+}
+
+async function authMe(request, SB, KEY) {
+  const token = (request.headers.get('Authorization') || '').replace('Bearer ', '');
+  if (!token) return err('No token', 401);
+  const r = await fetch(`${SB}/auth/v1/user`, {
+    headers: { apikey: KEY, Authorization: `Bearer ${token}` },
+  });
+  if (!r.ok) return err('Invalid token', 401);
+  const user = await r.json();
+  const profile = await sbSelect(SB, KEY, 'user_profiles', {
+    filters: { email: `eq.${user.email}` }, single: false
+  });
+  return respond({ success: true, user: { ...user, profile: Array.isArray(profile) ? profile[0] : profile } });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  DASHBOARD
+// ─────────────────────────────────────────────────────────────
+async function dashKpis(SB, KEY) {
+  const data = await sbView(SB, KEY, 'vw_dashboard_kpis');
+  return respond({ success: true, data: Array.isArray(data) ? data[0] : data });
+}
+
+async function dashByLocation(SB, KEY) {
+  const data = await sbView(SB, KEY, 'vw_equipment_by_location');
+  return respond({ success: true, data });
+}
+
+async function dashCertExpiry(SB, KEY, url) {
+  const days = parseInt(url.searchParams.get('days') || '90');
+  const data = await sbView(SB, KEY, 'vw_cert_expiry_report', {
+    filters: { days_remaining: `lte.${days}` },
+    order: 'days_remaining.asc',
+  });
+  return respond({ success: true, data });
+}
+
+async function dashInspectionDue(SB, KEY) {
+  const data = await sbView(SB, KEY, 'vw_inspection_due');
+  return respond({ success: true, data });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  LOCATIONS
+// ─────────────────────────────────────────────────────────────
+async function listLocations(url, SB, KEY) {
+  const filters = {};
+  const type   = url.searchParams.get('type');
+  const status = url.searchParams.get('status');
+  if (type)   filters.type   = `eq.${type}`;
+  if (status) filters.status = `eq.${status}`;
+  const data = await sbSelect(SB, KEY, 'locations', {
+    filters,
+    order: 'type.asc,name.asc',
+  });
+  return respond({ success: true, data });
+}
+
+async function getLocation(id, SB, KEY) {
+  const data = await sbSelect(SB, KEY, 'locations', {
+    filters: { id: `eq.${id}` }, single: false
+  });
+  const loc = Array.isArray(data) ? data[0] : data;
+  if (!loc) return err('Location not found', 404);
+  return respond({ success: true, data: loc });
+}
+
+async function createLocation(body, SB, KEY) {
+  const { code, name, type } = body;
+  if (!code || !name || !type) return err('code, name, type required');
+  const data = await sbInsert(SB, KEY, 'locations', body);
+  if (data?.error) return err(JSON.stringify(data.error));
+  return respond({ success: true, data }, 201);
+}
+
+async function updateLocation(id, body, SB, KEY) {
+  delete body.id; delete body.created_at;
+  const data = await sbUpdate(SB, KEY, 'locations', id, body);
+  if (data?.error) return err(JSON.stringify(data.error));
+  return respond({ success: true, data });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  COMPANIES
+// ─────────────────────────────────────────────────────────────
+async function listCompanies(SB, KEY) {
+  const data = await sbSelect(SB, KEY, 'companies', {
+    filters: { active: 'eq.true' },
+    order: 'name.asc',
+  });
+  return respond({ success: true, data });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  CATEGORIES
+// ─────────────────────────────────────────────────────────────
+async function listCategories(SB, KEY) {
+  const data = await sbSelect(SB, KEY, 'categories', {
+    filters: { active: 'eq.true' },
+    order: 'name.asc',
+  });
+  return respond({ success: true, data });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  ASSETS
+// ─────────────────────────────────────────────────────────────
+async function listAssets(url, SB, KEY) {
+  const filters = {};
+  const status      = url.searchParams.get('status');
+  const location_id = url.searchParams.get('location_id');
+  const category_id = url.searchParams.get('category_id');
+  const cert_status = url.searchParams.get('cert_status');
+  const search      = url.searchParams.get('search');
+  const limit       = url.searchParams.get('limit')  || '200';
+  const offset      = url.searchParams.get('offset') || '0';
+
+  if (status)      filters.status      = `eq.${status}`;
+  if (location_id) filters.location_id = `eq.${location_id}`;
+  if (category_id) filters.category_id = `eq.${category_id}`;
+  if (cert_status) filters.cert_status = `eq.${cert_status}`;
+  if (search)      filters.name        = `ilike.*${search}*`;
+
+  // Exclude retired/scrapped by default
+  if (!status) filters.status = 'not.in.(Retired,Scrapped)';
+
+  const data = await sbSelect(SB, KEY, 'assets', {
+    select: `id,asset_id,name,category_name,manufacturer,serial_number,
+             status,cert_status,cert_expiry_date,
+             location_id,location_code,location_name,
+             company_id,acquisition_date,notes`,
+    filters,
+    order: 'cert_expiry_date.asc.nullslast',
+    limit,
+    offset,
+  });
+  return respond({ success: true, data, count: Array.isArray(data) ? data.length : 0 });
+}
+
+async function getAsset(id, SB, KEY) {
+  const data = await sbSelect(SB, KEY, 'assets', {
+    filters: { id: `eq.${id}` }, single: false
+  });
+  const asset = Array.isArray(data) ? data[0] : data;
+  if (!asset) return err('Asset not found', 404);
+  return respond({ success: true, data: asset });
+}
+
+async function createAsset(body, SB, KEY) {
+  if (!body.name)     return err('name is required');
+  if (!body.category_id && !body.category_name) return err('category_id is required');
+
+  // Denormalize category_name if only id given
+  if (body.category_id && !body.category_name) {
+    const cats = await sbSelect(SB, KEY, 'categories', {
+      filters: { id: `eq.${body.category_id}` }, single: false
+    });
+    body.category_name = Array.isArray(cats) ? cats[0]?.name : null;
+  }
+  // Denormalize location
+  if (body.location_id && !body.location_name) {
+    const locs = await sbSelect(SB, KEY, 'locations', {
+      filters: { id: `eq.${body.location_id}` }, single: false
+    });
+    const loc = Array.isArray(locs) ? locs[0] : null;
+    if (loc) { body.location_code = loc.code; body.location_name = loc.name; }
+  }
+
+  body.asset_id = ''; // let trigger generate it
+  const data = await sbInsert(SB, KEY, 'assets', body);
+  if (data?.error) return err(JSON.stringify(data.error));
+  return respond({ success: true, data }, 201);
+}
+
+async function updateAsset(id, body, SB, KEY) {
+  delete body.id; delete body.created_at; delete body.asset_id;
+
+  // Sync location denormalization if location changed
+  if (body.location_id) {
+    const locs = await sbSelect(SB, KEY, 'locations', {
+      filters: { id: `eq.${body.location_id}` }, single: false
+    });
+    const loc = Array.isArray(locs) ? locs[0] : null;
+    if (loc) { body.location_code = loc.code; body.location_name = loc.name; }
+  }
+
+  const data = await sbUpdate(SB, KEY, 'assets', id, body);
+  if (data?.error) return err(JSON.stringify(data.error));
+  return respond({ success: true, data });
+}
+
+async function deleteAsset(id, SB, KEY) {
+  // Soft delete — just retire
+  const data = await sbUpdate(SB, KEY, 'assets', id, { status: 'Retired' });
+  if (data?.error) return err(JSON.stringify(data.error));
+  return respond({ success: true, message: 'Asset retired' });
+}
+
+async function getAssetCerts(assetId, SB, KEY) {
+  const data = await sbSelect(SB, KEY, 'certificates', {
+    filters: { asset_id: `eq.${assetId}` },
+    order: 'expiry_date.desc',
+  });
+  return respond({ success: true, data });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  CERTIFICATES
+// ─────────────────────────────────────────────────────────────
+async function listCertificates(url, SB, KEY) {
+  const filters = {};
+  const status      = url.searchParams.get('status');
+  const asset_id    = url.searchParams.get('asset_id');
+  const is_current  = url.searchParams.get('is_current');
+  const expiring    = url.searchParams.get('expiring_days');
+
+  if (status)     filters.status     = `eq.${status}`;
+  if (asset_id)   filters.asset_id   = `eq.${asset_id}`;
+  if (is_current !== null) filters.is_current = `eq.${is_current || 'true'}`;
+  else filters.is_current = 'eq.true';
+
+  const data = await sbSelect(SB, KEY, 'certificates', {
+    select: `id,cert_id,asset_id,asset_asset_id,asset_name,
+             inspection_type,issued_by,issue_date,expiry_date,
+             validity_days,cert_link,cert_number,
+             alert_days,alert_sent,status,is_current,notes`,
+    filters,
+    order: 'expiry_date.asc',
+    limit: url.searchParams.get('limit') || '500',
+  });
+  return respond({ success: true, data });
+}
+
+async function getCertificate(id, SB, KEY) {
+  const data = await sbSelect(SB, KEY, 'certificates', {
+    filters: { id: `eq.${id}` }, single: false
+  });
+  const cert = Array.isArray(data) ? data[0] : data;
+  if (!cert) return err('Certificate not found', 404);
+  return respond({ success: true, data: cert });
+}
+
+async function createCertificate(body, SB, KEY) {
+  const { asset_id, inspection_type, issue_date, expiry_date } = body;
+  if (!asset_id)        return err('asset_id is required');
+  if (!inspection_type) return err('inspection_type is required');
+  if (!issue_date)      return err('issue_date is required');
+  if (!expiry_date)     return err('expiry_date is required');
+
+  // Mark previous certs for this asset+type as superseded
+  await sbUpdate(SB, KEY, 'certificates',
+    null,  // we use raw filter below
+    { is_current: false, status: 'Superseded' }
+  );
+  // Actually filter by asset_id + inspection_type
+  await fetch(
+    `${SB}/rest/v1/certificates?asset_id=eq.${asset_id}&inspection_type=eq.${encodeURIComponent(inspection_type)}&is_current=eq.true`,
+    {
+      method: 'PATCH',
+      headers: sbHeaders(KEY),
+      body: JSON.stringify({ is_current: false, status: 'Superseded' }),
+    }
+  );
+
+  body.cert_id    = '';  // trigger generates
+  body.is_current = true;
+  const data = await sbInsert(SB, KEY, 'certificates', body);
+  if (data?.error) return err(JSON.stringify(data.error));
+  return respond({ success: true, data }, 201);
+}
+
+async function updateCertificate(id, body, SB, KEY) {
+  delete body.id; delete body.created_at; delete body.cert_id;
+  const data = await sbUpdate(SB, KEY, 'certificates', id, body);
+  if (data?.error) return err(JSON.stringify(data.error));
+  return respond({ success: true, data });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  INSPECTIONS
+// ─────────────────────────────────────────────────────────────
+async function listInspections(url, SB, KEY) {
+  const filters = {};
+  const status   = url.searchParams.get('status');
+  const asset_id = url.searchParams.get('asset_id');
+  if (status)   filters.status   = `eq.${status}`;
+  if (asset_id) filters.asset_id = `eq.${asset_id}`;
+  const data = await sbSelect(SB, KEY, 'inspections', {
+    filters,
+    order: 'scheduled_date.asc',
+    limit: url.searchParams.get('limit') || '200',
+  });
+  return respond({ success: true, data });
+}
+
+async function getInspection(id, SB, KEY) {
+  const data = await sbSelect(SB, KEY, 'inspections', {
+    filters: { id: `eq.${id}` }, single: false
+  });
+  const insp = Array.isArray(data) ? data[0] : data;
+  if (!insp) return err('Inspection not found', 404);
+  return respond({ success: true, data: insp });
+}
+
+async function createInspection(body, SB, KEY) {
+  if (!body.asset_id)        return err('asset_id is required');
+  if (!body.inspection_type) return err('inspection_type is required');
+  if (!body.scheduled_date)  return err('scheduled_date is required');
+
+  // Set asset status to In Inspection
+  await sbUpdate(SB, KEY, 'assets', body.asset_id, { status: 'In Inspection' });
+
+  body.inspection_id = ''; // trigger generates
+  const data = await sbInsert(SB, KEY, 'inspections', body);
+  if (data?.error) return err(JSON.stringify(data.error));
+  return respond({ success: true, data }, 201);
+}
+
+async function updateInspection(id, body, SB, KEY, env) {
+  delete body.id; delete body.created_at; delete body.inspection_id;
+
+  // If completing, check overdue
+  if (body.status === 'Completed' && !body.performed_date) {
+    body.performed_date = new Date().toISOString().split('T')[0];
+  }
+
+  const data = await sbUpdate(SB, KEY, 'inspections', id, body);
+  if (data?.error) return err(JSON.stringify(data.error));
+  return respond({ success: true, data });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  TRANSFERS
+// ─────────────────────────────────────────────────────────────
+async function listTransfers(url, SB, KEY) {
+  const filters = {};
+  const status   = url.searchParams.get('status');
+  const asset_id = url.searchParams.get('asset_id');
+  if (status)   filters.status   = `eq.${status}`;
+  if (asset_id) filters.asset_id = `eq.${asset_id}`;
+  const data = await sbSelect(SB, KEY, 'transfers', {
+    filters,
+    order: 'requested_at.desc',
+    limit: url.searchParams.get('limit') || '200',
+  });
+  return respond({ success: true, data });
+}
+
+async function getTransfer(id, SB, KEY) {
+  const data = await sbSelect(SB, KEY, 'transfers', {
+    filters: { id: `eq.${id}` }, single: false
+  });
+  const trf = Array.isArray(data) ? data[0] : data;
+  if (!trf) return err('Transfer not found', 404);
+  return respond({ success: true, data: trf });
+}
+
+async function createTransfer(body, SB, KEY) {
+  if (!body.asset_id)        return err('asset_id is required');
+  if (!body.to_location_id)  return err('to_location_id is required');
+
+  // Validate asset exists and is not already in transit
+  const assets = await sbSelect(SB, KEY, 'assets', {
+    filters: { id: `eq.${body.asset_id}` }, single: false
+  });
+  const asset = Array.isArray(assets) ? assets[0] : null;
+  if (!asset) return err('Asset not found', 404);
+  if (asset.status === 'In Transit') return err('Asset is already in transit');
+
+  // Capture destination name
+  const locs = await sbSelect(SB, KEY, 'locations', {
+    filters: { id: `eq.${body.to_location_id}` }, single: false
+  });
+  const toLoc = Array.isArray(locs) ? locs[0] : null;
+  body.to_location    = toLoc?.name || '';
+  body.transfer_id    = ''; // trigger generates
+  body.status         = 'Pending';
+
+  const data = await sbInsert(SB, KEY, 'transfers', body);
+  if (data?.error) return err(JSON.stringify(data.error));
+  return respond({ success: true, data }, 201);
+}
+
+async function updateTransfer(id, body, SB, KEY, env) {
+  delete body.id; delete body.created_at; delete body.transfer_id;
+
+  // Set timestamps on status changes
+  if (body.status === 'Approved'    && !body.approved_at)   body.approved_at   = new Date().toISOString();
+  if (body.status === 'In Transit'  && !body.dispatched_at) body.dispatched_at = new Date().toISOString();
+  if (body.status === 'Completed'   && !body.received_at)   body.received_at   = new Date().toISOString();
+
+  const data = await sbUpdate(SB, KEY, 'transfers', id, body);
+  if (data?.error) return err(JSON.stringify(data.error));
+
+  // Send email on approval
+  if (body.status === 'Approved' && env?.RESEND_API_KEY) {
+    const trf = Array.isArray(data) ? data[0] : data;
+    await sendEmail(env, {
+      subject: `Transfer Approved: ${trf?.asset_name} → ${trf?.to_location}`,
+      html: `<p>Transfer <strong>${trf?.transfer_id}</strong> has been approved.</p>
+             <p>Asset: ${trf?.asset_name}<br>
+             From: ${trf?.from_location}<br>
+             To: ${trf?.to_location}</p>`
+    });
+  }
+
+  return respond({ success: true, data });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  ALERTS
+// ─────────────────────────────────────────────────────────────
+async function listAlerts(url, SB, KEY) {
+  const filters = {};
+  const acked   = url.searchParams.get('acknowledged');
+  const type    = url.searchParams.get('alert_type');
+  if (acked !== null) filters.acknowledged = `eq.${acked || 'false'}`;
+  if (type)           filters.alert_type   = `eq.${type}`;
+  const data = await sbSelect(SB, KEY, 'alert_log', {
+    filters,
+    order: 'sent_at.desc',
+    limit: url.searchParams.get('limit') || '100',
+  });
+  return respond({ success: true, data });
+}
+
+async function triggerAlerts(SB, KEY, env) {
+  const result = await runAlertCheck(SB, KEY, env);
+  return respond({ success: true, ...result });
+}
+
+async function ackAlert(id, SB, KEY) {
+  const data = await sbUpdate(SB, KEY, 'alert_log', id, {
+    acknowledged: true, ack_at: new Date().toISOString()
+  });
+  return respond({ success: true, data });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  ALERT ENGINE (cron + manual trigger)
+//
+//  Rules:
+//  Rule 1 — Cert expiry ≤ 90 days → send email, log alert
+//  Rule 2 — Cert expiry ≤ 30 days → send urgent email
+//  Rule 3 — Cert expired           → log + mark asset cert_status
+//  Rule 4 — Inspection overdue     → log alert
+// ─────────────────────────────────────────────────────────────
+async function runAlertCheck(SB, KEY, env) {
+  const today = new Date().toISOString().split('T')[0];
+  let alertsSent = 0;
+  let alertsLogged = 0;
+
+  // ── Fetch all current certificates ──────────────────────────
+  const certs = await sbSelect(SB, KEY, 'vw_cert_expiry_report', {
+    order: 'days_remaining.asc',
+  });
+
+  if (!Array.isArray(certs)) return { error: 'Failed to fetch certificates' };
+
+  for (const cert of certs) {
+    const days = cert.days_remaining;
+
+    // Rule 1 & 2 — Expiring
+    if (days !== null && days >= 0 && days <= 90) {
+      const alertType = days <= 30
+        ? 'Cert Expiring 30 Days'
+        : 'Cert Expiring 90 Days';
+
+      // Check if we already sent this alert today
+      const existing = await sbSelect(SB, KEY, 'alert_log', {
+        filters: {
+          cert_id:    `eq.${cert.cert_id_pk}`,
+          alert_type: `eq.${alertType}`,
+          sent_at:    `gte.${today}T00:00:00Z`,
+        },
+      });
+      if (Array.isArray(existing) && existing.length > 0) continue;
+
+      // Log alert
+      await sbInsert(SB, KEY, 'alert_log', {
+        alert_type:     alertType,
+        asset_id:       cert.asset_id,    // wait — this is uuid from assets
+        asset_name:     cert.asset_name,
+        cert_id:        cert.cert_id_pk,
+        expiry_date:    cert.expiry_date,
+        days_remaining: days,
+        channel:        'Both',
+      });
+      alertsLogged++;
+
+      // Send email
+      if (env?.RESEND_API_KEY) {
+        const urgency = days <= 30 ? '🚨 URGENT' : '⚠️ WARNING';
+        await sendEmail(env, {
+          subject: `${urgency}: Certificate Expiring in ${days} Days — ${cert.asset_name}`,
+          html: buildCertAlertEmail(cert, days),
+        });
+        alertsSent++;
+
+        // Mark cert alert_sent
+        await fetch(
+          `${SB}/rest/v1/certificates?id=eq.${cert.cert_id_pk}`,
+          {
+            method: 'PATCH',
+            headers: sbHeaders(KEY),
+            body: JSON.stringify({ alert_sent: true, alert_sent_at: new Date().toISOString() }),
+          }
+        );
       }
     }
 
-    return env.ASSETS.fetch(request);
+    // Rule 3 — Expired
+    if (days !== null && days < 0) {
+      const existing = await sbSelect(SB, KEY, 'alert_log', {
+        filters: {
+          cert_id:    `eq.${cert.cert_id_pk}`,
+          alert_type: `eq.Cert Expired`,
+          sent_at:    `gte.${today}T00:00:00Z`,
+        },
+      });
+      if (Array.isArray(existing) && existing.length > 0) continue;
+
+      await sbInsert(SB, KEY, 'alert_log', {
+        alert_type:     'Cert Expired',
+        asset_name:     cert.asset_name,
+        cert_id:        cert.cert_id_pk,
+        expiry_date:    cert.expiry_date,
+        days_remaining: days,
+        channel:        'Both',
+      });
+      alertsLogged++;
+
+      if (env?.RESEND_API_KEY) {
+        await sendEmail(env, {
+          subject: `❌ EXPIRED: Certificate Expired — ${cert.asset_name}`,
+          html: buildCertAlertEmail(cert, days),
+        });
+        alertsSent++;
+      }
+    }
   }
-};
 
-// ── Direct Supabase REST calls ────────────────────────────────────────────────
+  // Rule 4 — Overdue inspections
+  const overdueInsp = await sbSelect(SB, KEY, 'inspections', {
+    filters: {
+      status:         'eq.Scheduled',
+      scheduled_date: `lt.${today}`,
+    },
+  });
 
-function authHeaders(key, extra={}) {
-  return { 'apikey':key, 'Authorization':`Bearer ${key}`, 'Content-Type':'application/json', ...extra };
+  if (Array.isArray(overdueInsp)) {
+    for (const insp of overdueInsp) {
+      // Mark as overdue
+      await sbUpdate(SB, KEY, 'inspections', insp.id, { status: 'Overdue' });
+      await sbInsert(SB, KEY, 'alert_log', {
+        alert_type: 'Inspection Overdue',
+        asset_name: insp.asset_name,
+        channel:    'Dashboard',
+      });
+      alertsLogged++;
+    }
+  }
+
+  return { alerts_logged: alertsLogged, emails_sent: alertsSent, checked_at: new Date().toISOString() };
 }
 
-async function sbGet(base, key, table, { select='*', filters={}, order=null, limit=null, single=false }={}) {
-  const u = new URL(`${base}/rest/v1/${table}`);
-  u.searchParams.set('select', select);
-  for (const [k,v] of Object.entries(filters)) u.searchParams.append(k, v);
-  if (order) u.searchParams.set('order', order);
-  if (limit) u.searchParams.set('limit', String(limit));
-  const h = authHeaders(key);
-  if (single) h['Accept'] = 'application/vnd.pgjson';
-  const r = await fetch(u.toString(), { headers:h });
-  return parseRes(r, single);
-}
+// ─────────────────────────────────────────────────────────────
+//  EMAIL (Resend API)
+// ─────────────────────────────────────────────────────────────
+async function sendEmail(env, { subject, html }) {
+  if (!env?.RESEND_API_KEY) return;
+  const toList = (env.ALERT_TO_EMAILS || '').split(',').map(e => e.trim()).filter(Boolean);
+  if (!toList.length) return;
 
-async function sbPost(base, key, table, body) {
-  const u = new URL(`${base}/rest/v1/${table}`);
-  u.searchParams.set('select', '*');
-  const r = await fetch(u.toString(), { method:'POST', headers:authHeaders(key,{'Prefer':'return=representation'}), body:JSON.stringify(body) });
-  return parseRes(r, true);
-}
-
-async function sbPatch(base, key, table, filters, body) {
-  const u = new URL(`${base}/rest/v1/${table}`);
-  u.searchParams.set('select', '*');
-  for (const [k,v] of Object.entries(filters)) u.searchParams.append(k, v);
-  const r = await fetch(u.toString(), { method:'PATCH', headers:authHeaders(key,{'Prefer':'return=representation'}), body:JSON.stringify(body) });
-  return parseRes(r, true);
-}
-
-async function sbDelete(base, key, table, filters) {
-  const u = new URL(`${base}/rest/v1/${table}`);
-  for (const [k,v] of Object.entries(filters)) u.searchParams.append(k, v);
-  const r = await fetch(u.toString(), { method:'DELETE', headers:authHeaders(key,{'Prefer':'return=minimal'}) });
-  if (r.ok || r.status===204) return { error:null };
-  const t = await r.text(); let m; try{m=JSON.parse(t)?.message}catch(_){m=t}
-  return { error:{ message:`${r.status}: ${m}` } };
-}
-
-async function sbCount(base, key, table) {
-  const u = new URL(`${base}/rest/v1/${table}`);
-  u.searchParams.set('select','*'); u.searchParams.set('limit','0');
-  const r = await fetch(u.toString(), { headers:authHeaders(key,{'Prefer':'count=exact'}) });
-  return parseInt((r.headers.get('content-range')||'0/0').split('/')[1])||0;
-}
-
-async function parseRes(r, single) {
-  const text = await r.text();
-  let data; try{data=JSON.parse(text)}catch(_){data=null}
-  if (!r.ok) return { data:null, error:{ message: data?.message||data?.error||`HTTP ${r.status}: ${text.slice(0,300)}` }};
-  if (single) return { data: Array.isArray(data)?(data[0]??null):data, error:null };
-  return { data: data??[], error:null };
-}
-
-// ── Router ────────────────────────────────────────────────────────────────────
-
-async function router(path, method, url, request, SB, KEY, env={}) {
-  const q    = url.searchParams;
-  const seg  = path.replace(/^\/api\/?/,'').split('/');
-  const res  = seg[0];
-  const id   = seg[1];
-  const act  = seg[2];
-  const body = ['POST','PUT','PATCH'].includes(method) ? await request.json().catch(()=>({})) : {};
-
-  // ASSETS
-  if (res==='assets') {
-    if (method==='GET'&&!id) {
-      const f={};
-      if(q.get('status'))   f.status  =`eq.${q.get('status')}`;
-      if(q.get('category')) f.category=`eq.${q.get('category')}`;
-      if(q.get('company'))  f.company =`eq.${q.get('company')}`;
-      if(q.get('rig_name')) f.rig_name=`eq.${q.get('rig_name')}`;
-      if(q.get('search'))   f.name    =`ilike.%${q.get('search')}%`;
-      return ok(await sbGet(SB,KEY,'assets',{filters:f,order:'name.asc',limit:+(q.get('limit')||500)}));
-    }
-    if(method==='GET')    return ok(await sbGet(SB,KEY,'assets',{filters:{asset_id:`eq.${id}`},single:true}));
-    if(method==='POST')   return ok(await sbPost(SB,KEY,'assets',body));
-    if(method==='PUT')  { const {asset_id,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'assets',{asset_id:`eq.${id}`},u)); }
-    if(method==='PATCH')  return ok(await sbPatch(SB,KEY,'assets',{asset_id:`eq.${id}`},body));
-    if(method==='DELETE'){const r=await sbDelete(SB,KEY,'assets',{asset_id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
-  }
-
-  // RIGS
-  if (res==='rigs') {
-    if(method==='GET'&&!id) return ok(await sbGet(SB,KEY,'rigs',{order:'name.asc'}));
-    if(method==='GET')    return ok(await sbGet(SB,KEY,'rigs',{filters:{id:`eq.${id}`},single:true}));
-    if(method==='POST')   return ok(await sbPost(SB,KEY,'rigs',body));
-    if(method==='PUT')  { const {id:_,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'rigs',{id:`eq.${id}`},u)); }
-    if(method==='DELETE'){const r=await sbDelete(SB,KEY,'rigs',{id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
-  }
-
-  // COMPANIES
-  if (res==='companies') {
-    if(method==='GET')    return ok(await sbGet(SB,KEY,'companies',{order:'name.asc'}));
-    if(method==='POST')   return ok(await sbPost(SB,KEY,'companies',body));
-    if(method==='PUT')  { const {id:_,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'companies',{id:`eq.${id}`},u)); }
-    if(method==='DELETE'){const r=await sbDelete(SB,KEY,'companies',{id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
-  }
-
-  // CONTRACTS
-  if (res==='contracts') {
-    if(method==='GET'){
-      const {data,error}=await sbGet(SB,KEY,'contracts',{select:'*, contract_assets(asset_id)',order:'id.asc',limit:+(q.get('limit')||200)});
-      if(error) return err500(error);
-      return ok((data||[]).map(c=>({...c,asset_count:(c.contract_assets||[]).length,contract_assets:undefined})));
-    }
-    if(method==='POST') return ok(await sbPost(SB,KEY,'contracts',body));
-    if(method==='PUT'){ const {id:_,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'contracts',{id:`eq.${id}`},u)); }
-  }
-
-  // BOM
-  if (res==='bom') {
-    if(method==='GET'&&!id){
-      const f={};
-      if(q.get('asset_id')) f.asset_id=`eq.${q.get('asset_id')}`;
-      if(q.get('type'))     f.type    =`eq.${q.get('type')}`;
-      return ok(await sbGet(SB,KEY,'bom_items',{filters:f,order:'id.asc',limit:+(q.get('limit')||1000)}));
-    }
-    if(method==='GET')    return ok(await sbGet(SB,KEY,'bom_items',{filters:{id:`eq.${id}`},single:true}));
-    if(method==='POST') { if(!body.id) body.id='BOM-'+Date.now().toString().slice(-8); return ok(await sbPost(SB,KEY,'bom_items',body)); }
-    if(method==='PUT')  { const {id:_,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'bom_items',{id:`eq.${id}`},u)); }
-    if(method==='DELETE'){const r=await sbDelete(SB,KEY,'bom_items',{id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
-  }
-
-  // CERTIFICATES
-  if (res==='certificates') {
-    if(method==='GET'&&!id){
-      const {data,error}=await sbGet(SB,KEY,'certificates',{select:'*, assets(name,serial,rig_name,category)',order:'cert_id.asc',limit:+(q.get('limit')||500)});
-      if(error) return err500(error);
-      return ok((data||[]).map(c=>({...c,asset_name:c.assets?.name,asset_serial:c.assets?.serial,rig_name:c.assets?.rig_name,category:c.assets?.category,assets:undefined})));
-    }
-    if(method==='GET')    return ok(await sbGet(SB,KEY,'certificates',{filters:{cert_id:`eq.${id}`},single:true}));
-    if(method==='POST') { if(!body.cert_id) body.cert_id='CERT-'+String((await sbCount(SB,KEY,'certificates'))+1).padStart(3,'0'); return ok(await sbPost(SB,KEY,'certificates',body)); }
-    if(method==='PUT')  { const {cert_id,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'certificates',{cert_id:`eq.${id}`},u)); }
-    if(method==='DELETE'){const r=await sbDelete(SB,KEY,'certificates',{cert_id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
-  }
-
-  // MAINTENANCE
-  if (res==='maintenance') {
-    if(method==='POST'&&id&&act==='complete'){
-      const {completion_date,performed_by,hours,cost,parts_used,notes,next_due_override}=body;
-      if(!completion_date||!performed_by) return respond({success:false,error:'completion_date and performed_by required'},400);
-      const {data:sc,error:se}=await sbGet(SB,KEY,'maintenance_schedules',{filters:{id:`eq.${id}`},single:true});
-      if(se||!sc) return respond({success:false,error:'Schedule not found'},404);
-      const nextDue=next_due_override||(()=>{const d=new Date(completion_date);d.setDate(d.getDate()+(sc.freq||90));return d.toISOString().slice(0,10)})();
-      await sbPost(SB,KEY,'maintenance_logs',{schedule_id:id,completion_date,performed_by,hours,cost,parts_used,notes});
-      const {data:upd,error:ue}=await sbPatch(SB,KEY,'maintenance_schedules',{id:`eq.${id}`},{status:'Scheduled',last_done:completion_date,next_due:nextDue});
-      if(ue) return err500(ue);
-      return ok({schedule:{...upd,live_status:liveStatus(upd)}});
-    }
-    if(method==='GET'&&!id){
-      const {data,error}=await sbGet(SB,KEY,'maintenance_schedules',{select:'*, assets(name,rig_name,company)',order:'next_due.asc',limit:+(q.get('limit')||500)});
-      if(error) return err500(error);
-      let rows=(data||[]).map(m=>({...m,asset_name:m.assets?.name,rig_name:m.assets?.rig_name,company:m.assets?.company,assets:undefined,live_status:liveStatus(m)}));
-      if(q.get('asset_id')) rows=rows.filter(r=>r.asset_id===q.get('asset_id'));
-      if(q.get('priority')) rows=rows.filter(r=>r.priority===q.get('priority'));
-      if(q.get('status'))   rows=rows.filter(r=>r.live_status===q.get('status')||r.status===q.get('status'));
-      return ok(rows);
-    }
-    if(method==='GET')    return ok(await sbGet(SB,KEY,'maintenance_schedules',{filters:{id:`eq.${id}`},single:true}));
-    if(method==='POST') {
-      if(!body.id) body.id='PM-'+String((await sbCount(SB,KEY,'maintenance_schedules'))+1).padStart(3,'0');
-      if(['Overdue','Due Soon'].includes(body.status)) body.status='Scheduled';
-      return ok(await sbPost(SB,KEY,'maintenance_schedules',body));
-    }
-    if(method==='PUT'){ const {id:_,created_at,updated_at,live_status,asset_name,rig_name,company,assets,...u}=body; if(['Overdue','Due Soon'].includes(u.status)) u.status='Scheduled'; return ok(await sbPatch(SB,KEY,'maintenance_schedules',{id:`eq.${id}`},u)); }
-    if(method==='DELETE'){const r=await sbDelete(SB,KEY,'maintenance_schedules',{id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
-  }
-
-  // TRANSFERS
-  if (res==='transfers') {
-    if(method==='POST'&&id&&act==='approve'){
-      const {role,action:decision,comment,approved_by}=body;
-      if(!role||!decision||!comment) return respond({success:false,error:'role, action and comment required'},400);
-      const today=new Date().toISOString().slice(0,10);
-      let patch={};
-      if(role==='ops'){
-        patch={ops_approved_by:approved_by,ops_approved_date:today,ops_action:decision,ops_comment:comment,
-          status:decision==='approve'?'Ops Approved':decision==='reject'?'Rejected':'On Hold'};
-      } else if(role==='mgr'){
-        patch={mgr_approved_by:approved_by,mgr_approved_date:today,mgr_action:decision,mgr_comment:comment,
-          status:decision==='approve'?'Completed':decision==='reject'?'Rejected':'On Hold'};
-        if(decision==='approve'){
-          const {data:tr}=await sbGet(SB,KEY,'transfers',{filters:{id:`eq.${id}`},single:true});
-          if(tr){ const au={location:tr.destination}; if(tr.dest_rig) au.rig_name=tr.dest_rig; if(tr.dest_company) au.company=tr.dest_company; await sbPatch(SB,KEY,'assets',{asset_id:`eq.${tr.asset_id}`},au); }
-        }
-      } else return respond({success:false,error:'role must be ops or mgr'},400);
-      return ok(await sbPatch(SB,KEY,'transfers',{id:`eq.${id}`},patch));
-    }
-    if(method==='GET'){
-      const f={};
-      if(q.get('status'))   f.status  =`eq.${q.get('status')}`;
-      if(q.get('priority')) f.priority=`eq.${q.get('priority')}`;
-      return ok(await sbGet(SB,KEY,'transfers',{filters:f,order:'created_at.desc',limit:+(q.get('limit')||200)}));
-    }
-    if(method==='POST'){
-      if(!body.id) body.id='TR-'+String((await sbCount(SB,KEY,'transfers'))+1).padStart(3,'0');
-      if(!body.request_date) body.request_date=new Date().toISOString().slice(0,10);
-      if(!body.asset_name&&body.asset_id){ const {data:a}=await sbGet(SB,KEY,'assets',{select:'name,location',filters:{asset_id:`eq.${body.asset_id}`},single:true}); if(a){body.asset_name=a.name;if(!body.current_loc)body.current_loc=a.location;} }
-      return ok(await sbPost(SB,KEY,'transfers',body));
-    }
-  }
-
-  // USERS
-  if (res==='users') {
-    if(method==='GET')    return ok(await sbGet(SB,KEY,'app_users',{select:'id,name,role,dept,email,color,initials,password,active',order:'name.asc'}));
-    if(method==='POST')   return ok(await sbPost(SB,KEY,'app_users',body));
-    if(method==='PUT')  { const {id:_,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'app_users',{id:`eq.${id}`},u)); }
-    if(method==='DELETE'){const r=await sbDelete(SB,KEY,'app_users',{id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
-  }
-
-
-  // INSPECTIONS
-  if (res==='inspections') {
-    if(method==='GET'&&!id){
-      const f={};
-      if(q.get('company'))         f.company         =`eq.${q.get('company')}`;
-      if(q.get('inspection_type')) f.inspection_type =`eq.${q.get('inspection_type')}`;
-      if(q.get('rig_name'))        f.rig_name        =`eq.${q.get('rig_name')}`;
-      return ok(await sbGet(SB,KEY,'inspections',{filters:f,order:'start_date.desc',limit:+(q.get('limit')||1000)}));
-    }
-    if(method==='GET')   return ok(await sbGet(SB,KEY,'inspections',{filters:{id:`eq.${id}`},single:true}));
-    if(method==='POST')  return ok(await sbPost(SB,KEY,'inspections',body));
-    if(method==='PUT')   { const {id:_i,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'inspections',{id:`eq.${id}`},u)); }
-    if(method==='DELETE'){ const r=await sbDelete(SB,KEY,'inspections',{id:`eq.${id}`}); if(r.error)return err500(r.error); return ok({deleted:id}); }
-  }
-
-  // PROJECTS
-  if (res==='projects') {
-    if(method==='GET'&&!id){
-      const f={};
-      if(q.get('status'))   f.status  =`eq.${q.get('status')}`;
-      if(q.get('rig_name')) f.rig_name=`eq.${q.get('rig_name')}`;
-      if(q.get('company'))  f.company =`eq.${q.get('company')}`;
-      if(q.get('priority')) f.priority=`eq.${q.get('priority')}`;
-      return ok(await sbGet(SB,KEY,'projects',{filters:f,order:'created_at.desc',limit:+(q.get('limit')||500)}));
-    }
-    if(method==='GET')   return ok(await sbGet(SB,KEY,'projects',{filters:{project_id:`eq.${id}`},single:true}));
-    if(method==='POST')  { if(!body.project_id) body.project_id='PRJ-'+Date.now().toString().slice(-8); return ok(await sbPost(SB,KEY,'projects',body)); }
-    if(method==='PUT')   { const {id:_i,project_id:_p,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'projects',{project_id:`eq.${id}`},u)); }
-    if(method==='DELETE'){ const r=await sbDelete(SB,KEY,'projects',{project_id:`eq.${id}`}); if(r.error)return err500(r.error); return ok({deleted:id}); }
-  }
-
-
-  // SEND EMAIL (via Resend)
-  if (res === 'send-email') {
-    if (method !== 'POST') return respond({ success:false, error:'POST only' }, 405);
-    const RESEND_KEY = env.RESEND_API_KEY || 're_N2Xokoux_21WeXMSYAbdSz9mnMd5avo5e';
-    const { to, subject, html, text, from_name } = body;
-    if (!to || !subject || (!html && !text)) return respond({ success:false, error:'Missing to/subject/html' }, 400);
-    const recipients = Array.isArray(to) ? to : to.split(/[;,]/).map(s=>s.trim()).filter(Boolean);
-    if (!recipients.length) return respond({ success:false, error:'No valid recipients' }, 400);
-    const payload = {
-      from: `${from_name || 'Asset Management System'} <alerts@resend.dev>`,
-      to: recipients,
+  await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from:    env.ALERT_FROM_EMAIL || 'alerts@assettracking.com',
+      to:      toList,
       subject,
-      ...(html ? { html } : {}),
-      ...(text ? { text } : {}),
-    };
-    const r = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const data = await r.json();
-    if (!r.ok) return respond({ success:false, error: data.message || data.name || 'Resend error', detail: data }, r.status);
-    return respond({ success:true, id: data.id, recipients: recipients.length });
-  }
-
-
-  // NOTIFICATIONS
-  if (res==='notifications') {
-    if(method==='PATCH'&&id==='mark-all-read') return ok(await sbPatch(SB,KEY,'notifications',{is_read:`eq.false`},{is_read:true}));
-    if(method==='PATCH'&&id) return ok(await sbPatch(SB,KEY,'notifications',{id:`eq.${id}`},{is_read:true}));
-    if(method==='GET')   return ok(await sbGet(SB,KEY,'notifications',{order:'created_at.desc',limit:50}));
-    if(method==='POST')  return ok(await sbPost(SB,KEY,'notifications',body));
-  }
-
-  // ── GENERIC REGISTER TABLE HELPER ────────────────────────────────────────────
-  // Handles: reg-bop, reg-well-head, reg-well-control, reg-fire-extinguishers, reg-scba
-  const REG_TABLE_MAP = {
-    'reg-bop':                'reg_bop',
-    'reg-well-head':          'reg_well_head',
-    'reg-well-control':       'reg_well_control',
-    'reg-fire-extinguishers': 'reg_fire_extinguishers',
-    'reg-scba':               'reg_scba',
-  };
-
-  if (REG_TABLE_MAP[res]) {
-    const tbl = REG_TABLE_MAP[res];
-
-    // GET all records
-    if (method === 'GET' && !id) {
-      const f = {};
-      if (q.get('rig')) f.rig = `eq.${q.get('rig')}`;
-      return ok(await sbGet(SB, KEY, tbl, {
-        filters: f,
-        order: 'created_at.desc',
-        limit: +(q.get('limit') || 500),
-      }));
-    }
-
-    // GET single record by UUID id
-    if (method === 'GET' && id) {
-      return ok(await sbGet(SB, KEY, tbl, { filters: { id: `eq.${id}` }, single: true }));
-    }
-
-    // POST — create new entry
-    if (method === 'POST') {
-      // Remove any client-generated id — let Supabase uuid_generate_v4() handle it
-      const { id: _cid, reg_id: _rid, created_at: _ca, updated_at: _ua, inspection_status: _is, ...insert } = body;
-      return ok(await sbPost(SB, KEY, tbl, insert));
-    }
-
-    // PUT — full update by UUID id
-    if (method === 'PUT') {
-      const { id: _i, reg_id: _r, created_at: _ca, updated_at: _ua, inspection_status: _is, ...update } = body;
-      return ok(await sbPatch(SB, KEY, tbl, { id: `eq.${id}` }, update));
-    }
-
-    // PATCH — partial update by UUID id
-    if (method === 'PATCH') {
-      const { id: _i, reg_id: _r, created_at: _ca, updated_at: _ua, inspection_status: _is, ...update } = body;
-      return ok(await sbPatch(SB, KEY, tbl, { id: `eq.${id}` }, update));
-    }
-
-    // DELETE — remove by UUID id
-    if (method === 'DELETE') {
-      const r = await sbDelete(SB, KEY, tbl, { id: `eq.${id}` });
-      if (r.error) return err500(r.error);
-      return ok({ deleted: id });
-    }
-  }
-
-  return respond({ success:false, error:`Route not found: ${method} ${path}` }, 404);
+      html,
+    }),
+  });
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function liveStatus(m) {
-  if(['Completed','Cancelled','In Progress'].includes(m.status)) return m.status;
-  const today=new Date(); today.setHours(0,0,0,0);
-  const due=new Date(m.next_due);
-  if(due<today) return 'Overdue';
-  if(due-today<=(m.alert_days||14)*86400000) return 'Due Soon';
-  return 'Scheduled';
+function buildCertAlertEmail(cert, days) {
+  const color  = days < 0 ? '#dc2626' : days <= 30 ? '#d97706' : '#ca8a04';
+  const status = days < 0 ? 'EXPIRED' : days <= 30 ? 'EXPIRING SOON (URGENT)' : 'EXPIRING SOON';
+  return `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+      <div style="background:${color};color:white;padding:20px;border-radius:8px 8px 0 0">
+        <h2 style="margin:0">Certificate ${status}</h2>
+      </div>
+      <div style="border:1px solid #e5e7eb;padding:24px;border-radius:0 0 8px 8px">
+        <table style="width:100%;border-collapse:collapse">
+          <tr><td style="padding:8px;color:#6b7280;width:160px">Equipment</td>
+              <td style="padding:8px;font-weight:bold">${cert.asset_name}</td></tr>
+          <tr style="background:#f9fafb">
+              <td style="padding:8px;color:#6b7280">Asset ID</td>
+              <td style="padding:8px">${cert.asset_id || '—'}</td></tr>
+          <tr><td style="padding:8px;color:#6b7280">Category</td>
+              <td style="padding:8px">${cert.category_name || '—'}</td></tr>
+          <tr style="background:#f9fafb">
+              <td style="padding:8px;color:#6b7280">Location</td>
+              <td style="padding:8px">${cert.location_name || '—'}</td></tr>
+          <tr><td style="padding:8px;color:#6b7280">Certificate No.</td>
+              <td style="padding:8px">${cert.cert_number || '—'}</td></tr>
+          <tr style="background:#f9fafb">
+              <td style="padding:8px;color:#6b7280">Inspection Type</td>
+              <td style="padding:8px">${cert.inspection_type}</td></tr>
+          <tr><td style="padding:8px;color:#6b7280">Expiry Date</td>
+              <td style="padding:8px;color:${color};font-weight:bold">${cert.expiry_date}</td></tr>
+          <tr style="background:#f9fafb">
+              <td style="padding:8px;color:#6b7280">Days Remaining</td>
+              <td style="padding:8px;color:${color};font-weight:bold">${days < 0 ? Math.abs(days) + ' days OVERDUE' : days + ' days'}</td></tr>
+        </table>
+        ${cert.cert_link ? `<div style="margin-top:16px"><a href="${cert.cert_link}" style="background:#1d4ed8;color:white;padding:10px 20px;border-radius:6px;text-decoration:none">View Certificate</a></div>` : ''}
+        <p style="color:#6b7280;font-size:12px;margin-top:24px">
+          This is an automated alert from the Asset Integrity & Certification Tracking System.<br>
+          Please schedule recertification immediately.
+        </p>
+      </div>
+    </div>`;
 }
-function ok(r)     { if(r?.error) return err500(r.error); return respond({success:true, data:r?.data??r}); }
-function err500(e) { return respond({success:false, error:e?.message||String(e)}, 500); }
-function respond(body, status=200) {
-  return new Response(JSON.stringify(body), { status, headers:{
-    'Content-Type':'application/json',
-    'Access-Control-Allow-Origin':'*',
-    'Access-Control-Allow-Methods':'GET,POST,PUT,PATCH,DELETE,OPTIONS',
-    'Access-Control-Allow-Headers':'Content-Type,x-api-key,x-user-role,x-user-name',
-  }});
+
+// ─────────────────────────────────────────────────────────────
+//  MAINTENANCE ORDERS
+// ─────────────────────────────────────────────────────────────
+async function listMaintenance(url, SB, KEY) {
+  const filters = {};
+  const status   = url.searchParams.get('status');
+  const asset_id = url.searchParams.get('asset_id');
+  if (status)   filters.status   = `eq.${status}`;
+  if (asset_id) filters.asset_id = `eq.${asset_id}`;
+  const data = await sbSelect(SB, KEY, 'maintenance_orders', {
+    filters,
+    order: 'created_at.desc',
+    limit: url.searchParams.get('limit') || '200',
+  });
+  return respond({ success: true, data });
 }
+
+async function getMaintenance(id, SB, KEY) {
+  const data = await sbSelect(SB, KEY, 'maintenance_orders', {
+    filters: { id: `eq.${id}` }, single: false
+  });
+  const mo = Array.isArray(data) ? data[0] : data;
+  if (!mo) return err('Maintenance order not found', 404);
+  return respond({ success: true, data: mo });
+}
+
+async function createMaintenance(body, SB, KEY) {
+  if (!body.asset_id)    return err('asset_id is required');
+  if (!body.description) return err('description is required');
+  body.order_id = '';
+  const data = await sbInsert(SB, KEY, 'maintenance_orders', body);
+  if (data?.error) return err(JSON.stringify(data.error));
+  return respond({ success: true, data }, 201);
+}
+
+async function updateMaintenance(id, body, SB, KEY) {
+  delete body.id; delete body.created_at; delete body.order_id;
+  if (body.status === 'In Progress' && !body.actual_start) {
+    body.actual_start = new Date().toISOString();
+  }
+  if (body.status === 'Completed' && !body.actual_end) {
+    body.actual_end = new Date().toISOString();
+    // Release asset back to Active
+    const mo = await getMOById(id, SB, KEY);
+    if (mo?.asset_id) await sbUpdate(SB, KEY, 'assets', mo.asset_id, { status: 'Active' });
+  }
+  const data = await sbUpdate(SB, KEY, 'maintenance_orders', id, body);
+  if (data?.error) return err(JSON.stringify(data.error));
+  return respond({ success: true, data });
+}
+
+async function getMOById(id, SB, KEY) {
+  const data = await sbSelect(SB, KEY, 'maintenance_orders', {
+    filters: { id: `eq.${id}` }, single: false
+  });
+  return Array.isArray(data) ? data[0] : null;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  AUDIT LOG
+// ─────────────────────────────────────────────────────────────
+async function listAudit(url, SB, KEY) {
+  const filters = {};
+  const table     = url.searchParams.get('table');
+  const record_id = url.searchParams.get('record_id');
+  if (table)     filters.table_name = `eq.${table}`;
+  if (record_id) filters.record_id  = `eq.${record_id}`;
+  const data = await sbSelect(SB, KEY, 'audit_log', {
+    filters,
+    order: 'changed_at.desc',
+    limit: url.searchParams.get('limit') || '100',
+  });
+  return respond({ success: true, data });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  USERS
+// ─────────────────────────────────────────────────────────────
+async function listUsers(SB, KEY) {
+  const data = await sbSelect(SB, KEY, 'user_profiles', {
+    filters: { active: 'eq.true' },
+    order:   'full_name.asc',
+  });
+  return respond({ success: true, data });
+}
+
+async function createUser(body, SB, KEY) {
+  const { email, password, full_name, role } = body;
+  if (!email || !password || !full_name) return err('email, password, full_name required');
+
+  // Create Supabase Auth user
+  const r = await fetch(`${SB}/auth/v1/admin/users`, {
+    method: 'POST',
+    headers: sbHeaders(KEY),
+    body: JSON.stringify({ email, password, email_confirm: true }),
+  });
+  const authUser = await r.json();
+  if (!r.ok) return err(authUser.msg || 'Failed to create auth user');
+
+  // Create profile
+  const profile = await sbInsert(SB, KEY, 'user_profiles', {
+    id:        authUser.id,
+    email,
+    full_name,
+    role:      role || 'Viewer',
+    department: body.department || null,
+    phone:      body.phone || null,
+  });
+  if (profile?.error) return err(JSON.stringify(profile.error));
+
+  return respond({ success: true, data: profile }, 201);
+}
+
+async function updateUser(id, body, SB, KEY) {
+  delete body.id; delete body.created_at; delete body.email;
+  const data = await sbUpdate(SB, KEY, 'user_profiles', id, body);
+  if (data?.error) return err(JSON.stringify(data.error));
+  return respond({ success: true, data });
+}
+
+// ============================================================
+//  END OF _worker.js
+//  Next file: index.html (Equipment Registry UI)
+// ============================================================
