@@ -4310,12 +4310,7 @@
   <div class="section" id="section-reports">
     <div class="content">
       <div class="kpi-row">
-        <div class="kpi-card blue">
-          <div class="kpi-icon"><i class="fas fa-dollar-sign"></i></div>
-          <div class="kpi-label">Total Asset Value</div>
-          <div class="kpi-value" id="rptValue">—</div>
-          <div class="kpi-sub">USD</div>
-        </div>
+
         <div class="kpi-card green">
           <div class="kpi-icon"><i class="fas fa-file-contract"></i></div>
           <div class="kpi-label">Active Contracts</div>
@@ -5146,12 +5141,6 @@ Asset Management System</textarea>
               <option>Free Zone</option>
             </select>
           </div>
-          <div class="form-group"><label class="form-label">Value (USD)</label><input class="form-input" id="f_value"
-              type="number" placeholder="0"></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label class="form-label">Acquisition Date</label><input class="form-input"
-              id="f_date" type="date"></div>
           <div class="form-group"><label class="form-label">Serial Number</label><input class="form-input" id="f_serial"
               placeholder="SN-XXXX"></div>
         </div>
@@ -6230,8 +6219,7 @@ Asset Management System</textarea>
       { key: 'rigName', label: 'Rig', locked: false, default: true, sortKey: 'rigName' },
       { key: 'location', label: 'Location', locked: false, default: true, sortKey: 'location' },
       { key: 'status', label: 'Status', locked: false, default: true, sortKey: 'status' },
-      { key: 'value', label: 'Value (USD)', locked: false, default: true, sortKey: 'value' },
-      { key: 'acquisitionDate', label: 'Acquisition Date', locked: false, default: true, sortKey: 'acquisitionDate' },
+
       { key: 'serial', label: 'Serial Number', locked: false, default: false, sortKey: null },
       { key: 'lastInspection', label: 'Last Inspection', locked: false, default: false, sortKey: null },
       { key: 'inspectionType', label: 'Inspection Type', locked: false, default: false, sortKey: null },
@@ -7820,7 +7808,7 @@ Asset Management System</textarea>
       filteredAssets = ASSETS.filter(a => {
         const searchFields = [a.assetId, a.name, a.location, a.serial || '', a.category,
         a.status, a.rigName || '', a.inspectionType || '', a.lastInspection || '',
-        a.notes || '', String(a.value || ''), a.acquisitionDate || ''];
+        a.notes || ''];
         const matchQ = !q || searchFields.some(f => f.toLowerCase().includes(q));
         const matchS = !status || a.status === status;
         const matchC = !cat || a.category === cat;
@@ -7854,7 +7842,7 @@ Asset Management System</textarea>
       else { sortKey = key; sortDir = 1; }
       filteredAssets.sort((a, b) => {
         let va = a[key], vb = b[key];
-        if (key === 'value') { va = Number(va); vb = Number(vb); }
+
         return va > vb ? sortDir : va < vb ? -sortDir : 0;
       });
       renderAssets();
@@ -7898,8 +7886,7 @@ Asset Management System</textarea>
               case 'rigName': return `<td>${a.rigName || '—'}</td>`;
               case 'location': return `<td>${a.location || '—'}</td>`;
               case 'status': return `<td>${statusBadge(a.status)}</td>`;
-              case 'value': return `<td style="font-family:'IBM Plex Mono',monospace;font-size:12.5px">$${Number(a.value || 0).toLocaleString()}</td>`;
-              case 'acquisitionDate': return `<td>${a.acquisitionDate || '—'}</td>`;
+
               case 'serial': return `<td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${a.serial || '—'}</td>`;
               case 'lastInspection': return `<td>${a.lastInspection || '—'}</td>`;
               case 'inspectionType': return `<td>${a.inspectionType || '—'}</td>`;
@@ -8127,8 +8114,6 @@ Asset Management System</textarea>
 
             rig_name: changes.rig_name !== undefined ? changes.rig_name : asset.rigName,
             location: changes.location || asset.location,
-            value: asset.value,
-            acquisition_date: asset.acquisitionDate || null,
             serial: asset.serial || '',
             notes: asset.notes || '',
             last_inspection: asset.lastInspection || null,
@@ -8191,8 +8176,6 @@ Asset Management System</textarea>
       document.getElementById('kpiContract').textContent = ASSETS.filter(a => a.status === 'Contracted').length;
     }
     function updateReportKPIs() {
-      const total = ASSETS.reduce((s, a) => s + Number(a.value), 0);
-      document.getElementById('rptValue').textContent = '$' + (total / 1000000).toFixed(1) + 'M';
       document.getElementById('rptContracts').textContent = CONTRACTS.filter(c => c.status === 'Active').length;
       document.getElementById('rptRigs').textContent = RIGS.filter(r => r.status === 'Active').length;
     }
@@ -8215,7 +8198,7 @@ Asset Management System</textarea>
       document.getElementById('popupGeneralGrid').innerHTML = fields([
         ['Asset ID', a.assetId, true], ['Asset Name', a.name], ['Category', a.category],
         ['Status', statusBadge(a.status)], ['Location', a.location],
-        ['Value (USD)', '$' + Number(a.value).toLocaleString(), true], ['Acquisition Date', a.acquisitionDate], ['Notes', a.notes || '—'],
+        ['Notes', a.notes || '—'],
       ]);
       document.getElementById('popupTechGrid').innerHTML = fields([
         ['Serial Number', a.serial, true], ['Rig Assignment', a.rigName], ['Last Updated', '2024-12-01'],
@@ -8302,8 +8285,7 @@ Asset Management System</textarea>
 
         document.getElementById('f_rig').value = a.rigName;
         document.getElementById('f_location').value = a.location;
-        document.getElementById('f_value').value = a.value;
-        document.getElementById('f_date').value = a.acquisitionDate;
+
         document.getElementById('f_serial').value = a.serial;
         document.getElementById('f_notes').value = a.notes;
         document.getElementById('f_lastInspection').value = a.lastInspection || '';
@@ -8312,7 +8294,7 @@ Asset Management System</textarea>
       } else {
         document.getElementById('addAssetTitle').textContent = 'New Asset';
         document.getElementById('f_assetId').value = 'AST-' + String(ASSETS.length + 1).padStart(3, '0');
-        ['f_name', 'f_value', 'f_date', 'f_serial', 'f_notes', 'f_certLink'].forEach(f => document.getElementById(f).value = '');
+        ['f_name', 'f_serial', 'f_notes', 'f_certLink'].forEach(f => document.getElementById(f).value = '');
         document.getElementById('f_location').value = '';
         document.getElementById('f_lastInspection').value = '';
         document.getElementById('f_inspectionType').value = '';
@@ -8331,8 +8313,7 @@ Asset Management System</textarea>
 
         rigName: document.getElementById('f_rig').value,
         location: document.getElementById('f_location').value,
-        value: Number(document.getElementById('f_value').value) || 0,
-        acquisitionDate: document.getElementById('f_date').value,
+
         serial: document.getElementById('f_serial').value,
         notes: document.getElementById('f_notes').value,
         lastInspection: document.getElementById('f_lastInspection').value,
@@ -8832,8 +8813,7 @@ Asset Management System</textarea>
       const ws = XLSX.utils.json_to_sheet(data.map(a => ({
         'Asset ID': a.assetId, 'Name': a.name, 'Category': a.category,
         'Rig': a.rigName, 'Location': a.location,
-        'Status': a.status, 'Value (USD)': a.value,
-        'Acquisition Date': a.acquisitionDate, 'Serial': a.serial,
+        'Status': a.status, 'Serial': a.serial,
         'Last Inspection': a.lastInspection || '', 'Inspection Type': a.inspectionType || '',
         'Certificate Link': a.certLink || '', 'Notes': a.notes
       })));
@@ -8868,11 +8848,10 @@ Asset Management System</textarea>
 
       doc.autoTable({
         startY: 46,
-        head: [['Asset ID', 'Name', 'Category', 'Rig', 'Location', 'Status', 'Serial', 'Value (USD)']],
+        head: [['Asset ID', 'Name', 'Category', 'Rig', 'Location', 'Status', 'Serial']],
         body: data.map(a => [
           a.assetId || '', a.name || '', a.category || '',
-          a.rigName || '', a.location || '', a.status || '', a.serial || '',
-          a.value != null ? Number(a.value).toLocaleString() : ''
+          a.rigName || '', a.location || '', a.status || '', a.serial || ''
         ]),
         styles: { fontSize: 7.5, cellPadding: 4, font: 'helvetica', textColor: [50, 54, 58] },
         headStyles: { fillColor: [0, 112, 242], textColor: 255, fontStyle: 'bold', fontSize: 8 },
@@ -12422,7 +12401,6 @@ Instructions:
         return {
           ...a,
           assetId: a.asset_id, rigName: a.rig_name,
-          acquisitionDate: a.acquisition_date,
           lastInspection: a.last_inspection,
           inspectionType: a.inspection_type,
           certLink: a.cert_link
@@ -12572,8 +12550,6 @@ Instructions:
 
           rig_name: document.getElementById('f_rig').value,
           location: document.getElementById('f_location').value,
-          value: Number(document.getElementById('f_value').value) || 0,
-          acquisition_date: document.getElementById('f_date').value || null,
           serial: document.getElementById('f_serial').value,
           notes: document.getElementById('f_notes').value,
           last_inspection: document.getElementById('f_lastInspection').value || null,
@@ -13024,8 +13000,6 @@ Instructions:
               rig_name: r['Rig'] || r['Rig Name'] || '',
               location: r['Location'] || '',
               status: r['Status'] || 'Active',
-              value: Number(r['Value (USD)'] || r['Value'] || 0) || 0,
-              acquisition_date: r['Acquisition Date'] || null,
               serial: r['Serial'] || r['Serial Number'] || '',
               notes: r['Notes'] || '',
               last_inspection: r['Last Inspection'] || null,
