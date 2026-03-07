@@ -204,17 +204,20 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       if(!role||!decision||!comment) return respond({success:false,error:'role, action and comment required'},400);
       const today=new Date().toISOString().slice(0,10);
       let patch={};
-      if(role==='ops'){
+      if(role==='supt'){
+        patch={supt_approved_by:approved_by,supt_approved_date:today,supt_action:decision,supt_comment:comment,
+          status:decision==='approve'?'Supt Approved':decision==='reject'?'Rejected':'On Hold'};
+      } else if(role==='drilling'){
         patch={ops_approved_by:approved_by,ops_approved_date:today,ops_action:decision,ops_comment:comment,
-          status:decision==='approve'?'Ops Approved':decision==='reject'?'Rejected':'On Hold'};
-      } else if(role==='mgr'){
+          status:decision==='approve'?'Drilling Approved':decision==='reject'?'Rejected':'On Hold'};
+      } else if(role==='ops'){
         patch={mgr_approved_by:approved_by,mgr_approved_date:today,mgr_action:decision,mgr_comment:comment,
           status:decision==='approve'?'Completed':decision==='reject'?'Rejected':'On Hold'};
         if(decision==='approve'){
           const {data:tr}=await sbGet(SB,KEY,'transfers',{filters:{id:`eq.${id}`},single:true});
           if(tr){ const au={location:tr.destination}; if(tr.dest_rig) au.rig_name=tr.dest_rig; await sbPatch(SB,KEY,'assets',{asset_id:`eq.${tr.asset_id}`},au); }
         }
-      } else return respond({success:false,error:'role must be ops or mgr'},400);
+      } else return respond({success:false,error:'role must be supt, drilling or ops'},400);
       return ok(await sbPatch(SB,KEY,'transfers',{id:`eq.${id}`},patch));
     }
     if(method==='GET'){

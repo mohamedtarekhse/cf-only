@@ -3778,9 +3778,9 @@
           </div>
           <div class="kpi-card blue" style="--kpi-accent:#8B5CF6">
             <div class="kpi-icon" style="background:#F0E8FF;color:#8B5CF6"><i class="fas fa-user-check"></i></div>
-            <div class="kpi-label">Ops Approved</div>
+            <div class="kpi-label">In Approval</div>
             <div class="kpi-value" id="trKpiOps">0</div>
-            <div class="kpi-sub">Awaiting Asset Mgr</div>
+            <div class="kpi-sub">Awaiting next stage</div>
           </div>
           <div class="kpi-card green">
             <div class="kpi-icon"><i class="fas fa-check-double"></i></div>
@@ -3835,7 +3835,8 @@
               <select class="filter-select" id="trFilterStatus" onchange="renderTransfers()">
                 <option value="">All Status</option>
                 <option value="Pending">Pending</option>
-                <option value="Ops Approved">Ops Approved</option>
+                <option value="Supt Approved">Supt Approved</option>
+                <option value="Drilling Approved">Drilling Approved</option>
                 <option value="Completed">Completed</option>
                 <option value="Rejected">Rejected</option>
               </select>
@@ -5461,11 +5462,16 @@ Asset Management System</textarea>
           <i class="fas fa-info-circle" style="color:var(--sap-blue);font-size:16px;margin-top:1px;flex-shrink:0"></i>
           <div style="font-size:12.5px;line-height:1.6">
             <strong style="color:var(--sap-blue)">Approval Workflow:</strong><br>
-            Your request will go through a <strong>2-stage approval</strong>:
+            Your request will go through a <strong>3-stage approval</strong>:
             <div style="margin-top:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
               <div
                 style="background:#fff;border:1px solid #C2DCFF;border-radius:20px;padding:4px 12px;font-size:11px;font-weight:600;color:#0040B0">
                 <i class="fas fa-paper-plane"></i> Submitted
+              </div>
+              <i class="fas fa-arrow-right" style="color:var(--sap-blue);font-size:11px"></i>
+              <div
+                style="background:#E1F5FE;border:1px solid #81D4FA;border-radius:20px;padding:4px 12px;font-size:11px;font-weight:600;color:#0277BD">
+                <i class="fas fa-user-shield"></i> Superintendent
               </div>
               <i class="fas fa-arrow-right" style="color:var(--sap-blue);font-size:11px"></i>
               <div
@@ -5475,7 +5481,7 @@ Asset Management System</textarea>
               <i class="fas fa-arrow-right" style="color:var(--sap-blue);font-size:11px"></i>
               <div
                 style="background:#F0E8FF;border:1px solid #C4A8FF;border-radius:20px;padding:4px 12px;font-size:11px;font-weight:600;color:#6D28D9">
-                <i class="fas fa-user-tie"></i> Asset Manager Final
+                <i class="fas fa-user-tie"></i> Operations Manager Final
               </div>
               <i class="fas fa-arrow-right" style="color:var(--sap-blue);font-size:11px"></i>
               <div
@@ -5719,7 +5725,7 @@ Asset Management System</textarea>
           <div class="section-title">Approval Status</div>
           <div
             style="display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--sap-border);border-radius:6px;overflow:hidden"
-            id="tdApprovalGrid"></div>
+            id="tdApprovalGrid" style="display:grid;grid-template-columns:1fr 1fr 1fr"></div>
         </div>
 
         <!-- HISTORY -->
@@ -6257,8 +6263,9 @@ Asset Management System</textarea>
       { key: 'requestedBy', label: 'Requested By', locked: false, default: true },
       { key: 'requestDate', label: 'Request Date', locked: false, default: true },
       { key: 'status', label: 'Status', locked: false, default: true },
-      { key: 'opsApproval', label: 'Drilling Manager', locked: false, default: true },
-      { key: 'mgrApproval', label: 'Asset Manager', locked: false, default: true },
+      { key: 'suptApproval', label: 'Superintendent',    locked: false, default: true },
+      { key: 'opsApproval',  label: 'Drilling Manager',  locked: false, default: true },
+      { key: 'mgrApproval',  label: 'Ops Manager',       locked: false, default: true },
       { key: 'type', label: 'Transfer Type', locked: false, default: false },
       { key: 'destRig', label: 'Dest. Rig', locked: false, default: false },
       { key: 'requiredDate', label: 'Required By', locked: false, default: false },
@@ -9385,8 +9392,9 @@ Asset Management System</textarea>
           bom_item_id: item.id,
           bom_item_name: item.name,
           bom_part_no: item.partNo || null,
-          opsApproval: { by: null, date: null, action: null, comment: null },
-          mgrApproval: { by: null, date: null, action: null, comment: null },
+          suptApproval: { by: null, date: null, action: null, comment: null },
+          opsApproval:  { by: null, date: null, action: null, comment: null },
+          mgrApproval:  { by: null, date: null, action: null, comment: null },
         };
         if (typeof TRANSFERS !== 'undefined') TRANSFERS.push(typeof normT === 'function' ? normT(t) : t);
         return t;
@@ -9708,8 +9716,9 @@ Asset Management System</textarea>
         reason,
         instructions: document.getElementById('tr_instructions').value,
         status: 'Pending',
-        opsApproval: { by: null, role: 'Operations Manager', date: null, action: null, comment: null },
-        mgrApproval: { by: null, role: 'Asset Manager', date: null, action: null, comment: null },
+        suptApproval: { by: null, role: 'Superintendent',     date: null, action: null, comment: null },
+        opsApproval:  { by: null, role: 'Drilling Manager',   date: null, action: null, comment: null },
+        mgrApproval:  { by: null, role: 'Operations Manager', date: null, action: null, comment: null },
       };
 
       TRANSFERS.push(newTransfer);
@@ -9719,7 +9728,7 @@ Asset Management System</textarea>
       // Navigate to Transfers tab
       const transfersTab = document.querySelector(".nav-tab[onclick*=\"'transfers'\"]");
       if (transfersTab) switchTab('transfers', transfersTab);
-      showToast(`Transfer request ${newTransfer.id} submitted successfully. Awaiting Drilling Manager approval.`, 'success');
+      showToast(`Transfer request ${newTransfer.id} submitted successfully. Awaiting Superintendent approval.`, 'success');
 
       // Add notification
       addNotification('info', 'exchange-alt', 'Transfer Request Submitted', `${newTransfer.assetName} → ${destination}`, 'Just now');
@@ -9765,8 +9774,9 @@ Asset Management System</textarea>
             case 'requestDate': return `<td style="font-size:12px;color:var(--sap-text-muted)">${t.requestDate || '—'}</td>`;
             case 'requiredDate': return `<td style="font-size:12px">${t.requiredDate || '—'}</td>`;
             case 'status': return `<td>${transferStatusBadge(t.status)}</td>`;
-            case 'opsApproval': return `<td>${approvalCell(t.opsApproval)}</td>`;
-            case 'mgrApproval': return `<td>${approvalCell(t.mgrApproval)}</td>`;
+            case 'suptApproval': return `<td>${approvalCell(t.suptApproval)}</td>`;
+            case 'opsApproval':  return `<td>${approvalCell(t.opsApproval)}</td>`;
+            case 'mgrApproval':  return `<td>${approvalCell(t.mgrApproval)}</td>`;
             case 'type': return `<td style="font-size:12.5px">${t.type || '—'}</td>`;
             case 'destRig': return `<td style="font-size:12.5px">${t.destRig || '—'}</td>`;
 
@@ -9777,9 +9787,10 @@ Asset Management System</textarea>
           ${dataCells}
           <td style="white-space:nowrap" onclick="event.stopPropagation()">
             <button class="btn btn-ghost btn-icon" title="View Details" onclick="openTransferDetail('${t.id}')"><i class="fas fa-eye"></i></button>
-            ${t.status === 'Pending' && canApproveDrilling() ? `<button class="btn btn-ghost btn-icon" title="Drilling Manager Review" style="color:#E65100" onclick="openApprovalModal('${t.id}','drilling')"><i class="fas fa-hard-hat"></i></button>` : ''}
-            ${t.status === 'Ops Approved' && canApproveAsset() ? `<button class="btn btn-ghost btn-icon" title="Asset Manager Final Approval" style="color:#6D28D9" onclick="openApprovalModal('${t.id}','asset')"><i class="fas fa-user-tie"></i></button>` : ''}
-            ${(t.status === 'Pending' || t.status === 'Ops Approved') ? `<button class="btn btn-ghost btn-icon" title="Cancel Request" style="color:var(--sap-error)" onclick="cancelTransfer('${t.id}')"><i class="fas fa-ban"></i></button>` : ''}
+            ${t.status === 'Pending' && canApproveSupt() ? `<button class="btn btn-ghost btn-icon" title="Superintendent Review" style="color:#0277BD" onclick="openApprovalModal('${t.id}','supt')"><i class="fas fa-user-shield"></i></button>` : ''}
+            ${t.status === 'Supt Approved' && canApproveDrilling() ? `<button class="btn btn-ghost btn-icon" title="Drilling Manager Review" style="color:#E65100" onclick="openApprovalModal('${t.id}','drilling')"><i class="fas fa-hard-hat"></i></button>` : ''}
+            ${t.status === 'Drilling Approved' && canApproveOps() ? `<button class="btn btn-ghost btn-icon" title="Operations Manager Final Approval" style="color:#6D28D9" onclick="openApprovalModal('${t.id}','ops')"><i class="fas fa-user-tie"></i></button>` : ''}
+            ${(['Pending','Supt Approved','Drilling Approved'].includes(t.status)) ? `<button class="btn btn-ghost btn-icon" title="Cancel Request" style="color:var(--sap-error)" onclick="cancelTransfer('${t.id}')"><i class="fas fa-ban"></i></button>` : ''}
           </td>
         </tr>`;
       }).join('') || `<tr><td colspan="${colCount}" style="text-align:center;padding:40px;color:var(--sap-text-muted)"><i class="fas fa-exchange-alt" style="font-size:28px;opacity:.3;display:block;margin-bottom:8px"></i>No transfer requests found</td></tr>`;
@@ -9797,11 +9808,12 @@ Asset Management System</textarea>
 
     function transferStatusBadge(s) {
       const map = {
-        'Pending': '<span class="tr-status-pending"><i class="fas fa-clock"></i> Pending</span>',
-        'Ops Approved': '<span class="tr-status-ops"><i class="fas fa-hard-hat"></i> Ops Approved</span>',
-        'Completed': '<span class="tr-status-done"><i class="fas fa-check-double"></i> Completed</span>',
-        'Rejected': '<span class="tr-status-rejected"><i class="fas fa-times-circle"></i> Rejected</span>',
-        'On Hold': '<span class="tr-status-hold"><i class="fas fa-pause-circle"></i> On Hold</span>',
+        'Pending':           '<span class="tr-status-pending"><i class="fas fa-clock"></i> Pending</span>',
+        'Supt Approved':     '<span class="tr-status-ops" style="background:#E1F5FE;color:#0277BD;border-color:#81D4FA"><i class="fas fa-user-shield"></i> Supt Approved</span>',
+        'Drilling Approved': '<span class="tr-status-ops"><i class="fas fa-hard-hat"></i> Drilling Approved</span>',
+        'Completed':         '<span class="tr-status-done"><i class="fas fa-check-double"></i> Completed</span>',
+        'Rejected':          '<span class="tr-status-rejected"><i class="fas fa-times-circle"></i> Rejected</span>',
+        'On Hold':           '<span class="tr-status-hold"><i class="fas fa-pause-circle"></i> On Hold</span>',
       };
       return map[s] || `<span class="tr-status-hold">${s}</span>`;
     }
@@ -9810,7 +9822,7 @@ Asset Management System</textarea>
     function updateTransferKPIs() {
       document.getElementById('trKpiTotal').textContent = TRANSFERS.length;
       document.getElementById('trKpiPending').textContent = TRANSFERS.filter(t => t.status === 'Pending').length;
-      document.getElementById('trKpiOps').textContent = TRANSFERS.filter(t => t.status === 'Ops Approved').length;
+      document.getElementById('trKpiOps').textContent = TRANSFERS.filter(t => ['Supt Approved','Drilling Approved'].includes(t.status)).length;
       document.getElementById('trKpiDone').textContent = TRANSFERS.filter(t => t.status === 'Completed').length;
       document.getElementById('trKpiRej').textContent = TRANSFERS.filter(t => t.status === 'Rejected').length;
     }
@@ -9818,11 +9830,14 @@ Asset Management System</textarea>
     // ── OPEN APPROVAL MODAL ────────────────────────────────────
     function openApprovalModal(transferId, role) {
       // Enforce role-based access per stage
-      if (role === 'drilling' && !canApproveDrilling()) {
-        showToast('Only Drilling Managers (or Admin) can approve Stage 1.', 'error'); return;
+      if (role === 'supt' && !canApproveSupt()) {
+        showToast('Only Superintendents (or Admin) can approve Stage 1.', 'error'); return;
       }
-      if (role === 'asset' && !canApproveAsset()) {
-        showToast('Only Asset Managers (or Admin) can approve Stage 2.', 'error'); return;
+      if (role === 'drilling' && !canApproveDrilling()) {
+        showToast('Only Drilling Managers (or Admin) can approve Stage 2.', 'error'); return;
+      }
+      if (role === 'ops' && !canApproveOps()) {
+        showToast('Only Operations Managers (or Admin) can approve Stage 3.', 'error'); return;
       }
       const t = TRANSFERS.find(x => x.id === transferId);
       if (!t) return;
@@ -9831,12 +9846,21 @@ Asset Management System</textarea>
 
       document.getElementById('approvalReqId').textContent = transferId;
 
-      const roleLabel = role === 'drilling' ? 'Drilling Manager Review' : 'Asset Manager Final Approval';
-      const roleIcon = role === 'drilling' ? 'fa-hard-hat' : 'fa-user-tie';
-      const roleColor = role === 'drilling' ? '#E65100' : '#6D28D9';
+      const roleLabel = role === 'supt'      ? 'Superintendent Review'
+                      : role === 'drilling'  ? 'Drilling Manager Review'
+                      : 'Operations Manager Final Approval';
+      const roleIcon  = role === 'supt'      ? 'fa-user-shield'
+                      : role === 'drilling'  ? 'fa-hard-hat'
+                      : 'fa-user-tie';
+      const roleColor = role === 'supt'      ? '#0277BD'
+                      : role === 'drilling'  ? '#E65100'
+                      : '#6D28D9';
+      const roleNameLabel = role === 'supt'     ? 'Superintendent'
+                          : role === 'drilling' ? 'Drilling Manager'
+                          : 'Operations Manager';
 
       document.getElementById('approvalModalTitle').innerHTML = `<i class="fas ${roleIcon}" style="color:${roleColor}"></i> ${roleLabel}`;
-      document.getElementById('approvalActionTitle').innerHTML = `<i class="fas fa-gavel" style="color:${roleColor}"></i> Your Decision (${role === 'drilling' ? 'Drilling Manager' : 'Asset Manager'})`;
+      document.getElementById('approvalActionTitle').innerHTML = `<i class="fas fa-gavel" style="color:${roleColor}"></i> Your Decision (${roleNameLabel})`;
 
       // Summary grid
       document.getElementById('approvalSummaryGrid').innerHTML = [
@@ -9866,6 +9890,9 @@ Asset Management System</textarea>
     }
 
     function renderApprovalTimeline(t) {
+      const supt = t.suptApproval || {};
+      const ops  = t.opsApproval  || {};
+      const mgr  = t.mgrApproval  || {};
       const steps = [
         {
           label: 'Request Submitted',
@@ -9875,20 +9902,28 @@ Asset Management System</textarea>
           comment: null,
         },
         {
-          label: 'Drilling Manager Review',
-          sub: t.opsApproval.action ? `${t.opsApproval.by} — ${t.opsApproval.date}` : 'Awaiting Drilling Manager',
-          icon: t.opsApproval.action === 'approve' ? 'fa-check' : t.opsApproval.action === 'reject' ? 'fa-times' : 'fa-hard-hat',
-          state: t.opsApproval.action === 'approve' ? 'done' : t.opsApproval.action === 'reject' ? 'reject' : (t.status === 'Pending' ? 'active' : 'pending'),
-          comment: t.opsApproval.comment,
-          actionLabel: t.opsApproval.action,
+          label: 'Superintendent Review',
+          sub: supt.action ? `${supt.by} — ${supt.date}` : 'Awaiting Superintendent',
+          icon: supt.action === 'approve' ? 'fa-check' : supt.action === 'reject' ? 'fa-times' : 'fa-user-shield',
+          state: supt.action === 'approve' ? 'done' : supt.action === 'reject' ? 'reject' : (t.status === 'Pending' ? 'active' : 'pending'),
+          comment: supt.comment,
+          actionLabel: supt.action,
         },
         {
-          label: 'Asset Manager Final Approval',
-          sub: t.mgrApproval.action ? `${t.mgrApproval.by} — ${t.mgrApproval.date}` : 'Awaiting Asset Manager',
-          icon: t.mgrApproval.action === 'approve' ? 'fa-check' : t.mgrApproval.action === 'reject' ? 'fa-times' : 'fa-user-tie',
-          state: t.mgrApproval.action === 'approve' ? 'done' : t.mgrApproval.action === 'reject' ? 'reject' : (t.status === 'Ops Approved' ? 'active' : 'pending'),
-          comment: t.mgrApproval.comment,
-          actionLabel: t.mgrApproval.action,
+          label: 'Drilling Manager Review',
+          sub: ops.action ? `${ops.by} — ${ops.date}` : 'Awaiting Drilling Manager',
+          icon: ops.action === 'approve' ? 'fa-check' : ops.action === 'reject' ? 'fa-times' : 'fa-hard-hat',
+          state: ops.action === 'approve' ? 'done' : ops.action === 'reject' ? 'reject' : (t.status === 'Supt Approved' ? 'active' : 'pending'),
+          comment: ops.comment,
+          actionLabel: ops.action,
+        },
+        {
+          label: 'Operations Manager Final Approval',
+          sub: mgr.action ? `${mgr.by} — ${mgr.date}` : 'Awaiting Operations Manager',
+          icon: mgr.action === 'approve' ? 'fa-check' : mgr.action === 'reject' ? 'fa-times' : 'fa-user-tie',
+          state: mgr.action === 'approve' ? 'done' : mgr.action === 'reject' ? 'reject' : (t.status === 'Drilling Approved' ? 'active' : 'pending'),
+          comment: mgr.comment,
+          actionLabel: mgr.action,
         },
         {
           label: 'Transfer Executed',
@@ -9925,12 +9960,25 @@ Asset Management System</textarea>
       const today = new Date().toISOString().slice(0, 10);
       const approverName = window.__currentUserName || USERS.find(u => u.email === window.__currentUser?.email)?.name || 'Current User';
 
-      if (currentApproverRole === 'drilling') {
+      if (currentApproverRole === 'supt') {
+        t.suptApproval = { by: approverName, role: 'Superintendent', date: today, action: decision, comment };
+        if (decision === 'approve') {
+          t.status = 'Supt Approved';
+          showToast(`TR ${t.id}: Superintendent approved. Now pending Drilling Manager review.`, 'success');
+          addNotification('info', 'hard-hat', 'Awaiting Drilling Manager', `Transfer ${t.id} for ${t.assetName} needs Drilling Manager review`, today);
+        } else if (decision === 'reject') {
+          t.status = 'Rejected';
+          showToast(`TR ${t.id}: Rejected by Superintendent.`, 'warning');
+        } else {
+          t.status = 'On Hold';
+          showToast(`TR ${t.id}: Put on hold by Superintendent.`, 'info');
+        }
+      } else if (currentApproverRole === 'drilling') {
         t.opsApproval = { by: approverName, role: 'Drilling Manager', date: today, action: decision, comment };
         if (decision === 'approve') {
-          t.status = 'Ops Approved';
-          showToast(`TR ${t.id}: Drilling Manager approved. Now pending Asset Manager final approval.`, 'success');
-          addNotification('info', 'user-tie', 'Awaiting Asset Manager', `Transfer ${t.id} for ${t.assetName} needs Asset Manager approval`, today);
+          t.status = 'Drilling Approved';
+          showToast(`TR ${t.id}: Drilling Manager approved. Now pending Operations Manager final approval.`, 'success');
+          addNotification('info', 'user-tie', 'Awaiting Operations Manager', `Transfer ${t.id} for ${t.assetName} needs Operations Manager approval`, today);
         } else if (decision === 'reject') {
           t.status = 'Rejected';
           showToast(`TR ${t.id}: Rejected by Drilling Manager.`, 'warning');
@@ -9939,22 +9987,20 @@ Asset Management System</textarea>
           showToast(`TR ${t.id}: Put on hold by Drilling Manager.`, 'info');
         }
       } else {
-        t.mgrApproval = { by: approverName, role: 'Asset Manager', date: today, action: decision, comment };
+        t.mgrApproval = { by: approverName, role: 'Operations Manager', date: today, action: decision, comment };
         if (decision === 'approve') {
           t.status = 'Completed';
-          // Update the asset location in ASSETS
           const asset = ASSETS.find(a => a.assetId === t.assetId);
           if (asset) {
             asset.location = t.destination;
             if (t.destRig) asset.rigName = t.destRig;
-
           }
           applyFilters();
-          showToast(`✓ Transfer ${t.id} FULLY APPROVED by Asset Manager. Asset location updated to "${t.destination}".`, 'success');
+          showToast(`✓ Transfer ${t.id} FULLY APPROVED by Operations Manager. Asset location updated to "${t.destination}".`, 'success');
           addNotification('success', 'check-double', 'Transfer Completed', `${t.assetName} transferred to ${t.destination}`, today);
         } else if (decision === 'reject') {
           t.status = 'Rejected';
-          showToast(`TR ${t.id}: Final approval rejected by Asset Manager.`, 'warning');
+          showToast(`TR ${t.id}: Final approval rejected by Operations Manager.`, 'warning');
         } else {
           t.status = 'On Hold';
           showToast(`TR ${t.id}: Put on hold pending further review.`, 'info');
@@ -10061,11 +10107,13 @@ Asset Management System</textarea>
       let f = `<button class="btn btn-secondary" onclick="closeModal('transferDetailModal')">Close</button>`;
       if (canEdit())
         f += `<button class="btn btn-primary" onclick="tdTab('edit',document.querySelectorAll('#transferDetailModal .popup-tab')[1])"><i class="fas fa-pen"></i> Edit</button>`;
-      if (tr.status === 'Pending' && canApproveDrilling())
+      if (tr.status === 'Pending' && canApproveSupt())
+        f += `<button class="btn" style="background:#0277BD;color:#fff;border-color:#0277BD;margin-left:auto" onclick="closeModal('transferDetailModal');openApprovalModal('${tr.id}','supt')"><i class="fas fa-user-shield"></i> Supt Review</button>`;
+      if (tr.status === 'Supt Approved' && canApproveDrilling())
         f += `<button class="btn" style="background:#E65100;color:#fff;border-color:#E65100;margin-left:auto" onclick="closeModal('transferDetailModal');openApprovalModal('${tr.id}','drilling')"><i class="fas fa-hard-hat"></i> Drilling Review</button>`;
-      if (tr.status === 'Ops Approved' && canApproveAsset())
-        f += `<button class="btn" style="background:var(--sap-success);color:#fff;border-color:var(--sap-success);margin-left:auto" onclick="closeModal('transferDetailModal');openApprovalModal('${tr.id}','asset')"><i class="fas fa-user-tie"></i> Final Approve</button>`;
-      if (tr.status === 'Pending' || tr.status === 'Ops Approved')
+      if (tr.status === 'Drilling Approved' && canApproveOps())
+        f += `<button class="btn" style="background:var(--sap-success);color:#fff;border-color:var(--sap-success);margin-left:auto" onclick="closeModal('transferDetailModal');openApprovalModal('${tr.id}','ops')"><i class="fas fa-user-tie"></i> Final Approve</button>`;
+      if (['Pending','Supt Approved','Drilling Approved'].includes(tr.status))
         f += `<button class="btn" style="background:var(--sap-error);color:#fff;border-color:var(--sap-error)" onclick="closeModal('transferDetailModal');cancelTransfer('${tr.id}')"><i class="fas fa-ban"></i> Cancel</button>`;
       document.getElementById('tdFooter').innerHTML = f;
     }
@@ -10073,10 +10121,9 @@ Asset Management System</textarea>
     function _tdFillApprovals() {
       const t = TRANSFERS.find(x => x.id === _tdId);
       if (!t) return;
-      const half = (appr, role, color, icon) => {
-        const side = role === 'ops' ? 'border-right:1px solid var(--sap-border)' : '';
-        const label = role === 'ops' ? 'Operations Manager' : 'Asset Manager';
-        let h = `<div style="padding:14px;${side}">
+      const third = (appr, key, color, icon, label) => {
+        const border = key !== 'mgr' ? 'border-right:1px solid var(--sap-border)' : '';
+        let h = `<div style="padding:14px;${border}">
           <div style="font-size:12px;font-weight:700;color:${color};margin-bottom:10px"><i class="fas fa-${icon}"></i> ${label}</div>`;
         if (!appr?.action) return h + `<div style="color:#bbb;font-size:13px"><i class="fas fa-clock"></i> Awaiting Review</div></div>`;
         const col = appr.action === 'approve' ? 'var(--sap-success)' : appr.action === 'hold' ? 'var(--sap-warning)' : 'var(--sap-error)';
@@ -10088,8 +10135,9 @@ Asset Management System</textarea>
         return h + '</div>';
       };
       document.getElementById('tdApprovalGrid').innerHTML =
-        half(t.opsApproval, 'ops', '#E65100', 'hard-hat') +
-        half(t.mgrApproval, 'mgr', '#6D28D9', 'user-tie');
+        third(t.suptApproval || {}, 'supt', '#0277BD', 'user-shield', 'Superintendent') +
+        third(t.opsApproval  || {}, 'ops',  '#E65100', 'hard-hat',    'Drilling Manager') +
+        third(t.mgrApproval  || {}, 'mgr',  '#6D28D9', 'user-tie',    'Operations Manager');
     }
 
     function _tdFillEditForm() {
@@ -11301,16 +11349,19 @@ Asset Management System</textarea>
     function isAdmin() { return getRole() === 'Admin'; }
     function isEditor() { return getRole() === 'Editor'; }
     function isViewer() { return getRole() === 'Viewer'; }
-    function isDrillingManager() { return getRole() === 'Drilling Manager'; }
-    function isAssetManager() { return getRole() === 'Asset Manager'; }
-    function canEdit() { return ['Admin', 'Editor', 'Drilling Manager', 'Asset Manager'].includes(getRole()); }
+    function isSuperintendent()   { return getRole() === 'Superintendent'; }
+    function isDrillingManager()  { return getRole() === 'Drilling Manager'; }
+    function isOpsManager()       { return getRole() === 'Operations Manager'; }
+    function canEdit() { return ['Admin', 'Editor', 'Superintendent', 'Drilling Manager', 'Operations Manager'].includes(getRole()); }
     function canImport() { return isAdmin(); }
-    // Stage 1 (ops): Drilling Manager or Admin
+    // Stage 1: Superintendent or Admin
+    function canApproveSupt()     { return isAdmin() || isSuperintendent(); }
+    // Stage 2: Drilling Manager or Admin
     function canApproveDrilling() { return isAdmin() || isDrillingManager(); }
-    // Stage 2 (mgr): Asset Manager or Admin
-    function canApproveAsset() { return isAdmin() || isAssetManager(); }
+    // Stage 3: Operations Manager or Admin
+    function canApproveOps()      { return isAdmin() || isOpsManager(); }
     // Any approval role
-    function canApprove() { return canApproveDrilling() || canApproveAsset(); }
+    function canApprove() { return canApproveSupt() || canApproveDrilling() || canApproveOps(); }
 
     function applyRoleUI() {
       // ── Import buttons: Admin only ──
@@ -12465,8 +12516,9 @@ Instructions:
           poNumber: t.po_number || t.poNumber || null,
           vendorContact: t.vendor_contact || t.vendorContact || null,
           returnDate: t.return_date || t.returnDate || null,
-          opsApproval: { by: t.ops_approved_by, date: t.ops_approved_date, action: t.ops_action, comment: t.ops_comment },
-          mgrApproval: { by: t.mgr_approved_by, date: t.mgr_approved_date, action: t.mgr_action, comment: t.mgr_comment }
+          suptApproval: { by: t.supt_approved_by, date: t.supt_approved_date, action: t.supt_action, comment: t.supt_comment },
+          opsApproval:  { by: t.ops_approved_by,  date: t.ops_approved_date,  action: t.ops_action,  comment: t.ops_comment },
+          mgrApproval:  { by: t.mgr_approved_by,  date: t.mgr_approved_date,  action: t.mgr_action,  comment: t.mgr_comment }
         };
       }
       function normC(c) {
