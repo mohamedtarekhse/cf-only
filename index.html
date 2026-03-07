@@ -3606,20 +3606,19 @@
                 <tr>
                   <th class="checkbox-cell"><input type="checkbox" id="inspSelectAll"
                       onchange="toggleInspectionSelectAll(this)"></th>
-                  <th onclick="sortInspTable('startDate')" style="white-space:nowrap">Start Date <i
+                  <th onclick="sortInspTable('id')" style="white-space:nowrap">Inspection ID <i
                       class="fas fa-sort sort-icon"></i></th>
-                  <th onclick="sortInspTable('endDate')" style="white-space:nowrap">End Date <i
+                  <th onclick="sortInspTable('po')" style="white-space:nowrap">PO Number <i
                       class="fas fa-sort sort-icon"></i></th>
-
-                  <th onclick="sortInspTable('inspectionType')" style="white-space:nowrap">Type of Inspection <i
+                  <th onclick="sortInspTable('serviceOrder')" style="white-space:nowrap">Service Order No <i
                       class="fas fa-sort sort-icon"></i></th>
-                  <th onclick="sortInspTable('costPerDay')" style="white-space:nowrap">Cost / Day (USD) <i
+                  <th onclick="sortInspTable('inspectedBy')" style="white-space:nowrap">Inspection By <i
                       class="fas fa-sort sort-icon"></i></th>
-                  <th onclick="sortInspTable('totalCost')" style="white-space:nowrap">Joint Total Cost <i
+                  <th onclick="sortInspTable('startDate')" style="white-space:nowrap">Inspection Date <i
                       class="fas fa-sort sort-icon"></i></th>
-                  <th onclick="sortInspTable('po')" style="white-space:nowrap">PO <i class="fas fa-sort sort-icon"></i>
-                  </th>
-                  <th onclick="sortInspTable('serviceOrder')" style="white-space:nowrap">Service Order <i
+                  <th onclick="sortInspTable('rigName')" style="white-space:nowrap">Rig <i
+                      class="fas fa-sort sort-icon"></i></th>
+                  <th onclick="sortInspTable('location')" style="white-space:nowrap">Location <i
                       class="fas fa-sort sort-icon"></i></th>
                   <th>Actions</th>
                 </tr>
@@ -4597,20 +4596,49 @@
       <div class="modal-body">
         <input type="hidden" id="insp_editId">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+
+          <!-- Row 1: PO Number + Service Order No -->
           <div class="form-group">
-            <label class="form-label">Start Date <span style="color:#b00">*</span></label>
-            <input class="form-control" id="insp_start" type="date">
+            <label class="form-label">PO Number</label>
+            <input class="form-control" id="insp_po" placeholder="e.g. PO-2025-001">
           </div>
           <div class="form-group">
-            <label class="form-label">End Date</label>
-            <input class="form-control" id="insp_end" type="date">
+            <label class="form-label">Service Order No</label>
+            <input class="form-control" id="insp_so" placeholder="e.g. SO-12345">
           </div>
 
+          <!-- Row 2: Inspection By + Inspection Date -->
+          <div class="form-group">
+            <label class="form-label">Inspection By</label>
+            <input class="form-control" id="insp_by" placeholder="Inspector name or company">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Inspection Date <span style="color:#b00">*</span></label>
+            <input class="form-control" id="insp_start" type="date">
+          </div>
+
+          <!-- Row 3: Rig + Location -->
+          <div class="form-group">
+            <label class="form-label">Rig</label>
+            <select class="form-control" id="insp_rig">
+              <option value="">— None —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Location</label>
+            <input class="form-control" id="insp_location" placeholder="e.g. Field A, Block 3">
+          </div>
+
+          <!-- Supporting fields -->
           <div class="form-group">
             <label class="form-label">Type of Inspection <span style="color:#b00">*</span></label>
             <select class="form-control" id="insp_type">
               <option value="">— Select —</option>
             </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">End Date</label>
+            <input class="form-control" id="insp_end" type="date">
           </div>
           <div class="form-group">
             <label class="form-label">Cost / Day (USD)</label>
@@ -4621,18 +4649,11 @@
             <input class="form-control" id="insp_totalcost" type="number" min="0" step="0.01"
               placeholder="Auto-calculated or manual">
           </div>
-          <div class="form-group">
-            <label class="form-label">PO Number</label>
-            <input class="form-control" id="insp_po" placeholder="e.g. PO-2025-001">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Service Order</label>
-            <input class="form-control" id="insp_so" placeholder="e.g. SO-12345">
-          </div>
           <div class="form-group" style="grid-column:1/-1">
             <label class="form-label">Notes</label>
             <textarea class="form-control" id="insp_notes" rows="2" placeholder="Additional notes..."></textarea>
           </div>
+
         </div>
         <div
           style="background:#EBF4FF;border:1px solid #B3D4FF;border-radius:6px;padding:8px 14px;margin-top:8px;font-size:12.5px;color:#0040B0">
@@ -7279,16 +7300,18 @@ Asset Management System</textarea>
     function normInsp(r) {
       return {
         ...r,
-        id: r.id || r.inspection_id || '',
-        startDate: r.start_date || r.startDate || '',
-        endDate: r.end_date || r.endDate || '',
-
-        inspectionType: r.inspection_type || r.inspectionType || '',
-        costPerDay: Number(r.cost_per_day || r.costPerDay || 0),
-        totalCost: Number(r.total_cost || r.totalCost || 0),
-        po: r.po_number || r.po || '',
-        serviceOrder: r.service_order || r.serviceOrder || '',
-        notes: r.notes || '',
+        id:             r.id             || r.inspection_id  || '',
+        po:             r.po_number      || r.po             || '',
+        serviceOrder:   r.service_order  || r.serviceOrder   || '',
+        inspectedBy:    r.inspected_by   || r.inspectedBy    || '',
+        startDate:      r.start_date     || r.startDate      || '',
+        rigName:        r.rig_name       || r.rigName        || '',
+        location:       r.location       || '',
+        endDate:        r.end_date       || r.endDate        || '',
+        inspectionType: r.inspection_type|| r.inspectionType || '',
+        costPerDay:     Number(r.cost_per_day || r.costPerDay || 0),
+        totalCost:      Number(r.total_cost   || r.totalCost  || 0),
+        notes:          r.notes || '',
       };
     }
 
@@ -7435,14 +7458,13 @@ Asset Management System</textarea>
             : '—';
           return `<tr ${_selectedInspections.has(i.id) ? 'class="selected"' : ''}>
             <td class="checkbox-cell"><input type="checkbox" data-insp-id="${i.id}" ${_selectedInspections.has(i.id) ? 'checked' : ''} onclick="onInspCheck(this,'${i.id}')"></td>
-            <td style="font-size:12.5px;white-space:nowrap">${i.startDate || '—'}</td>
-            <td style="font-size:12.5px;white-space:nowrap">${i.endDate || '—'}</td>
-
-            <td>${inspTypeBadge(i.inspectionType)}</td>
-            <td style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;text-align:right">${i.costPerDay ? '$' + i.costPerDay.toLocaleString() : '—'}</td>
-            <td style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:600;text-align:right">${i.totalCost ? '$' + i.totalCost.toLocaleString() : '—'}</td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#354A5E;white-space:nowrap">${i.id || '—'}</td>
             <td style="font-size:12px;color:#354A5E">${i.po || '—'}</td>
             <td style="font-size:12px;color:#354A5E">${i.serviceOrder || '—'}</td>
+            <td style="font-size:12.5px">${i.inspectedBy || '—'}</td>
+            <td style="font-size:12.5px;white-space:nowrap">${i.startDate || '—'}</td>
+            <td style="font-size:12.5px">${i.rigName || '—'}</td>
+            <td style="font-size:12.5px">${i.location || '—'}</td>
             <td style="white-space:nowrap">
               <button class="btn btn-ghost btn-icon" title="Edit" onclick="openInspectionModal('${i.id}')"><i class="fas fa-edit"></i></button>
               <button class="btn btn-ghost btn-icon" title="Delete" style="color:var(--sap-error)" onclick="deleteInspection('${i.id}')"><i class="fas fa-trash"></i></button>
@@ -7488,30 +7510,40 @@ Asset Management System</textarea>
 
 
 
-      // Populate type dropdown with unified list
+      // Populate type dropdown
       const typeSel = document.getElementById('insp_type');
       typeSel.innerHTML = '<option value="">— Select —</option>';
       INSP_TYPES.forEach(t => typeSel.appendChild(new Option(t, t)));
 
+      // Populate rig dropdown
+      const rigSel = document.getElementById('insp_rig');
+      if (rigSel) {
+        rigSel.innerHTML = '<option value="">— None —</option>';
+        if (typeof RIGS !== 'undefined') RIGS.forEach(r => rigSel.appendChild(new Option(r.name, r.name)));
+      }
+
       if (id) {
         const insp = INSPECTIONS.find(x => x.id === id);
         if (!insp) return;
-        document.getElementById('insp_editId').value = insp.id;
-        document.getElementById('insp_start').value = insp.startDate || '';
-        document.getElementById('insp_end').value = insp.endDate || '';
-
-        document.getElementById('insp_type').value = insp.inspectionType || '';
-        document.getElementById('insp_costday').value = insp.costPerDay || '';
+        document.getElementById('insp_editId').value    = insp.id;
+        document.getElementById('insp_po').value        = insp.po || '';
+        document.getElementById('insp_so').value        = insp.serviceOrder || '';
+        document.getElementById('insp_by').value        = insp.inspectedBy || '';
+        document.getElementById('insp_start').value     = insp.startDate || '';
+        if (rigSel) rigSel.value                        = insp.rigName || '';
+        document.getElementById('insp_location').value  = insp.location || '';
+        document.getElementById('insp_type').value      = insp.inspectionType || '';
+        document.getElementById('insp_end').value       = insp.endDate || '';
+        document.getElementById('insp_costday').value   = insp.costPerDay || '';
         document.getElementById('insp_totalcost').value = insp.totalCost || '';
-        document.getElementById('insp_po').value = insp.po || '';
-        document.getElementById('insp_so').value = insp.serviceOrder || '';
-        document.getElementById('insp_notes').value = insp.notes || '';
+        document.getElementById('insp_notes').value     = insp.notes || '';
       } else {
-        ['insp_editId', 'insp_start', 'insp_end', 'insp_costday', 'insp_totalcost', 'insp_po', 'insp_so', 'insp_notes'].forEach(id => {
-          document.getElementById(id).value = '';
+        ['insp_editId', 'insp_start', 'insp_end', 'insp_costday', 'insp_totalcost',
+         'insp_po', 'insp_so', 'insp_by', 'insp_location', 'insp_notes'].forEach(fid => {
+          document.getElementById(fid).value = '';
         });
-
         document.getElementById('insp_type').value = '';
+        if (rigSel) rigSel.value = '';
       }
 
       // Auto-calc total cost when dates or cost/day changes
@@ -7540,15 +7572,17 @@ Asset Management System</textarea>
       if (!type) { showToast('Inspection type is required.', 'error'); return; }
 
       const payload = {
-        start_date: startDate,
-        end_date: document.getElementById('insp_end').value || null,
-
+        po_number:       document.getElementById('insp_po').value.trim(),
+        service_order:   document.getElementById('insp_so').value.trim(),
+        inspected_by:    document.getElementById('insp_by').value.trim(),
+        start_date:      startDate,
+        rig_name:        document.getElementById('insp_rig').value || null,
+        location:        document.getElementById('insp_location').value.trim(),
         inspection_type: type,
-        cost_per_day: parseFloat(document.getElementById('insp_costday').value) || 0,
-        total_cost: parseFloat(document.getElementById('insp_totalcost').value) || 0,
-        po_number: document.getElementById('insp_po').value.trim(),
-        service_order: document.getElementById('insp_so').value.trim(),
-        notes: document.getElementById('insp_notes').value.trim(),
+        end_date:        document.getElementById('insp_end').value || null,
+        cost_per_day:    parseFloat(document.getElementById('insp_costday').value) || 0,
+        total_cost:      parseFloat(document.getElementById('insp_totalcost').value) || 0,
+        notes:           document.getElementById('insp_notes').value.trim(),
       };
 
       try {
