@@ -104,7 +104,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       const f={};
       if(q.get('status'))   f.status  =`eq.${q.get('status')}`;
       if(q.get('category')) f.category=`eq.${q.get('category')}`;
-      if(q.get('company'))  f.company =`eq.${q.get('company')}`;
+
       if(q.get('rig_name')) f.rig_name=`eq.${q.get('rig_name')}`;
       if(q.get('search'))   f.name    =`ilike.%${q.get('search')}%`;
       return ok(await sbGet(SB,KEY,'assets',{filters:f,order:'name.asc',limit:+(q.get('limit')||500)}));
@@ -125,13 +125,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     if(method==='DELETE'){const r=await sbDelete(SB,KEY,'rigs',{id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
   }
 
-  // COMPANIES
-  if (res==='companies') {
-    if(method==='GET')    return ok(await sbGet(SB,KEY,'companies',{order:'name.asc'}));
-    if(method==='POST')   return ok(await sbPost(SB,KEY,'companies',body));
-    if(method==='PUT')  { const {id:_,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'companies',{id:`eq.${id}`},u)); }
-    if(method==='DELETE'){const r=await sbDelete(SB,KEY,'companies',{id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
-  }
+
 
   // CONTRACTS
   if (res==='contracts') {
@@ -185,9 +179,9 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       return ok({schedule:{...upd,live_status:liveStatus(upd)}});
     }
     if(method==='GET'&&!id){
-      const {data,error}=await sbGet(SB,KEY,'maintenance_schedules',{select:'*, assets(name,rig_name,company)',order:'next_due.asc',limit:+(q.get('limit')||500)});
+      const {data,error}=await sbGet(SB,KEY,'maintenance_schedules',{select:'*, assets(name,rig_name)',order:'next_due.asc',limit:+(q.get('limit')||500)});
       if(error) return err500(error);
-      let rows=(data||[]).map(m=>({...m,asset_name:m.assets?.name,rig_name:m.assets?.rig_name,company:m.assets?.company,assets:undefined,live_status:liveStatus(m)}));
+      let rows=(data||[]).map(m=>({...m,asset_name:m.assets?.name,rig_name:m.assets?.rig_name,assets:undefined,live_status:liveStatus(m)}));
       if(q.get('asset_id')) rows=rows.filter(r=>r.asset_id===q.get('asset_id'));
       if(q.get('priority')) rows=rows.filter(r=>r.priority===q.get('priority'));
       if(q.get('status'))   rows=rows.filter(r=>r.live_status===q.get('status')||r.status===q.get('status'));
@@ -199,7 +193,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       if(['Overdue','Due Soon'].includes(body.status)) body.status='Scheduled';
       return ok(await sbPost(SB,KEY,'maintenance_schedules',body));
     }
-    if(method==='PUT'){ const {id:_,created_at,updated_at,live_status,asset_name,rig_name,company,assets,...u}=body; if(['Overdue','Due Soon'].includes(u.status)) u.status='Scheduled'; return ok(await sbPatch(SB,KEY,'maintenance_schedules',{id:`eq.${id}`},u)); }
+    if(method==='PUT'){ const {id:_,created_at,updated_at,live_status,asset_name,rig_name,assets,...u}=body; if(['Overdue','Due Soon'].includes(u.status)) u.status='Scheduled'; return ok(await sbPatch(SB,KEY,'maintenance_schedules',{id:`eq.${id}`},u)); }
     if(method==='DELETE'){const r=await sbDelete(SB,KEY,'maintenance_schedules',{id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
   }
 
@@ -218,7 +212,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
           status:decision==='approve'?'Completed':decision==='reject'?'Rejected':'On Hold'};
         if(decision==='approve'){
           const {data:tr}=await sbGet(SB,KEY,'transfers',{filters:{id:`eq.${id}`},single:true});
-          if(tr){ const au={location:tr.destination}; if(tr.dest_rig) au.rig_name=tr.dest_rig; if(tr.dest_company) au.company=tr.dest_company; await sbPatch(SB,KEY,'assets',{asset_id:`eq.${tr.asset_id}`},au); }
+          if(tr){ const au={location:tr.destination}; if(tr.dest_rig) au.rig_name=tr.dest_rig; await sbPatch(SB,KEY,'assets',{asset_id:`eq.${tr.asset_id}`},au); }
         }
       } else return respond({success:false,error:'role must be ops or mgr'},400);
       return ok(await sbPatch(SB,KEY,'transfers',{id:`eq.${id}`},patch));
@@ -250,7 +244,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
   if (res==='inspections') {
     if(method==='GET'&&!id){
       const f={};
-      if(q.get('company'))         f.company         =`eq.${q.get('company')}`;
+
       if(q.get('inspection_type')) f.inspection_type =`eq.${q.get('inspection_type')}`;
       if(q.get('rig_name'))        f.rig_name        =`eq.${q.get('rig_name')}`;
       return ok(await sbGet(SB,KEY,'inspections',{filters:f,order:'start_date.desc',limit:+(q.get('limit')||1000)}));
@@ -267,7 +261,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       const f={};
       if(q.get('status'))   f.status  =`eq.${q.get('status')}`;
       if(q.get('rig_name')) f.rig_name=`eq.${q.get('rig_name')}`;
-      if(q.get('company'))  f.company =`eq.${q.get('company')}`;
+
       if(q.get('priority')) f.priority=`eq.${q.get('priority')}`;
       return ok(await sbGet(SB,KEY,'projects',{filters:f,order:'created_at.desc',limit:+(q.get('limit')||500)}));
     }

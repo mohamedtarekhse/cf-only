@@ -21,26 +21,13 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 --  SECTION 1 — CORE TABLES
 -- ============================================================
 
--- ── Companies ──────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS companies (
-  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name          TEXT NOT NULL UNIQUE,
-  short_code    TEXT,
-  country       TEXT,
-  contact_name  TEXT,
-  contact_email TEXT,
-  contact_phone TEXT,
-  active        BOOLEAN DEFAULT TRUE,
-  created_at    TIMESTAMPTZ DEFAULT NOW(),
-  updated_at    TIMESTAMPTZ DEFAULT NOW()
-);
+
 
 -- ── Land Rigs ───────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS rigs (
   id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   rig_name      TEXT NOT NULL UNIQUE,
   rig_type      TEXT,
-  company_id    UUID REFERENCES companies(id) ON DELETE SET NULL,
   location      TEXT,
   status        TEXT DEFAULT 'Active'
                   CHECK (status IN ('Active','Idle','Maintenance','Retired')),
@@ -55,7 +42,6 @@ CREATE TABLE IF NOT EXISTS rigs (
 CREATE TABLE IF NOT EXISTS contracts (
   id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   contract_id   TEXT NOT NULL UNIQUE,
-  company_id    UUID REFERENCES companies(id) ON DELETE SET NULL,
   rig_id        UUID REFERENCES rigs(id) ON DELETE SET NULL,
   start_date    DATE,
   end_date      DATE,
@@ -75,7 +61,6 @@ CREATE TABLE IF NOT EXISTS assets (
   category         TEXT NOT NULL,
   status           TEXT DEFAULT 'Active'
                      CHECK (status IN ('Active','Maintenance','Inactive','Contracted','Retired')),
-  company_id       UUID REFERENCES companies(id) ON DELETE SET NULL,
   rig_name         TEXT,
   location         TEXT,
   serial           TEXT,
@@ -160,7 +145,6 @@ CREATE TABLE IF NOT EXISTS transfers (
   current_loc     TEXT,
   destination     TEXT,
   dest_rig        TEXT,
-  dest_company    TEXT,
   priority        TEXT DEFAULT 'Normal',
   type            TEXT DEFAULT 'Field to Field',
   requested_by    TEXT,
@@ -723,7 +707,7 @@ DECLARE
   tbl TEXT;
 BEGIN
   FOREACH tbl IN ARRAY ARRAY[
-    'companies','rigs','contracts','maintenance',
+    'rigs','contracts','maintenance',
     'certificates','transfers','users',
     'reg_bop','reg_well_head','reg_well_control',
     'reg_fire_extinguishers','reg_scba'
