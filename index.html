@@ -3276,7 +3276,7 @@
                 <div class="col-picker-title">Visible Columns</div>
               </div>
             </div>
-            <button class="btn btn-secondary" onclick="openImportGuide('assets')"><i
+            <button class="btn btn-secondary" id="btnImportAssets" onclick="openImportGuide('assets')"><i
                 class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFile" accept=".xlsx,.xls,.csv" style="display:none"
               onchange="importAssets(event)">
@@ -3338,6 +3338,12 @@
                 <option value="Rig 12">Rig 12</option>
                 <option value="Rig 13">Rig 13</option>
                 <option value="Rig 14">Rig 14</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label class="filter-label">Location</label>
+              <select class="filter-select" id="filterLocation" onchange="applyFilters()" style="min-width:130px">
+                <option value="">All Locations</option>
               </select>
             </div>
             <div class="filter-group" style="margin-left:auto">
@@ -3410,7 +3416,7 @@
             <button class="btn btn-secondary" onclick="exportContractsPDF()"
               style="background:#fff0f0;border-color:#c00;color:#c00"><i class="fas fa-file-pdf"></i> Export
               PDF</button>
-            <button class="btn btn-secondary" onclick="openImportGuide('contracts')"><i
+            <button class="btn btn-secondary" id="btnImportContracts" onclick="openImportGuide('contracts')"><i
                 class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileContracts" accept=".xlsx,.xls,.csv" style="display:none"
               onchange="importContracts(event)">
@@ -3547,6 +3553,12 @@
               <label class="filter-label">Rig</label>
               <select class="filter-select" id="prjFilterRig" onchange="applyProjectFilters()">
                 <option value="">All Rigs</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label class="filter-label">Location</label>
+              <select class="filter-select" id="prjFilterLocation" onchange="applyProjectFilters()" style="min-width:130px">
+                <option value="">All Locations</option>
               </select>
             </div>
             <div class="filter-group" style="margin-left:auto">
@@ -3746,7 +3758,7 @@
             <button class="btn btn-secondary" onclick="exportRigsPDF()"
               style="background:#fff0f0;border-color:#c00;color:#c00"><i class="fas fa-file-pdf"></i> Export
               PDF</button>
-            <button class="btn btn-secondary" onclick="openImportGuide('rigs')"><i
+            <button class="btn btn-secondary" id="btnImportRigs" onclick="openImportGuide('rigs')"><i
                 class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileRigs" accept=".xlsx,.xls,.csv" style="display:none"
               onchange="importRigs(event)">
@@ -3781,7 +3793,7 @@
         <div class="card">
           <div class="card-header"><span class="card-title">System Users</span><button id="btnAddUser"
               class="btn btn-primary"><i class="fas fa-plus"></i> Add User</button>
-            <button class="btn btn-secondary" onclick="openImportGuide('users')"><i
+            <button class="btn btn-secondary" id="btnImportUsers" onclick="openImportGuide('users')"><i
                 class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileUsers" accept=".xlsx,.xls,.csv" style="display:none"
               onchange="importUsers(event)">
@@ -3804,7 +3816,7 @@
             <button class="btn btn-secondary" onclick="exportBOMPDF()"
               style="background:#fff0f0;border-color:#c00;color:#c00"><i class="fas fa-file-pdf"></i> Export
               PDF</button>
-            <button class="btn btn-secondary" onclick="openImportGuide('bom')"><i
+            <button class="btn btn-secondary" id="btnImportBom" onclick="openImportGuide('bom')"><i
                 class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileBom" accept=".xlsx,.xls,.csv" style="display:none"
               onchange="importBOM(event)">
@@ -3901,7 +3913,7 @@
                 <div class="col-picker-title">Visible Columns</div>
               </div>
             </div>
-            <button class="btn btn-secondary" onclick="openImportGuide('transfers')"><i
+            <button class="btn btn-secondary" id="btnImportTransfers" onclick="openImportGuide('transfers')"><i
                 class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileTransfers" accept=".xlsx,.xls,.csv" style="display:none"
               onchange="importTransfers(event)">
@@ -4052,7 +4064,7 @@
               PDF</button>
             <button class="btn btn-secondary" onclick="openMaintLogModal(null,'bulk')"><i class="fas fa-history"></i>
               Log Completion</button>
-            <button class="btn btn-secondary" onclick="openImportGuide('maintenance')"><i
+            <button class="btn btn-secondary" id="btnImportMaint" onclick="openImportGuide('maintenance')"><i
                 class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileMaint" accept=".xlsx,.xls,.csv" style="display:none"
               onchange="importMaintenance(event)">
@@ -4194,7 +4206,7 @@
             <button class="btn btn-secondary" onclick="exportCertificatesPDF()"
               style="background:#fff0f0;border-color:#c00;color:#c00"><i class="fas fa-file-pdf"></i> Export
               PDF</button>
-            <button class="btn btn-secondary" onclick="openImportGuide('certificates')"><i
+            <button class="btn btn-secondary" id="btnImportCerts" onclick="openImportGuide('certificates')"><i
                 class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileCerts" accept=".xlsx,.xls,.csv" style="display:none"
               onchange="importCertificates(event)">
@@ -4248,6 +4260,12 @@
                 <option value="Expiring Soon">Expiring Soon</option>
                 <option value="Expired">Expired</option>
                 <option value="No Certificate">No Certificate</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label class="filter-label">Location</label>
+              <select class="filter-select" id="certFilterLocation" onchange="renderCertificates()" style="min-width:130px">
+                <option value="">All Locations</option>
               </select>
             </div>
             <div class="filter-group" style="margin-left:auto">
@@ -6546,17 +6564,28 @@ Asset Management System</textarea>
       const q = (document.getElementById('prjSearch')?.value || '').toLowerCase();
       const fS = document.getElementById('prjFilterStatus')?.value || '';
       const fP = document.getElementById('prjFilterPriority')?.value || '';
-
       const fR = document.getElementById('prjFilterRig')?.value || '';
+      const fL = document.getElementById('prjFilterLocation')?.value || '';
+
+      // Populate location dropdown dynamically from PROJECTS
+      const locSel = document.getElementById('prjFilterLocation');
+      if (locSel) {
+        const current = locSel.value;
+        const locs = [...new Set(PROJECTS.map(p => p.location).filter(Boolean))].sort();
+        locSel.innerHTML = '<option value="">All Locations</option>' +
+          locs.map(l => `<option value="${l}"${l === current ? ' selected' : ''}>${l}</option>`).join('');
+      }
+
       filteredProjects = PROJECTS.filter(p => {
         const hay = [p.projectId, p.name, p.manager || '', p.location || '', p.description || ''].join(' ').toLowerCase();
-        return (!q || hay.includes(q)) && (!fS || p.status === fS) && (!fP || p.priority === fP) && (!fR || p.rigName === fR);
+        const matchL = !fL || p.location === fL;
+        return (!q || hay.includes(q)) && (!fS || p.status === fS) && (!fP || p.priority === fP) && (!fR || p.rigName === fR) && matchL;
       });
       prjPage = 1;
       renderProjects();
     }
     function clearProjectFilters() {
-      ['prjSearch', 'prjFilterStatus', 'prjFilterPriority', 'prjFilterRig'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+      ['prjSearch', 'prjFilterStatus', 'prjFilterPriority', 'prjFilterRig', 'prjFilterLocation'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
       applyProjectFilters();
     }
 
@@ -7906,8 +7935,18 @@ Asset Management System</textarea>
       const q = document.getElementById('searchInput').value.toLowerCase();
       const status = document.getElementById('filterStatus').value;
       const cat = document.getElementById('filterCategory').value;
-
       const rig = document.getElementById('filterRig')?.value || '';
+      const loc = document.getElementById('filterLocation')?.value || '';
+
+      // Populate location dropdown dynamically from current ASSETS
+      const locSel = document.getElementById('filterLocation');
+      if (locSel) {
+        const current = locSel.value;
+        const locs = [...new Set(ASSETS.map(a => a.location).filter(Boolean))].sort();
+        locSel.innerHTML = '<option value="">All Locations</option>' +
+          locs.map(l => `<option value="${l}"${l === current ? ' selected' : ''}>${l}</option>`).join('');
+      }
+
       filteredAssets = ASSETS.filter(a => {
         const searchFields = [a.assetId, a.name, a.location, a.serial || '', a.category,
         a.status, a.rigName || '', a.inspectionType || '', a.lastInspection || '',
@@ -7915,9 +7954,9 @@ Asset Management System</textarea>
         const matchQ = !q || searchFields.some(f => f.toLowerCase().includes(q));
         const matchS = !status || a.status === status;
         const matchC = !cat || a.category === cat;
-
         const matchR = !rig || a.rigName === rig;
-        return matchQ && matchS && matchC && matchR;
+        const matchL = !loc || a.location === loc;
+        return matchQ && matchS && matchC && matchR && matchL;
       });
       currentPage = 1;
       renderAssets();
@@ -7927,8 +7966,8 @@ Asset Management System</textarea>
       document.getElementById('searchInput').value = '';
       document.getElementById('filterStatus').value = '';
       document.getElementById('filterCategory').value = '';
-
       const fr = document.getElementById('filterRig'); if (fr) fr.value = '';
+      const fl = document.getElementById('filterLocation'); if (fl) fl.value = '';
       activeAssetRig = '';
       applyFilters();
     }
@@ -11132,15 +11171,27 @@ Asset Management System</textarea>
       const rigF = document.getElementById('certFilterRig')?.value || '';
       const typeF = document.getElementById('certFilterType')?.value || '';
       const statusF = document.getElementById('certFilterStatus')?.value || '';
+      const locF = document.getElementById('certFilterLocation')?.value || '';
+
+      // Populate location dropdown dynamically from CERTIFICATES (via enriched asset location)
+      const locSel = document.getElementById('certFilterLocation');
+      if (locSel) {
+        const current = locSel.value;
+        const locs = [...new Set(CERTIFICATES.map(c => c.location || (ASSETS.find(a => a.assetId === c.assetId)?.location) || '').filter(Boolean))].sort();
+        locSel.innerHTML = '<option value="">All Locations</option>' +
+          locs.map(l => `<option value="${l}"${l === current ? ' selected' : ''}>${l}</option>`).join('');
+      }
 
       let list = CERTIFICATES.filter(c => {
+        const certLoc = c.location || ASSETS.find(a => a.assetId === c.assetId)?.location || '';
         const cs = certStatus(c);
         const fields = [c.assetId, c.name, c.serial, c.rigName, c.inspectionType,
         c.lastInspection, c.nextInspection, c.notes, c.certLink].join(' ').toLowerCase();
         return (!q || fields.includes(q))
           && (!rigF || c.rigName === rigF)
           && (!typeF || c.inspectionType === typeF)
-          && (!statusF || cs === statusF);
+          && (!statusF || cs === statusF)
+          && (!locF || certLoc === locF);
       });
 
       // Sort
@@ -11200,7 +11251,7 @@ Asset Management System</textarea>
     }
 
     function clearCertFilters() {
-      ['certSearch', 'certFilterRig', 'certFilterType', 'certFilterStatus'].forEach(id => {
+      ['certSearch', 'certFilterRig', 'certFilterType', 'certFilterStatus', 'certFilterLocation'].forEach(id => {
         const el = document.getElementById(id); if (el) el.value = '';
       });
       renderCertificates();
@@ -11292,6 +11343,7 @@ Asset Management System</textarea>
         name: a?.name || '',
         serial: a?.serial || '—',
         rigName: a?.rigName || '',
+        location: a?.location || '',
         category: a?.category || '',
         inspectionType: type,
         lastInspection: document.getElementById('cert_lastDate').value,
@@ -11430,23 +11482,14 @@ Asset Management System</textarea>
     function canApprove() { return canApproveSupt() || canApproveDrilling() || canApproveOps(); }
 
     function applyRoleUI() {
-      // ── Import buttons: Admin only ──
-      const importBtnMap = {
-        'importFile': 'btnImportAssets',
-        'importFileContracts': 'btnImportContracts',
-        'importFileMaint': 'btnImportMaint',
-        'importFileCerts': 'btnImportCerts',
-        'importFileRigs': 'btnImportRigs',
-
-        'importFileUsers': 'btnImportUsers',
-        'importFileBom': 'btnImportBom',
-        'importFileTransfers': 'btnImportTransfers',
-      };
-      Object.keys(importBtnMap).forEach(inputId => {
-        const inp = document.getElementById(inputId);
-        if (!inp) return;
-        const btn = inp.previousElementSibling;
-        if (btn && btn.tagName === 'BUTTON') btn.style.display = canImport() ? '' : 'none';
+      // ── Import buttons: Admin only — reference by ID directly (stable, not positional) ──
+      [
+        'btnImportAssets', 'btnImportContracts', 'btnImportRigs',
+        'btnImportUsers', 'btnImportBom', 'btnImportTransfers',
+        'btnImportMaint', 'btnImportCerts'
+      ].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = canImport() ? '' : 'none';
       });
 
       // ── Add/New buttons: Editor + Admin only ──
@@ -12549,12 +12592,16 @@ Instructions:
       //  NORMALISERS  (API snake_case → App camelCase)
       // ══════════════════════════════════════════════════════════════════════════
       function normA(a) {
+        if (!a) return {};
         return {
           ...a,
-          assetId: a.asset_id, rigName: a.rig_name,
-          lastInspection: a.last_inspection,
-          inspectionType: a.inspection_type,
-          certLink: a.cert_link
+          assetId:         a.asset_id          || a.assetId          || '',
+          rigName:         a.rig_name           || a.rigName          || '',
+          lastInspection:  a.last_inspection    || a.lastInspection   || '',
+          inspectionType:  a.inspection_type    || a.inspectionType   || '',
+          certLink:        a.cert_link          || a.certLink         || '',
+          acquisitionDate: a.acquisition_date   || a.acquisitionDate  || '',
+          value:           a.value              != null ? Number(a.value) : 0,
         };
       }
       function normM(m) {
@@ -12597,6 +12644,7 @@ Instructions:
           name: c.asset_name || c.name || asset?.name || '',
           serial: c.asset_serial || c.serial || asset?.serial || '—',
           rigName: c.rig_name || c.rigName || asset?.rigName || '',
+          location: c.location || asset?.location || '',
           inspectionType: c.inspection_type || c.inspectionType || '',
           lastInspection: c.last_inspection || c.lastInspection || '',
           nextInspection: c.next_inspection || c.nextInspection || '',
@@ -13308,8 +13356,9 @@ Instructions:
           const reader = new FileReader();
           reader.onload = e => {
             try {
-              const wb = XLSX.read(e.target.result, { type: 'binary' });
-              resolve(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]));
+              const wb = XLSX.read(e.target.result, { type: 'binary', cellDates: true, dateNF: 'yyyy-mm-dd' });
+              const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { raw: false });
+              resolve(rows);
             } catch (err) { reject(err); }
           };
           reader.onerror = reject;
@@ -13329,36 +13378,45 @@ Instructions:
           const failedRows = [];
           for (let i = 0; i < rows.length; i++) {
             const r = rows[i];
+            // Fix 6: skip fully blank rows (common Excel trailing rows)
+            if (Object.values(r).every(v => v === '' || v === null || v === undefined)) continue;
             const asset_id = (r['Asset ID'] || '').toString().trim();
             if (!asset_id) { failedRows.push({ row: i + 2, id: '', reason: 'Missing required column: Asset ID' }); continue; }
             const payload = {
               asset_id,
-              name: r['Name'] || r['Asset Name'] || 'Imported Asset',
-              category: r['Category'] || 'Other',
-              rig_name: r['Rig'] || r['Rig Name'] || '',
-              location: r['Location'] || '',
-              status: r['Status'] || 'Active',
-              serial: r['Serial'] || r['Serial Number'] || '',
-              notes: r['Notes'] || '',
-              last_inspection: r['Last Inspection'] || null,
-              inspection_type: r['Inspection Type'] || '',
-              cert_link: r['Cert Link'] || '',
+              name:             r['Name']             || r['Asset Name']      || 'Imported Asset',
+              category:         r['Category']                                 || 'Other',
+              rig_name:         r['Rig']               || r['Rig Name']        || '',
+              location:         r['Location']                                 || '',
+              status:           r['Status']                                   || 'Active',
+              serial:           r['Serial']            || r['Serial Number']   || '',
+              notes:            r['Notes']                                    || '',
+              last_inspection:  r['Last Inspection']                          || null,
+              inspection_type:  r['Inspection Type']                          || '',
+              // Fix 5: accept both export column name and short name
+              cert_link:        r['Cert Link']         || r['Certificate Link'] || '',
+              // Fix 3: include value and acquisition_date
+              value:            Number(r['Value']      || r['Value (USD)']    || 0) || 0,
+              acquisition_date: r['Acquisition Date']                         || null,
             };
             try {
               const existing = ASSETS.find(a => a.assetId === asset_id);
               if (existing) {
                 const res = await PUT(`/assets/${asset_id}`, payload);
                 const idx = ASSETS.findIndex(a => a.assetId === asset_id);
-                if (idx >= 0) ASSETS[idx] = normA(res.data);
+                // Fix 1: guard against null res.data
+                if (idx >= 0) ASSETS[idx] = normA(res.data || payload);
               } else {
                 const res = await POST('/assets', payload);
-                ASSETS.push(normA(res.data));
+                // Fix 1: guard against null res.data
+                ASSETS.push(normA(res.data || payload));
               }
               added++;
             } catch (e) { failedRows.push({ row: i + 2, id: asset_id, reason: e.message || 'API error' }); }
           }
-          filteredAssets = [...ASSETS];
-          rerender('renderAssets', 'updateKPIs');
+          // Fix 2: call applyFilters() so active filters are preserved
+          if (typeof applyFilters === 'function') applyFilters();
+          else { filteredAssets = [...ASSETS]; rerender('renderAssets', 'updateKPIs'); }
           NOTIFICATIONS.unshift({ icon: 'fas fa-file-import', type: 'ni-blue', title: 'Assets Imported', desc: `${added} assets from ${file.name}`, time: 'Just now', read: false });
           renderNotifications();
           showImportResults('Assets', file.name, added, failedRows);
@@ -13705,10 +13763,12 @@ Instructions:
             { col: 'Location' },
             { col: 'Status', note: 'Active / Maintenance / Inactive / Contracted / Retired' },
             { col: 'Serial', alt: 'Serial Number' },
+            { col: 'Value', alt: 'Value (USD)', note: 'Numeric — e.g. 15000' },
+            { col: 'Acquisition Date', note: 'Format: YYYY-MM-DD' },
             { col: 'Notes' },
-            { col: 'Last Inspection' },
+            { col: 'Last Inspection', note: 'Format: YYYY-MM-DD' },
             { col: 'Inspection Type' },
-            { col: 'Cert Link' },
+            { col: 'Cert Link', alt: 'Certificate Link' },
           ]
         },
         contracts: {
