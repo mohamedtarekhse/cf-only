@@ -7823,10 +7823,9 @@ Asset Management System</textarea>
       initMaintenance();
       initProjects();
       initInspections();
-      initInspections();
       // Apply role-based UI restrictions after all data is loaded
       if (typeof applyRoleUI === 'function') applyRoleUI();
-      window.__bootstrapDone = true;
+      // NOTE: do NOT set __bootstrapDone here — let the IIFE trigger bootstrap
     };
 
     // ══════════════════════════════════
@@ -8661,10 +8660,12 @@ Asset Management System</textarea>
     // ══════════════════════════════════
     //  ADD / EDIT RIG MODAL
     // ══════════════════════════════════
+    window.rigEditId = null;
     let rigEditId = null;
 
     function openAddRigModal(rig) {
       rigEditId = rig ? (rig.id || null) : null;
+      window.rigEditId = rigEditId;
       document.getElementById('addRigModalTitle').textContent = rigEditId ? 'Edit Rig' : 'Add New Rig';
       if (rig) {
         document.getElementById('rig_editId').value = rig.id || '';
@@ -8720,10 +8721,12 @@ Asset Management System</textarea>
     // ══════════════════════════════════
     //  ADD / EDIT CONTRACT MODAL
     // ══════════════════════════════════
+    window.contractEditId = null;
     let contractEditId = null;
 
     function openAddContractModal(contract) {
       contractEditId = contract ? (contract.id || null) : null;
+      window.contractEditId = contractEditId;
       document.getElementById('addContractModalTitle').textContent = contractEditId ? 'Edit Contract' : 'Add New Contract';
 
       const rigSel = document.getElementById('contract_rig');
@@ -13030,6 +13033,132 @@ Instructions:
         } catch (e) { console.error('markAllRead failed:', e); }
       };
 
+      // ── saveRigEntry override (needs POST/PUT in scope) ─────────────
+      window.saveRigEntry = async function () {
+        const name = document.getElementById('rig_name').value.trim();
+        if (!name) { showToast('Rig Name is required.', 'error'); return; }
+        const payload = {
+          name, type: document.getElementById('rig_type').value,
+          location: document.getElementById('rig_location').value.trim(),
+          depth: document.getElementById('rig_depth').value || null,
+          hp: parseInt(document.getElementById('rig_hp').value) || null,
+          status: document.getElementById('rig_status').value,
+          notes: document.getElementById('rig_notes').value.trim(),
+        };
+        try {
+          if (window.rigEditId) {
+            const res = await PUT(`/rigs/${window.rigEditId}`, { id: window.rigEditId, ...payload });
+            const idx = RIGS.findIndex(r => r.id === window.rigEditId);
+            if (idx >= 0) RIGS[idx] = { ...RIGS[idx], ...(res.data || payload) };
+            showToast('Rig updated ✓', 'success');
+          } else {
+            const res = await POST('/rigs', payload);
+            RIGS.push(res.data || payload);
+            showToast('Rig added ✓', 'success');
+          }
+          closeModal('addRigModal');
+          renderRigs();
+          if (typeof populateFormSelects === 'function') populateFormSelects();
+        } catch (e) { showToast('Save failed: ' + e.message, 'error'); }
+      };
+
+      // ── saveContractEntry override (needs POST/PUT in scope) ────────
+      window.saveContractEntry = async function () {
+        const id = document.getElementById('contract_id').value.trim();
+        if (!id) { showToast('Contract ID is required.', 'error'); return; }
+        const payload = {
+          id, rig: document.getElementById('contract_rig').value,
+          start_date: document.getElementById('contract_start').value || null,
+          end_date: document.getElementById('contract_end').value || null,
+          status: document.getElementById('contract_status_field').value,
+          notes: document.getElementById('contract_notes').value.trim(),
+        };
+        try {
+          if (window.contractEditId) {
+            const res = await PUT(`/contracts/${window.contractEditId}`, payload);
+            const idx = CONTRACTS.findIndex(c => c.id === window.contractEditId);
+            if (idx >= 0) CONTRACTS[idx] = { ...CONTRACTS[idx], ...(res.data || payload) };
+            showToast('Contract updated ✓', 'success');
+          } else {
+            const res = await POST('/contracts', payload);
+            CONTRACTS.push(res.data || payload);
+            showToast('Contract added ✓', 'success');
+          }
+          closeModal('addContractModal');
+          if (typeof applyContractFilters === 'function') applyContractFilters();
+        } catch (e) { showToast('Save failed: ' + e.message, 'error'); }
+      };
+
+      // ── saveProject override (needs POST/PUT in scope) ──────────────
+      window.saveProject = async function () {
+        const id = (document.getElementById('prj_editId').value || document.getElementById('prj_id').value).trim();
+        const name = document.getElementById('prj_name').value.trim();
+        if (!id)   { showToast('Project ID is required.', 'error'); return; }
+        if (!name) { showToast('Project Name is required.', 'error'); return; }
+        const payload = {
+          project_id: id, name,
+          status:      document.getElementById('prj_status').value,
+          priority:    document.getElementById('prj_priority').value,
+          rig_name:    document.getElementById('prj_rig').value,
+          location:    document.getElementById('prj_location').value.trim(),
+          manager:     document.getElementById('prj_manager').value.trim(),
+          start_date:  document.getElementById('prj_start').value || null,
+          end_date:    document.getElementById('prj_end').value || null,
+          progress:    parseInt(document.getElementById('prj_progress').value) || 0,
+          description: document.getElementById('prj_desc').value.trim(),
+          notes:       document.getElementById('prj_notes').value.trim(),
+        };
+        try {
+          if (window._prjEditId) {
+            const r = await PUT(`/projects/${window._prjEditId}`, payload);
+            const idx = PROJECTS.findIndex(x => x.projectId === window._prjEditId);
+            if (idx >= 0) PROJECTS[idx] = normP(r.data || payload);
+            showToast('Project updated ✓', 'success');
+          } else {
+            const r = await POST('/projects', payload);
+            PROJECTS.push(normP(r.data || payload));
+            showToast('Project created ✓', 'success');
+          }
+          closeModal('projectModal');
+          filteredProjects = [...PROJECTS];
+          if (typeof applyProjectFilters === 'function') applyProjectFilters();
+        } catch (e) { showToast('Save failed: ' + e.message, 'error'); }
+      };
+
+      // ── saveInspection override (needs POST/PUT in scope) ──────────
+      window.saveInspection = async function () {
+        const startDate = document.getElementById('insp_start').value;
+        const type      = document.getElementById('insp_type').value;
+        if (!startDate) { showToast('Start date is required.', 'error'); return; }
+        if (!type)      { showToast('Inspection type is required.', 'error'); return; }
+        const payload = {
+          po_number:       document.getElementById('insp_po').value.trim(),
+          service_order:   document.getElementById('insp_so').value.trim(),
+          inspected_by:    document.getElementById('insp_by').value.trim(),
+          start_date:      startDate,
+          rig_name:        document.getElementById('insp_rig').value || null,
+          location:        document.getElementById('insp_location').value.trim(),
+          inspection_type: type,
+          end_date:        document.getElementById('insp_end').value || null,
+          notes:           document.getElementById('insp_notes').value.trim(),
+        };
+        try {
+          if (window._inspEditId) {
+            const r = await PUT(`/inspections/${window._inspEditId}`, payload);
+            const idx = INSPECTIONS.findIndex(x => x.id === window._inspEditId);
+            if (idx >= 0) INSPECTIONS[idx] = normInsp({ ...INSPECTIONS[idx], ...payload, ...(r.data || {}) });
+            showToast('Inspection updated ✓', 'success');
+          } else {
+            const r = await POST('/inspections', payload);
+            INSPECTIONS.unshift(normInsp(r.data || payload));
+            showToast('Inspection created ✓', 'success');
+          }
+          closeModal('inspectionModal');
+          filteredInspections = [...INSPECTIONS];
+          if (typeof applyInspectionFilters === 'function') applyInspectionFilters();
+        } catch (e) { showToast('Save failed: ' + e.message, 'error'); }
+      };
+
       // Auto-boot after login succeeds
       const _origDoLogin = window.doLogin;
       window.doLogin = async function () {
@@ -13041,11 +13170,12 @@ Instructions:
         }
       };
 
-      // If session was restored before this IIFE ran, boot immediately.
-      // DOMContentLoaded has already fired by the time scripts at page bottom run.
-      if (window.__sessionRestored && !window.__bootstrapDone) {
+      // If session was already restored (page refresh with saved session),
+      // run bootstrap now. Use setTimeout(0) to ensure window.onload has
+      // fully completed before we start fetching data.
+      if (window.__sessionRestored) {
         window.__bootstrapDone = true;
-        bootstrap();
+        setTimeout(bootstrap, 0);
       }
 
 
@@ -13435,76 +13565,6 @@ Instructions:
       //  MODAL HELPERS
       // ══════════════════════════════════
 
-      // ── saveProject (needs POST/PUT in scope) ──────────────────────
-      window.saveProject = async function () {
-        const id = (document.getElementById('prj_editId').value || document.getElementById('prj_id').value).trim();
-        const name = document.getElementById('prj_name').value.trim();
-        if (!id)   { showToast('Project ID is required.', 'error'); return; }
-        if (!name) { showToast('Project Name is required.', 'error'); return; }
-        const payload = {
-          project_id:  id, name,
-          status:      document.getElementById('prj_status').value,
-          priority:    document.getElementById('prj_priority').value,
-          rig_name:    document.getElementById('prj_rig').value,
-          location:    document.getElementById('prj_location').value.trim(),
-          manager:     document.getElementById('prj_manager').value.trim(),
-          start_date:  document.getElementById('prj_start').value || null,
-          end_date:    document.getElementById('prj_end').value || null,
-          progress:    parseInt(document.getElementById('prj_progress').value) || 0,
-          budget:      parseFloat(document.getElementById('prj_budget') ? document.getElementById('prj_budget').value : 0) || 0,
-          description: document.getElementById('prj_desc').value.trim(),
-          notes:       document.getElementById('prj_notes').value.trim(),
-        };
-        try {
-          if (window._prjEditId) {
-            const r = await PUT(`/projects/${window._prjEditId}`, payload);
-            const idx = PROJECTS.findIndex(x => x.projectId === window._prjEditId);
-            if (idx >= 0) PROJECTS[idx] = normP(r.data || payload);
-            showToast('Project updated ✓', 'success');
-          } else {
-            const r = await POST('/projects', payload);
-            PROJECTS.push(normP(r.data || payload));
-            showToast('Project created ✓', 'success');
-          }
-          closeModal('projectModal');
-          filteredProjects = [...PROJECTS];
-          applyProjectFilters();
-        } catch (e) { showToast('Save failed: ' + e.message, 'error'); }
-      };
-
-      // ── saveInspection (needs POST/PUT in scope) ───────────────────
-      window.saveInspection = async function () {
-        const startDate = document.getElementById('insp_start').value;
-        const type      = document.getElementById('insp_type').value;
-        if (!startDate) { showToast('Start date is required.', 'error'); return; }
-        if (!type)      { showToast('Inspection type is required.', 'error'); return; }
-        const payload = {
-          po_number:       document.getElementById('insp_po').value.trim(),
-          service_order:   document.getElementById('insp_so').value.trim(),
-          inspected_by:    document.getElementById('insp_by').value.trim(),
-          start_date:      startDate,
-          rig_name:        document.getElementById('insp_rig').value || null,
-          location:        document.getElementById('insp_location').value.trim(),
-          inspection_type: type,
-          end_date:        document.getElementById('insp_end').value || null,
-          notes:           document.getElementById('insp_notes').value.trim(),
-        };
-        try {
-          if (window._inspEditId) {
-            const r = await PUT(`/inspections/${window._inspEditId}`, payload);
-            const idx = INSPECTIONS.findIndex(x => x.id === window._inspEditId);
-            if (idx >= 0) INSPECTIONS[idx] = normInsp({ ...INSPECTIONS[idx], ...payload, ...(r.data || {}) });
-            showToast('Inspection updated ✓', 'success');
-          } else {
-            const r = await POST('/inspections', payload);
-            INSPECTIONS.unshift(normInsp(r.data || payload));
-            showToast('Inspection created ✓', 'success');
-          }
-          closeModal('inspectionModal');
-          filteredInspections = [...INSPECTIONS];
-          applyInspectionFilters();
-        } catch (e) { showToast('Save failed: ' + e.message, 'error'); }
-      };
 
     })(); // end IIFE
   </script>
