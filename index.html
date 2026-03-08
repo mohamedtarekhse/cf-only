@@ -1405,6 +1405,91 @@
       gap: 8px;
     }
 
+    /* ── IMPORT GUIDE MODAL ── */
+    .import-section-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      color: var(--sap-text-muted);
+      margin: 14px 0 8px;
+    }
+    .import-section-label:first-child { margin-top: 0; }
+    .import-col-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+    .import-col-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 5px;
+      border: 1px solid var(--sap-border);
+      background: #FAFBFC;
+      font-size: 12.5px;
+    }
+    .import-col-item.required { border-color: #BBDBFF; background: var(--sap-blue-light); }
+    .import-col-name { font-weight: 600; color: var(--sap-text); flex: 1; }
+    .import-col-item.required .import-col-name { color: var(--sap-blue-dark); }
+    .import-col-alt { font-size: 11px; color: var(--sap-text-muted); }
+    .import-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700; border-radius: 3px;
+      padding: 1px 6px; flex-shrink: 0;
+    }
+    .import-badge.req { background: #0070F2; color: #fff; }
+    .import-badge.opt { background: #E0E0E0; color: #555; }
+    .import-guide-info {
+      display: flex; align-items: flex-start; gap: 10px;
+      background: #FFF8E6; border: 1px solid #FFD966; border-radius: 5px;
+      padding: 10px 12px; font-size: 12.5px; color: #7A5C00; margin-bottom: 14px;
+    }
+    .import-guide-info i { color: #E9730C; margin-top: 1px; flex-shrink: 0; }
+
+    /* ── IMPORT RESULTS MODAL ── */
+    .import-summary-bar {
+      display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .import-stat-card {
+      flex: 1; min-width: 130px;
+      border-radius: 6px; padding: 12px 14px;
+      display: flex; flex-direction: column; gap: 4px;
+      border: 1px solid var(--sap-border);
+    }
+    .import-stat-card.success { background: #E8F5EC; border-color: #A8D5B5; }
+    .import-stat-card.failed  { background: #FDECEA; border-color: #F5BFBF; }
+    .import-stat-card.skipped { background: #FFF3E0; border-color: #FFD0A0; }
+    .import-stat-num { font-size: 28px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; line-height: 1; }
+    .import-stat-card.success .import-stat-num { color: #107E3E; }
+    .import-stat-card.failed  .import-stat-num { color: #B00; }
+    .import-stat-card.skipped .import-stat-num { color: #C65A00; }
+    .import-stat-label { font-size: 12px; font-weight: 600; color: var(--sap-text-muted); }
+    .import-failed-wrap { overflow-x: auto; border-radius: 5px; border: 1px solid var(--sap-border); }
+    .import-failed-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .import-failed-table th {
+      background: #F0F2F4; padding: 6px 10px;
+      text-align: left; font-size: 11px; font-weight: 600;
+      color: var(--sap-text-muted); text-transform: uppercase; letter-spacing: .4px;
+      border-bottom: 2px solid var(--sap-border); white-space: nowrap;
+    }
+    .import-failed-table td {
+      padding: 6px 10px; border-bottom: 1px solid #ECEEF0; vertical-align: middle;
+    }
+    .import-failed-table tr:last-child td { border-bottom: none; }
+    .import-failed-table tr:hover td { background: #FFF5F5; }
+    .import-failed-reason {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 11.5px; color: #B00; background: #FDECEA;
+      border-radius: 3px; padding: 2px 7px; white-space: nowrap;
+    }
+    .import-no-failures {
+      text-align: center; padding: 24px 16px; color: var(--sap-success); font-weight: 600;
+      display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px;
+    }
+
     .form-group {
       display: flex;
       flex-direction: column;
@@ -3191,7 +3276,7 @@
                 <div class="col-picker-title">Visible Columns</div>
               </div>
             </div>
-            <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()"><i
+            <button class="btn btn-secondary" onclick="openImportGuide('assets')"><i
                 class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFile" accept=".xlsx,.xls,.csv" style="display:none"
               onchange="importAssets(event)">
@@ -3325,7 +3410,7 @@
             <button class="btn btn-secondary" onclick="exportContractsPDF()"
               style="background:#fff0f0;border-color:#c00;color:#c00"><i class="fas fa-file-pdf"></i> Export
               PDF</button>
-            <button class="btn btn-secondary" onclick="document.getElementById('importFileContracts').click()"><i
+            <button class="btn btn-secondary" onclick="openImportGuide('contracts')"><i
                 class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileContracts" accept=".xlsx,.xls,.csv" style="display:none"
               onchange="importContracts(event)">
@@ -3661,7 +3746,7 @@
             <button class="btn btn-secondary" onclick="exportRigsPDF()"
               style="background:#fff0f0;border-color:#c00;color:#c00"><i class="fas fa-file-pdf"></i> Export
               PDF</button>
-            <button class="btn btn-secondary" onclick="document.getElementById('importFileRigs').click()"><i
+            <button class="btn btn-secondary" onclick="openImportGuide('rigs')"><i
                 class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileRigs" accept=".xlsx,.xls,.csv" style="display:none"
               onchange="importRigs(event)">
@@ -3696,7 +3781,7 @@
         <div class="card">
           <div class="card-header"><span class="card-title">System Users</span><button id="btnAddUser"
               class="btn btn-primary"><i class="fas fa-plus"></i> Add User</button>
-            <button class="btn btn-secondary" onclick="document.getElementById('importFileUsers').click()"><i
+            <button class="btn btn-secondary" onclick="openImportGuide('users')"><i
                 class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileUsers" accept=".xlsx,.xls,.csv" style="display:none"
               onchange="importUsers(event)">
@@ -3719,7 +3804,7 @@
             <button class="btn btn-secondary" onclick="exportBOMPDF()"
               style="background:#fff0f0;border-color:#c00;color:#c00"><i class="fas fa-file-pdf"></i> Export
               PDF</button>
-            <button class="btn btn-secondary" onclick="document.getElementById('importFileBom').click()"><i
+            <button class="btn btn-secondary" onclick="openImportGuide('bom')"><i
                 class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileBom" accept=".xlsx,.xls,.csv" style="display:none"
               onchange="importBOM(event)">
@@ -3816,7 +3901,7 @@
                 <div class="col-picker-title">Visible Columns</div>
               </div>
             </div>
-            <button class="btn btn-secondary" onclick="document.getElementById('importFileTransfers').click()"><i
+            <button class="btn btn-secondary" onclick="openImportGuide('transfers')"><i
                 class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileTransfers" accept=".xlsx,.xls,.csv" style="display:none"
               onchange="importTransfers(event)">
@@ -3967,7 +4052,7 @@
               PDF</button>
             <button class="btn btn-secondary" onclick="openMaintLogModal(null,'bulk')"><i class="fas fa-history"></i>
               Log Completion</button>
-            <button class="btn btn-secondary" onclick="document.getElementById('importFileMaint').click()"><i
+            <button class="btn btn-secondary" onclick="openImportGuide('maintenance')"><i
                 class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileMaint" accept=".xlsx,.xls,.csv" style="display:none"
               onchange="importMaintenance(event)">
@@ -4109,7 +4194,7 @@
             <button class="btn btn-secondary" onclick="exportCertificatesPDF()"
               style="background:#fff0f0;border-color:#c00;color:#c00"><i class="fas fa-file-pdf"></i> Export
               PDF</button>
-            <button class="btn btn-secondary" onclick="document.getElementById('importFileCerts').click()"><i
+            <button class="btn btn-secondary" onclick="openImportGuide('certificates')"><i
                 class="fas fa-upload"></i> Import</button>
             <input type="file" id="importFileCerts" accept=".xlsx,.xls,.csv" style="display:none"
               onchange="importCertificates(event)">
@@ -6158,6 +6243,40 @@ Asset Management System</textarea>
 
   <!-- TOAST CONTAINER -->
   <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ═══════════════════ IMPORT COLUMN GUIDE MODAL ═══════════════════ -->
+  <div class="modal-overlay" id="importGuideOverlay">
+    <div class="modal" style="width:700px;max-width:96vw">
+      <div class="modal-header" style="background:linear-gradient(90deg,#0040B0 0%,#0070F2 100%);color:#fff;border-radius:4px 4px 0 0;padding:12px 18px">
+        <i class="fas fa-file-import" style="font-size:17px"></i>
+        <h2 id="importGuideTitle" style="color:#fff;font-size:15px">Import Guide</h2>
+        <div style="flex:1"></div>
+        <button style="background:rgba(255,255,255,.15);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center" onclick="closeImportGuide()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body" id="importGuideBody" style="max-height:68vh;gap:0;padding:16px 18px"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeImportGuide()"><i class="fas fa-times"></i> Cancel</button>
+        <button class="btn btn-primary" id="importGuideChooseBtn" onclick="triggerImportFile()"><i class="fas fa-folder-open"></i> Choose File &amp; Import</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ IMPORT RESULTS MODAL ═══════════════════ -->
+  <div class="modal-overlay" id="importResultsOverlay">
+    <div class="modal" style="width:740px;max-width:96vw">
+      <div class="modal-header">
+        <i class="fas fa-clipboard-check" id="importResultsIcon" style="color:var(--sap-success);font-size:17px"></i>
+        <h2 id="importResultsTitle">Import Complete</h2>
+        <div style="flex:1"></div>
+        <button class="btn btn-ghost btn-icon" onclick="closeImportResults()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body" id="importResultsBody" style="max-height:68vh;gap:0;padding:16px 18px"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="importResultsDownloadBtn" onclick="downloadFailedRows()" style="display:none"><i class="fas fa-download"></i> Download Failed Rows (.xlsx)</button>
+        <button class="btn btn-primary" onclick="closeImportResults()"><i class="fas fa-check"></i> Close</button>
+      </div>
+    </div>
+  </div>
 
   <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
   <script>
@@ -13206,15 +13325,16 @@ Instructions:
         showToast('Importing assets…', 'info');
         try {
           const rows = await readXlsx(file);
-          let added = 0, skipped = 0;
-          for (const r of rows) {
+          let added = 0;
+          const failedRows = [];
+          for (let i = 0; i < rows.length; i++) {
+            const r = rows[i];
             const asset_id = (r['Asset ID'] || '').toString().trim();
-            if (!asset_id) { skipped++; continue; }
+            if (!asset_id) { failedRows.push({ row: i + 2, id: '', reason: 'Missing required column: Asset ID' }); continue; }
             const payload = {
               asset_id,
               name: r['Name'] || r['Asset Name'] || 'Imported Asset',
               category: r['Category'] || 'Other',
-
               rig_name: r['Rig'] || r['Rig Name'] || '',
               location: r['Location'] || '',
               status: r['Status'] || 'Active',
@@ -13235,13 +13355,13 @@ Instructions:
                 ASSETS.push(normA(res.data));
               }
               added++;
-            } catch (e) { skipped++; }
+            } catch (e) { failedRows.push({ row: i + 2, id: asset_id, reason: e.message || 'API error' }); }
           }
           filteredAssets = [...ASSETS];
           rerender('renderAssets', 'updateKPIs');
-          showToast(`${added} asset(s) imported to database.${skipped ? ' ' + skipped + ' skipped.' : ''}`, 'success');
           NOTIFICATIONS.unshift({ icon: 'fas fa-file-import', type: 'ni-blue', title: 'Assets Imported', desc: `${added} assets from ${file.name}`, time: 'Just now', read: false });
           renderNotifications();
+          showImportResults('Assets', file.name, added, failedRows);
         } catch (err) { showToast('Import failed: ' + err.message, 'error'); }
       }
 
@@ -13253,13 +13373,14 @@ Instructions:
         showToast('Importing contracts…', 'info');
         try {
           const rows = await readXlsx(file);
-          let added = 0, skipped = 0;
-          for (const r of rows) {
+          let added = 0;
+          const failedRows = [];
+          for (let i = 0; i < rows.length; i++) {
+            const r = rows[i];
             const id = (r['Contract ID'] || r['ID'] || '').toString().trim();
-            if (!id) { skipped++; continue; }
+            if (!id) { failedRows.push({ row: i + 2, id: '', reason: 'Missing required column: Contract ID' }); continue; }
             const payload = {
               id,
-
               rig: r['Rig'] || '',
               value: Number(r['Value'] || r['Value (USD)'] || 0) || 0,
               start_date: r['Start Date'] || null,
@@ -13277,10 +13398,10 @@ Instructions:
                 CONTRACTS.push(res.data);
               }
               added++;
-            } catch (e) { skipped++; }
+            } catch (e) { failedRows.push({ row: i + 2, id, reason: e.message || 'API error' }); }
           }
           applyContractFilters();
-          showToast(`${added} contract(s) imported to database.${skipped ? ' ' + skipped + ' skipped.' : ''}`, 'success');
+          showImportResults('Contracts', file.name, added, failedRows);
         } catch (err) { showToast('Import failed: ' + err.message, 'error'); }
       }
 
@@ -13291,15 +13412,16 @@ Instructions:
         showToast('Importing rigs…', 'info');
         try {
           const rows = await readXlsx(file);
-          let added = 0, skipped = 0;
-          for (const r of rows) {
+          let added = 0;
+          const failedRows = [];
+          for (let i = 0; i < rows.length; i++) {
+            const r = rows[i];
             const id = (r['Rig ID'] || r['ID'] || '').toString().trim();
-            if (!id) { skipped++; continue; }
+            if (!id) { failedRows.push({ row: i + 2, id: '', reason: 'Missing required column: Rig ID' }); continue; }
             const payload = {
               id,
               name: r['Rig Name'] || r['Name'] || id,
               type: r['Type'] || '',
-
               location: r['Location'] || '',
               depth: r['Depth'] || '',
               hp: Number(r['HP'] || 0) || 0,
@@ -13316,10 +13438,10 @@ Instructions:
                 RIGS.push(res.data);
               }
               added++;
-            } catch (e) { skipped++; }
+            } catch (e) { failedRows.push({ row: i + 2, id, reason: e.message || 'API error' }); }
           }
           renderRigs();
-          showToast(`${added} rig(s) imported to database.${skipped ? ' ' + skipped + ' skipped.' : ''}`, 'success');
+          showImportResults('Land Rigs', file.name, added, failedRows);
         } catch (err) { showToast('Import failed: ' + err.message, 'error'); }
       }
 
@@ -13332,10 +13454,12 @@ Instructions:
         showToast('Importing users…', 'info');
         try {
           const rows = await readXlsx(file);
-          let added = 0, skipped = 0;
-          for (const r of rows) {
+          let added = 0;
+          const failedRows = [];
+          for (let i = 0; i < rows.length; i++) {
+            const r = rows[i];
             const email = (r['Email'] || '').toString().trim();
-            if (!email) { skipped++; continue; }
+            if (!email) { failedRows.push({ row: i + 2, id: '', reason: 'Missing required column: Email' }); continue; }
             const payload = {
               name: r['Name'] || email,
               role: r['Role'] || 'Viewer',
@@ -13346,7 +13470,6 @@ Instructions:
               password: r['Password'] || r['password'] || null,
               active: r['Active'] !== undefined ? Boolean(r['Active']) : true,
             };
-            // Remove null password so existing passwords aren't overwritten on update
             if (payload.password === null) delete payload.password;
             try {
               const existing = USERS.find(u => u.email === email);
@@ -13359,10 +13482,10 @@ Instructions:
                 USERS.push(res.data);
               }
               added++;
-            } catch (e) { skipped++; }
+            } catch (e) { failedRows.push({ row: i + 2, id: email, reason: e.message || 'API error' }); }
           }
           renderUsers();
-          showToast(`${added} user(s) imported to database.${skipped ? ' ' + skipped + ' skipped.' : ''}`, 'success');
+          showImportResults('Users', file.name, added, failedRows);
         } catch (err) { showToast('Import failed: ' + err.message, 'error'); }
       }
 
@@ -13373,14 +13496,16 @@ Instructions:
         showToast('Importing BOM items…', 'info');
         try {
           const rows = await readXlsx(file);
-          let added = 0, skipped = 0;
-          for (const r of rows) {
+          let added = 0;
+          const failedRows = [];
+          for (let i = 0; i < rows.length; i++) {
+            const r = rows[i];
             const id = (r['BOM ID'] || r['ID'] || '').toString().trim();
             const asset_id = (r['Asset ID'] || '').toString().trim();
-            if (!id || !asset_id) { skipped++; continue; }
+            if (!id) { failedRows.push({ row: i + 2, id: '', reason: 'Missing required column: BOM ID' }); continue; }
+            if (!asset_id) { failedRows.push({ row: i + 2, id, reason: 'Missing required column: Asset ID' }); continue; }
             const payload = {
-              id,
-              asset_id,
+              id, asset_id,
               parent_id: r['Parent ID'] || null,
               name: r['Name'] || id,
               part_no: r['Part No'] || r['Part Number'] || '',
@@ -13405,10 +13530,10 @@ Instructions:
                 BOM_ITEMS.push(res.data);
               }
               added++;
-            } catch (e) { skipped++; }
+            } catch (e) { failedRows.push({ row: i + 2, id, reason: e.message || 'API error' }); }
           }
           renderBOMSection();
-          showToast(`${added} BOM item(s) imported to database.${skipped ? ' ' + skipped + ' skipped.' : ''}`, 'success');
+          showImportResults('BOM Items', file.name, added, failedRows);
         } catch (err) { showToast('Import failed: ' + err.message, 'error'); }
       }
 
@@ -13419,19 +13544,20 @@ Instructions:
         showToast('Importing transfers…', 'info');
         try {
           const rows = await readXlsx(file);
-          let added = 0, skipped = 0;
-          for (const r of rows) {
+          let added = 0;
+          const failedRows = [];
+          for (let i = 0; i < rows.length; i++) {
+            const r = rows[i];
             const id = (r['Transfer ID'] || r['ID'] || '').toString().trim();
             const asset_id = (r['Asset ID'] || '').toString().trim();
-            if (!id || !asset_id) { skipped++; continue; }
+            if (!id) { failedRows.push({ row: i + 2, id: '', reason: 'Missing required column: Transfer ID' }); continue; }
+            if (!asset_id) { failedRows.push({ row: i + 2, id, reason: 'Missing required column: Asset ID' }); continue; }
             const payload = {
-              id,
-              asset_id,
+              id, asset_id,
               asset_name: r['Asset Name'] || '',
               current_loc: r['Current Location'] || r['Current Loc'] || '',
               destination: r['Destination'] || '',
               dest_rig: r['Destination Rig'] || r['Dest Rig'] || '',
-
               priority: r['Priority'] || 'Normal',
               type: r['Type'] || 'Field to Field',
               requested_by: r['Requested By'] || '',
@@ -13452,10 +13578,10 @@ Instructions:
                 TRANSFERS.push(res.data);
               }
               added++;
-            } catch (e) { skipped++; }
+            } catch (e) { failedRows.push({ row: i + 2, id, reason: e.message || 'API error' }); }
           }
           applyTransferFilters();
-          showToast(`${added} transfer(s) imported to database.${skipped ? ' ' + skipped + ' skipped.' : ''}`, 'success');
+          showImportResults('Transfers', file.name, added, failedRows);
         } catch (err) { showToast('Import failed: ' + err.message, 'error'); }
       }
 
@@ -13467,15 +13593,18 @@ Instructions:
         showToast('Importing maintenance schedules…', 'info');
         try {
           const rows = await readXlsx(file);
-          let added = 0, skipped = 0;
-          for (const r of rows) {
+          let added = 0;
+          const failedRows = [];
+          for (let i = 0; i < rows.length; i++) {
+            const r = rows[i];
             const id = (r['Schedule ID'] || r['ID'] || '').toString().trim();
             const asset_id = (r['Asset ID'] || '').toString().trim();
             const next_due = (r['Next Due'] || '').toString().trim();
-            if (!id || !asset_id || !next_due) { skipped++; continue; }
+            if (!id) { failedRows.push({ row: i + 2, id: '', reason: 'Missing required column: Schedule ID' }); continue; }
+            if (!asset_id) { failedRows.push({ row: i + 2, id, reason: 'Missing required column: Asset ID' }); continue; }
+            if (!next_due) { failedRows.push({ row: i + 2, id, reason: 'Missing required column: Next Due' }); continue; }
             const payload = {
-              id,
-              asset_id,
+              id, asset_id,
               task: r['Task'] || 'Inspection',
               type: r['Type'] || 'Inspection',
               priority: r['Priority'] || 'Normal',
@@ -13500,10 +13629,10 @@ Instructions:
                 MAINTENANCE.push(res.data);
               }
               added++;
-            } catch (e) { skipped++; }
+            } catch (e) { failedRows.push({ row: i + 2, id, reason: e.message || 'API error' }); }
           }
           applyMaintFilters();
-          showToast(`${added} schedule(s) imported to database.${skipped ? ' ' + skipped + ' skipped.' : ''}`, 'success');
+          showImportResults('Maintenance Schedules', file.name, added, failedRows);
         } catch (err) { showToast('Import failed: ' + err.message, 'error'); }
       }
 
@@ -13515,19 +13644,18 @@ Instructions:
         showToast('Importing certificates…', 'info');
         try {
           const rows = await readXlsx(file);
-          let added = 0, skipped = 0, errors = [];
-          for (const r of rows) {
+          let added = 0;
+          const failedRows = [];
+          for (let i = 0; i < rows.length; i++) {
+            const r = rows[i];
             const asset_id = (r['Asset ID'] || '').toString().trim();
             const inspection_type = (r['Inspection Type'] || '').toString().trim();
-            // asset_id and inspection_type are the only truly required fields
-            if (!asset_id || !inspection_type) { skipped++; continue; }
-            // cert_id: use from sheet if provided, otherwise auto-generate unique one
+            if (!asset_id) { failedRows.push({ row: i + 2, id: '', reason: 'Missing required column: Asset ID' }); continue; }
+            if (!inspection_type) { failedRows.push({ row: i + 2, id: asset_id, reason: 'Missing required column: Inspection Type' }); continue; }
             const cert_id = (r['Cert ID'] || r['Certificate ID'] || r['ID'] || '').toString().trim()
               || ('CERT-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2, 5).toUpperCase());
             const payload = {
-              cert_id,
-              asset_id,
-              inspection_type,
+              cert_id, asset_id, inspection_type,
               last_inspection: r['Last Inspection'] || null,
               next_inspection: r['Next Inspection'] || null,
               validity_days: Number(r['Validity Days'] || 365) || 365,
@@ -13536,7 +13664,6 @@ Instructions:
               notes: r['Notes'] || '',
             };
             try {
-              // Check against CERTIFICATES (correct variable name)
               const existing = CERTIFICATES.find(c => c.certId === cert_id);
               if (existing) {
                 const res = await PUT(`/certificates/${cert_id}`, payload);
@@ -13550,14 +13677,328 @@ Instructions:
                 CERTIFICATES.push(nc);
               }
               added++;
-            } catch (e) { skipped++; errors.push(e.message); }
+            } catch (e) { failedRows.push({ row: i + 2, id: asset_id + ' / ' + inspection_type, reason: e.message || 'API error' }); }
           }
           renderCertificates();
           if (typeof updateCertKPIs === 'function') updateCertKPIs();
-          const errNote = errors.length ? ` (${errors[0]})` : '';
-          showToast(`${added} certificate(s) imported.${skipped ? ' ' + skipped + ' skipped' + errNote + '.' : ''}`, added > 0 ? 'success' : 'warning');
+          showImportResults('Certificates', file.name, added, failedRows);
         } catch (err) { showToast('Import failed: ' + err.message, 'error'); }
       }
+
+
+      // ══════════════════════════════════════════════════════════════
+      //  IMPORT GUIDE & RESULTS POPUP SYSTEM
+      // ══════════════════════════════════════════════════════════════
+
+      const IMPORT_CONFIGS = {
+        assets: {
+          label: 'Assets',
+          fileInputId: 'importFile',
+          icon: 'fa-warehouse',
+          required: [
+            { col: 'Asset ID', note: 'Unique identifier (e.g. AST-001)' },
+          ],
+          optional: [
+            { col: 'Name', alt: 'Asset Name' },
+            { col: 'Category', note: 'Tubular, Generators, etc.' },
+            { col: 'Rig', alt: 'Rig Name' },
+            { col: 'Location' },
+            { col: 'Status', note: 'Active / Maintenance / Inactive / Contracted / Retired' },
+            { col: 'Serial', alt: 'Serial Number' },
+            { col: 'Notes' },
+            { col: 'Last Inspection' },
+            { col: 'Inspection Type' },
+            { col: 'Cert Link' },
+          ]
+        },
+        contracts: {
+          label: 'Contracts',
+          fileInputId: 'importFileContracts',
+          icon: 'fa-file-contract',
+          required: [
+            { col: 'Contract ID', alt: 'ID', note: 'Unique contract identifier' },
+          ],
+          optional: [
+            { col: 'Rig' },
+            { col: 'Value', alt: 'Value (USD)' },
+            { col: 'Start Date' },
+            { col: 'End Date' },
+            { col: 'Status', note: 'Active / Expired / Pending' },
+          ]
+        },
+        rigs: {
+          label: 'Land Rigs',
+          fileInputId: 'importFileRigs',
+          icon: 'fa-oil-well',
+          required: [
+            { col: 'Rig ID', alt: 'ID', note: 'Unique rig identifier' },
+          ],
+          optional: [
+            { col: 'Rig Name', alt: 'Name' },
+            { col: 'Type' },
+            { col: 'Location' },
+            { col: 'Depth' },
+            { col: 'HP', note: 'Horsepower (numeric)' },
+            { col: 'Status', note: 'Active / Inactive / Retired' },
+          ]
+        },
+        users: {
+          label: 'Users',
+          fileInputId: 'importFileUsers',
+          icon: 'fa-users',
+          required: [
+            { col: 'Email', note: 'Unique — used as primary key' },
+          ],
+          optional: [
+            { col: 'Name' },
+            { col: 'Role', note: 'Admin / Manager / Viewer / Technician' },
+            { col: 'Department', alt: 'Dept' },
+            { col: 'Color', note: 'Hex color (e.g. #0070F2)' },
+            { col: 'Initials', note: 'Up to 2 letters' },
+            { col: 'Password', note: 'Leave blank to keep existing' },
+            { col: 'Active', note: 'TRUE / FALSE' },
+          ]
+        },
+        bom: {
+          label: 'Bill of Materials',
+          fileInputId: 'importFileBom',
+          icon: 'fa-sitemap',
+          required: [
+            { col: 'BOM ID', alt: 'ID', note: 'Unique BOM item identifier' },
+            { col: 'Asset ID', note: 'Must match an existing asset' },
+          ],
+          optional: [
+            { col: 'Parent ID', note: 'BOM ID of parent component' },
+            { col: 'Name' },
+            { col: 'Part No', alt: 'Part Number' },
+            { col: 'Type', note: 'Serialized / Bulk' },
+            { col: 'Serial' },
+            { col: 'Manufacturer' },
+            { col: 'Qty', alt: 'Quantity', note: 'Numeric' },
+            { col: 'UOM', note: 'Unit of measure (EA, KG…)' },
+            { col: 'Unit Cost', note: 'Numeric' },
+            { col: 'Lead Time', note: 'Days (numeric)' },
+            { col: 'Status', note: 'Active / Inactive' },
+            { col: 'Notes' },
+          ]
+        },
+        transfers: {
+          label: 'Transfers',
+          fileInputId: 'importFileTransfers',
+          icon: 'fa-exchange-alt',
+          required: [
+            { col: 'Transfer ID', alt: 'ID', note: 'Unique transfer identifier' },
+            { col: 'Asset ID', note: 'Must match an existing asset' },
+          ],
+          optional: [
+            { col: 'Asset Name' },
+            { col: 'Current Location', alt: 'Current Loc' },
+            { col: 'Destination' },
+            { col: 'Destination Rig', alt: 'Dest Rig' },
+            { col: 'Priority', note: 'Critical / High / Normal / Low' },
+            { col: 'Type', note: 'Field to Field / Warehouse / etc.' },
+            { col: 'Requested By' },
+            { col: 'Request Date' },
+            { col: 'Required Date' },
+            { col: 'Reason' },
+            { col: 'Instructions' },
+            { col: 'Status', note: 'Pending / In Progress / Completed' },
+          ]
+        },
+        maintenance: {
+          label: 'Maintenance Schedules',
+          fileInputId: 'importFileMaint',
+          icon: 'fa-tools',
+          required: [
+            { col: 'Schedule ID', alt: 'ID', note: 'Unique schedule identifier' },
+            { col: 'Asset ID', note: 'Must match an existing asset' },
+            { col: 'Next Due', note: 'Date (YYYY-MM-DD or Excel date)' },
+          ],
+          optional: [
+            { col: 'Task', note: 'Description of maintenance task' },
+            { col: 'Type', note: 'Inspection / Repair / Calibration…' },
+            { col: 'Priority', note: 'Critical / High / Normal / Low' },
+            { col: 'Frequency', alt: 'Freq', note: 'Days between maintenance' },
+            { col: 'Last Done' },
+            { col: 'Technician', alt: 'Tech' },
+            { col: 'Hours', note: 'Estimated hours (numeric)' },
+            { col: 'Cost', note: 'Estimated cost (numeric)' },
+            { col: 'Status', note: 'Scheduled / In Progress / Completed' },
+            { col: 'Alert Days', note: 'Days before due to alert (default 14)' },
+            { col: 'Notes' },
+          ]
+        },
+        certificates: {
+          label: 'Certificates',
+          fileInputId: 'importFileCerts',
+          icon: 'fa-certificate',
+          required: [
+            { col: 'Asset ID', note: 'Must match an existing asset' },
+            { col: 'Inspection Type', note: 'Cat III / Cat IV / Pressure Test…' },
+          ],
+          optional: [
+            { col: 'Cert ID', alt: 'Certificate ID / ID', note: 'Auto-generated if blank' },
+            { col: 'Last Inspection', note: 'Date (YYYY-MM-DD)' },
+            { col: 'Next Inspection', note: 'Date (YYYY-MM-DD)' },
+            { col: 'Validity Days', note: 'Default 365' },
+            { col: 'Alert Days', note: 'Default 30' },
+            { col: 'Cert Link', alt: 'Certificate Link', note: 'URL to certificate file' },
+            { col: 'Notes' },
+          ]
+        },
+      };
+
+      let __importCurrentType = null;
+      let __importLastFailedRows = [];
+
+      window.openImportGuide = function openImportGuide(type) {
+        const cfg = IMPORT_CONFIGS[type];
+        if (!cfg) return;
+        __importCurrentType = type;
+
+        document.getElementById('importGuideTitle').innerHTML =
+          `<i class="fas ${cfg.icon}" style="margin-right:6px;opacity:.85"></i> Import ${cfg.label} — Column Reference`;
+
+        let html = `<div class="import-guide-info">
+          <i class="fas fa-info-circle fa-fw"></i>
+          <span>Prepare your <strong>Excel (.xlsx) or CSV</strong> file with the columns below.
+          Column headers are <strong>case-sensitive</strong>. Required columns must be present or the row will be skipped.
+          Existing records will be <strong>updated</strong> (matched by the primary key column).</span>
+        </div>`;
+
+        // Required columns
+        html += `<div class="import-section-label"><i class="fas fa-asterisk" style="color:#B00;font-size:10px;margin-right:4px"></i>Required Columns <span style="font-weight:400;text-transform:none;font-size:11px;color:#B00">(row skipped if missing)</span></div>`;
+        html += `<div class="import-col-grid">`;
+        for (const c of cfg.required) {
+          html += `<div class="import-col-item required">
+            <span class="import-badge req">REQ</span>
+            <div>
+              <div class="import-col-name">${c.col}</div>
+              ${c.alt ? `<div class="import-col-alt">Alt: <em>${c.alt}</em></div>` : ''}
+              ${c.note ? `<div class="import-col-alt">${c.note}</div>` : ''}
+            </div>
+          </div>`;
+        }
+        html += `</div>`;
+
+        // Optional columns
+        html += `<div class="import-section-label" style="margin-top:16px"><i class="fas fa-columns" style="color:var(--sap-blue);font-size:10px;margin-right:4px"></i>Optional Columns <span style="font-weight:400;text-transform:none;font-size:11px;color:var(--sap-text-muted)">(used if present)</span></div>`;
+        html += `<div class="import-col-grid">`;
+        for (const c of cfg.optional) {
+          html += `<div class="import-col-item">
+            <span class="import-badge opt">OPT</span>
+            <div>
+              <div class="import-col-name">${c.col}</div>
+              ${c.alt ? `<div class="import-col-alt">Alt: <em>${c.alt}</em></div>` : ''}
+              ${c.note ? `<div class="import-col-alt">${c.note}</div>` : ''}
+            </div>
+          </div>`;
+        }
+        html += `</div>`;
+
+        document.getElementById('importGuideBody').innerHTML = html;
+        document.getElementById('importGuideOverlay').classList.add('open');
+      };
+
+      window.closeImportGuide = function closeImportGuide() {
+        document.getElementById('importGuideOverlay').classList.remove('open');
+        __importCurrentType = null;
+      };
+
+      window.triggerImportFile = function triggerImportFile() {
+        if (!__importCurrentType) return;
+        const cfg = IMPORT_CONFIGS[__importCurrentType];
+        if (!cfg) return;
+        const inp = document.getElementById(cfg.fileInputId);
+        if (inp) inp.click();
+        closeImportGuide();
+      };
+
+      window.showImportResults = function showImportResults(label, fileName, added, failedRows) {
+        __importLastFailedRows = failedRows || [];
+        const totalRows = added + failedRows.length;
+
+        const icon = document.getElementById('importResultsIcon');
+        const title = document.getElementById('importResultsTitle');
+        if (failedRows.length === 0) {
+          icon.className = 'fas fa-check-circle';
+          icon.style.color = 'var(--sap-success)';
+          title.textContent = 'Import Complete — All Rows Successful';
+        } else if (added === 0) {
+          icon.className = 'fas fa-times-circle';
+          icon.style.color = 'var(--sap-error)';
+          title.textContent = 'Import Failed — No Rows Imported';
+        } else {
+          icon.className = 'fas fa-exclamation-triangle';
+          icon.style.color = 'var(--sap-warning)';
+          title.textContent = 'Import Completed with Warnings';
+        }
+
+        const dlBtn = document.getElementById('importResultsDownloadBtn');
+        dlBtn.style.display = failedRows.length > 0 ? '' : 'none';
+
+        let html = `<div style="font-size:12.5px;color:var(--sap-text-muted);margin-bottom:12px">
+          <i class="fas fa-file-excel" style="color:var(--sap-success)"></i>
+          <strong>${fileName}</strong> — ${totalRows} row(s) processed
+        </div>`;
+
+        // Summary cards
+        html += `<div class="import-summary-bar">
+          <div class="import-stat-card success">
+            <div class="import-stat-num">${added}</div>
+            <div class="import-stat-label"><i class="fas fa-check-circle"></i> Imported Successfully</div>
+          </div>
+          <div class="import-stat-card failed">
+            <div class="import-stat-num">${failedRows.length}</div>
+            <div class="import-stat-label"><i class="fas fa-times-circle"></i> Failed / Skipped</div>
+          </div>
+          <div class="import-stat-card skipped">
+            <div class="import-stat-num">${totalRows}</div>
+            <div class="import-stat-label"><i class="fas fa-table"></i> Total Rows</div>
+          </div>
+        </div>`;
+
+        if (failedRows.length === 0) {
+          html += `<div class="import-no-failures"><i class="fas fa-party-horn" style="color:var(--sap-success)"></i>
+            <i class="fas fa-check-circle" style="color:var(--sap-success)"></i>
+            All ${added} rows were imported successfully — no failures detected.</div>`;
+        } else {
+          html += `<div class="import-section-label" style="margin:0 0 8px"><i class="fas fa-exclamation-triangle" style="color:#E9730C;margin-right:4px"></i>Failed / Skipped Rows (${failedRows.length})</div>`;
+          html += `<div class="import-failed-wrap"><table class="import-failed-table">
+            <thead><tr>
+              <th style="width:60px">Row #</th>
+              <th>Identifier</th>
+              <th>Reason / Error</th>
+            </tr></thead><tbody>`;
+          for (const fr of failedRows) {
+            html += `<tr>
+              <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--sap-text-muted)">#${fr.row}</td>
+              <td style="font-weight:600">${fr.id || '<em style="color:#aaa;font-weight:400">—</em>'}</td>
+              <td><span class="import-failed-reason"><i class="fas fa-exclamation-circle"></i> ${fr.reason}</span></td>
+            </tr>`;
+          }
+          html += `</tbody></table></div>`;
+        }
+
+        document.getElementById('importResultsBody').innerHTML = html;
+        document.getElementById('importResultsOverlay').classList.add('open');
+      };
+
+      window.closeImportResults = function closeImportResults() {
+        document.getElementById('importResultsOverlay').classList.remove('open');
+        __importLastFailedRows = [];
+      };
+
+      window.downloadFailedRows = function downloadFailedRows() {
+        if (!__importLastFailedRows.length) return;
+        try {
+          const wsData = [['Row #', 'Identifier', 'Reason']];
+          for (const fr of __importLastFailedRows) wsData.push([fr.row, fr.id || '', fr.reason]);
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(wsData), 'Failed Rows');
+          XLSX.writeFile(wb, 'import_failed_rows.xlsx');
+        } catch(e) { showToast('Download failed: ' + e.message, 'error'); }
+      };
 
       // ══════════════════════════════════
       //  MODAL HELPERS
