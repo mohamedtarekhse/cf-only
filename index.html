@@ -8147,32 +8147,31 @@ Asset Management System</textarea>
       let deleted = 0, failed = 0;
       showToast(`Deleting ${ids.length} asset(s)…`, 'info');
 
-      for (const id of ids) {
-        try {
-          await window.deleteAsset ? window.deleteAsset(id, true) : (() => {
-            ASSETS = ASSETS.filter(a => a.assetId !== id);
-            filteredAssets = filteredAssets.filter(a => a.assetId !== id);
-          })();
-          deleted++;
-        } catch (e) { failed++; }
-      }
-
-      // If API version is available it handles each delete; otherwise do batch cleanup
       if (typeof DELETE !== 'undefined') {
-        // API bulk path — delete in parallel
+        // API path — delete in parallel, one notification at the end
         const results = await Promise.allSettled(ids.map(id => DELETE(`/assets/${id}`)));
         deleted = results.filter(r => r.status === 'fulfilled').length;
-        failed = results.filter(r => r.status === 'rejected').length;
-        ids.forEach(id => {
-          ASSETS = ASSETS.filter(a => a.assetId !== id);
-          filteredAssets = filteredAssets.filter(a => a.assetId !== id);
-        });
+        failed  = results.filter(r => r.status === 'rejected').length;
+      } else {
+        // Local-only fallback
+        deleted = ids.length;
       }
+
+      // Remove deleted assets from local state regardless of path
+      ids.forEach(id => {
+        const i = ASSETS.findIndex(a => a.assetId === id);
+        if (i >= 0) ASSETS.splice(i, 1);
+      });
+      filteredAssets = filteredAssets.filter(a => !ids.includes(a.assetId));
 
       _selectedAssets.clear();
       renderAssets();
       updateKPIs();
-      const msg = failed ? `Deleted ${deleted}, ${failed} failed.` : `${deleted} asset(s) deleted ✓`;
+
+      // Single consolidated notification
+      const msg = failed
+        ? `Deleted ${deleted} asset(s), ${failed} failed.`
+        : `${deleted} asset(s) deleted ✓`;
       showToast(msg, failed ? 'warning' : 'success');
     }
 
@@ -8228,8 +8227,11 @@ Asset Management System</textarea>
         const ctrl = document.getElementById(`mef_${f}`);
         if (chk?.checked && ctrl) {
           const val = ctrl.value;
-          if (f === 'rig') changes.rig_name = val;
-
+          if (f === 'rig')            changes.rig_name        = val;
+          else if (f === 'status')    changes.status          = val;
+          else if (f === 'location')  changes.location        = val;
+          else if (f === 'category')  changes.category        = val;
+          else if (f === 'inspectionType') changes.inspection_type = val;
         }
       });
 
@@ -8291,11 +8293,10 @@ Asset Management System</textarea>
         });
       }
 
-      filteredAssets = [...ASSETS];
+      if (typeof applyFilters === 'function') applyFilters();
+      else { filteredAssets = [...ASSETS]; renderAssets(); updateKPIs(); }
       _selectedAssets.clear();
       closeModal('massEditModal');
-      renderAssets();
-      updateKPIs();
 
       const changeList = Object.keys(changes).map(k => ({
         rig_name: 'Rig', status: 'Status', location: 'Location',
