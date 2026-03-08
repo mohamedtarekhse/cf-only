@@ -279,6 +279,41 @@ async function router(path, method, url, request, SB, KEY, env={}) {
   }
 
 
+  // WORKSHOPS
+  if (res==='workshops') {
+    if (method==='GET' && !id) {
+      const f = {};
+      if (q.get('status'))       f.status       = `eq.${q.get('status')}`;
+      if (q.get('assigned_rig')) f.assigned_rig = `eq.${q.get('assigned_rig')}`;
+      if (q.get('asset_id'))     f.asset_id     = `eq.${q.get('asset_id')}`;
+      if (q.get('location'))     f.location     = `eq.${q.get('location')}`;
+      return ok(await sbGet(SB, KEY, 'workshops', {
+        filters: f,
+        order: 'created_at.desc',
+        limit: +(q.get('limit') || 500),
+      }));
+    }
+    if (method==='GET')
+      return ok(await sbGet(SB, KEY, 'workshops', { filters: { workshop_id: `eq.${id}` }, single: true }));
+    if (method==='POST') {
+      if (!body.workshop_id) body.workshop_id = 'WS-' + Date.now().toString().slice(-6);
+      return ok(await sbPost(SB, KEY, 'workshops', body));
+    }
+    if (method==='PUT') {
+      const { id: _i, created_at, updated_at, ...u } = body;
+      return ok(await sbPatch(SB, KEY, 'workshops', { workshop_id: `eq.${id}` }, u));
+    }
+    if (method==='PATCH') {
+      const { id: _i, created_at, updated_at, ...u } = body;
+      return ok(await sbPatch(SB, KEY, 'workshops', { workshop_id: `eq.${id}` }, u));
+    }
+    if (method==='DELETE') {
+      const r = await sbDelete(SB, KEY, 'workshops', { workshop_id: `eq.${id}` });
+      if (r.error) return err500(r.error);
+      return ok({ deleted: id });
+    }
+  }
+
   // SEND EMAIL (via Resend)
   if (res === 'send-email') {
     if (method !== 'POST') return respond({ success:false, error:'POST only' }, 405);

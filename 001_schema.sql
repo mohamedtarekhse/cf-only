@@ -174,6 +174,33 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 
+-- ── Workshops ───────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS workshops (
+  id            UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  workshop_id   TEXT        NOT NULL UNIQUE,
+  workshop_name TEXT        NOT NULL,
+  location      TEXT,
+  assigned_rig  TEXT,
+  asset_id      TEXT        REFERENCES assets(asset_id) ON DELETE SET NULL,
+  asset_name    TEXT,
+  asset_serial  TEXT,
+  scope_of_work TEXT,
+  start_date    DATE,
+  end_date      DATE,
+  status        TEXT        DEFAULT 'Active'
+                              CHECK (status IN ('Active','Completed','On Hold','Cancelled')),
+  technician    TEXT,
+  contact       TEXT,
+  notes         TEXT,
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_workshops_asset_id    ON workshops(asset_id);
+CREATE INDEX IF NOT EXISTS idx_workshops_assigned_rig ON workshops(assigned_rig);
+CREATE INDEX IF NOT EXISTS idx_workshops_status       ON workshops(status);
+
+
 -- ============================================================
 --  SECTION 2 — CATEGORY-SPECIFIC EQUIPMENT TABLES
 --  Auto-populated via trigger when an asset is created/updated
@@ -708,7 +735,7 @@ DECLARE
 BEGIN
   FOREACH tbl IN ARRAY ARRAY[
     'rigs','contracts','maintenance',
-    'certificates','transfers','users',
+    'certificates','transfers','users','workshops',
     'reg_bop','reg_well_head','reg_well_control',
     'reg_fire_extinguishers','reg_scba'
   ] LOOP
@@ -782,6 +809,7 @@ JOIN assets a ON a.asset_id = p.asset_id;
 -- ============================================================
 
 ALTER TABLE assets              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE workshops           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE eq_safety_equipment ENABLE ROW LEVEL SECURITY;
 ALTER TABLE eq_generators       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE eq_agitators        ENABLE ROW LEVEL SECURITY;
@@ -804,7 +832,7 @@ DECLARE
   tbl TEXT;
 BEGIN
   FOREACH tbl IN ARRAY ARRAY[
-    'assets','eq_safety_equipment','eq_generators','eq_agitators',
+    'assets','workshops','eq_safety_equipment','eq_generators','eq_agitators',
     'eq_compressors','eq_engines','eq_ac_motors','eq_centrifugal_pumps',
     'eq_drilling_equipment','eq_hoisting_equipment','eq_winches',
     'reg_bop','reg_well_head','reg_well_control',
@@ -862,6 +890,11 @@ CREATE INDEX IF NOT EXISTS idx_reg_scba_expiry     ON reg_scba(expiry_inspection
 /*
   Add the following REST routes to your Railway/Express backend,
   following the same pattern as your existing /assets routes:
+
+  GET    /workshops                → SELECT * FROM workshops ORDER BY created_at DESC
+  POST   /workshops                → INSERT INTO workshops
+  PUT    /workshops/:workshop_id   → UPDATE workshops WHERE workshop_id = :workshop_id
+  DELETE /workshops/:workshop_id   → DELETE FROM workshops WHERE workshop_id = :workshop_id
 
   GET    /reg-bop                  → SELECT * FROM reg_bop ORDER BY created_at DESC
   POST   /reg-bop                  → INSERT INTO reg_bop

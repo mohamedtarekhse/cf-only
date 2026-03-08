@@ -3211,6 +3211,7 @@
     <button class="nav-tab" onclick="switchTab('maintenance', this)" id="tab-maintenance"><i class="fas fa-tools"></i>
       Maintenance <span id="maintAlertBadge"
         style="display:none;background:#B00;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:1px 6px;margin-left:4px">0</span></button>
+    <button class="nav-tab" onclick="switchTab('workshops', this)" id="tab-workshops"><i class="fas fa-industry"></i> Workshops</button>
   </div>
 
   <!-- NOTIFICATION PANEL -->
@@ -3321,23 +3322,9 @@
             </div>
 
             <div class="filter-group">
-              <label class="filter-label">Rig</label>
+              <label class="filter-label">Rig / Workshop</label>
               <select class="filter-select" id="filterRig" onchange="applyFilters()">
-                <option value="">All Rigs</option>
-                <option value="Rig 1">Rig 1</option>
-                <option value="Rig 2">Rig 2</option>
-                <option value="Rig 3">Rig 3</option>
-                <option value="Rig 4">Rig 4</option>
-                <option value="Rig 5">Rig 5</option>
-                <option value="Rig 6">Rig 6</option>
-                <option value="Rig 7">Rig 7</option>
-                <option value="Rig 8">Rig 8</option>
-                <option value="Rig 9">Rig 9</option>
-                <option value="Rig 10">Rig 10</option>
-                <option value="Rig 11">Rig 11</option>
-                <option value="Rig 12">Rig 12</option>
-                <option value="Rig 13">Rig 13</option>
-                <option value="Rig 14">Rig 14</option>
+                <option value="">All</option>
               </select>
             </div>
             <div class="filter-group">
@@ -3374,7 +3361,7 @@
                   <th onclick="sortTable('name')">Asset Name <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortTable('category')">Category <i class="fas fa-sort sort-icon"></i></th>
 
-                  <th onclick="sortTable('rigName')">Rig <i class="fas fa-sort sort-icon"></i></th>
+                  <th onclick="sortTable('rigName')">Rig / Workshop <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortTable('location')">Location <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortTable('status')">Status <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortTable('value')">Value (USD) <i class="fas fa-sort sort-icon"></i></th>
@@ -4407,6 +4394,120 @@
     </div>
   </div>
 
+  <!-- ======= WORKSHOPS SECTION ======= -->
+  <div class="section" id="section-workshops">
+    <div class="content">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Workshops</span>
+          <span class="record-count" id="workshopCount">(0 records)</span>
+          <button id="btnNewWorkshop" class="btn btn-primary" onclick="openAddWorkshopModal()"><i class="fas fa-plus"></i> New Workshop</button>
+          <button class="btn btn-secondary" onclick="exportWorkshops()"><i class="fas fa-file-excel"></i> Export Excel</button>
+          <button class="btn btn-secondary" id="btnImportWorkshops" onclick="openImportGuide('workshops')"><i class="fas fa-upload"></i> Import</button>
+          <input type="file" id="importFileWorkshops" accept=".xlsx,.xls,.csv" style="display:none" onchange="importWorkshops(event)">
+        </div>
+
+        <!-- FILTER BAR -->
+        <div class="filter-bar">
+          <div class="filter-group search-wrap">
+            <label class="filter-label">Search</label>
+            <i class="search-icon fas fa-search"></i>
+            <input class="filter-input" id="wsSearch" placeholder="ID, name, asset, scope…" oninput="renderWorkshops()" style="padding-left:30px">
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">Workshop</label>
+            <select class="filter-select" id="wsFilterWorkshop" onchange="renderWorkshops()">
+              <option value="">All Workshops</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">Workshop ID</label>
+            <input class="filter-input" id="wsFilterId" placeholder="WS-001" oninput="renderWorkshops()" style="width:110px">
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">Assigned Rig</label>
+            <select class="filter-select" id="wsFilterRig" onchange="renderWorkshops()">
+              <option value="">All Rigs</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">Location</label>
+            <select class="filter-select" id="wsFilterLocation" onchange="renderWorkshops()" style="min-width:130px">
+              <option value="">All Locations</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">Asset ID</label>
+            <input class="filter-input" id="wsFilterAssetId" placeholder="AST-001" oninput="renderWorkshops()" style="width:100px">
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">Asset Name</label>
+            <input class="filter-input" id="wsFilterAssetName" placeholder="Name…" oninput="renderWorkshops()" style="width:120px">
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">Serial No.</label>
+            <input class="filter-input" id="wsFilterSerial" placeholder="SN-…" oninput="renderWorkshops()" style="width:100px">
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">Scope</label>
+            <input class="filter-input" id="wsFilterScope" placeholder="Scope…" oninput="renderWorkshops()" style="width:120px">
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">Status</label>
+            <select class="filter-select" id="wsFilterStatus" onchange="renderWorkshops()">
+              <option value="">All</option>
+              <option>Active</option>
+              <option>Completed</option>
+              <option>On Hold</option>
+              <option>Cancelled</option>
+            </select>
+          </div>
+          <div class="filter-group" style="margin-left:auto">
+            <label class="filter-label">&nbsp;</label>
+            <button class="btn btn-ghost" onclick="clearWorkshopFilters()"><i class="fas fa-times"></i> Clear</button>
+          </div>
+        </div>
+
+        <!-- TABLE -->
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th onclick="sortWorkshopTable('workshopId')">Workshop ID <i class="fas fa-sort sort-icon"></i></th>
+                <th onclick="sortWorkshopTable('workshopName')">Workshop Name <i class="fas fa-sort sort-icon"></i></th>
+                <th onclick="sortWorkshopTable('location')">Location <i class="fas fa-sort sort-icon"></i></th>
+                <th onclick="sortWorkshopTable('assignedRig')">Assigned Rig <i class="fas fa-sort sort-icon"></i></th>
+                <th onclick="sortWorkshopTable('assetId')">Asset ID <i class="fas fa-sort sort-icon"></i></th>
+                <th onclick="sortWorkshopTable('assetName')">Asset Name <i class="fas fa-sort sort-icon"></i></th>
+                <th onclick="sortWorkshopTable('assetSerial')">Serial Number <i class="fas fa-sort sort-icon"></i></th>
+                <th onclick="sortWorkshopTable('scopeOfWork')">Scope of Work <i class="fas fa-sort sort-icon"></i></th>
+                <th onclick="sortWorkshopTable('startDate')">Start Date <i class="fas fa-sort sort-icon"></i></th>
+                <th onclick="sortWorkshopTable('endDate')">End Date <i class="fas fa-sort sort-icon"></i></th>
+                <th onclick="sortWorkshopTable('status')">Status <i class="fas fa-sort sort-icon"></i></th>
+                <th onclick="sortWorkshopTable('technician')">Technician <i class="fas fa-sort sort-icon"></i></th>
+                <th>Notes</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="workshopTbody"></tbody>
+          </table>
+        </div>
+
+        <!-- PAGINATION -->
+        <div class="pagination">
+          <div class="pag-info" id="wsPagInfo"></div>
+          <button class="pag-btn" id="wsBtnPrev" onclick="wsChangePage(-1)"><i class="fas fa-chevron-left"></i></button>
+          <div id="wsPagPages"></div>
+          <button class="pag-btn" id="wsBtnNext" onclick="wsChangePage(1)"><i class="fas fa-chevron-right"></i></button>
+          <select class="filter-select" style="height:28px;width:70px;margin-left:8px;font-size:12px" id="wsPageSizeSel" onchange="wsChangePageSize()">
+            <option>10</option><option>25</option><option selected>50</option><option>100</option>
+          </select>
+          <span style="color:var(--sap-text-muted);font-size:12px">per page</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ======= REPORTS ======= -->
   <div class="section" id="section-reports">
     <div class="content">
@@ -5220,7 +5321,7 @@ Asset Management System</textarea>
         </div>
 
         <div class="form-row">
-          <div class="form-group"><label class="form-label">Rig</label>
+          <div class="form-group"><label class="form-label">Rig / Workshop</label>
             <select class="form-select" id="f_rig"></select>
           </div>
         </div>
@@ -6253,6 +6354,102 @@ Asset Management System</textarea>
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- ═══════════════════ IMPORT COLUMN GUIDE MODAL ═══════════════════ -->
+  <!-- ======= ADD / EDIT WORKSHOP MODAL ======= -->
+  <div class="modal-overlay" id="addWorkshopModal">
+    <div class="modal-dialog" style="max-width:620px">
+      <div class="modal-header" style="background:linear-gradient(135deg,#1a4a7a,#0070F2)">
+        <div>
+          <h2 style="color:#fff;font-size:15px" id="workshopModalTitle">Add Workshop</h2>
+          <p style="color:rgba(255,255,255,.7);font-size:12px;margin:2px 0 0">Workshop record</p>
+        </div>
+        <button class="shell-btn" style="color:#fff" onclick="closeModal('addWorkshopModal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Workshop ID <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="ws_id" placeholder="WS-001">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Workshop Name <span style="color:var(--sap-error)">*</span></label>
+            <input class="form-input" id="ws_name" placeholder="e.g. Al-Salam Workshop">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Location</label>
+            <input class="form-input" id="ws_location" placeholder="e.g. Industrial Zone, Cairo">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Assigned Rig</label>
+            <select class="form-select" id="ws_rig">
+              <option value="">— None —</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Asset ID</label>
+            <select class="form-select" id="ws_assetId" onchange="onWsAssetChange()">
+              <option value="">— Select Asset (optional) —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Asset Name</label>
+            <input class="form-input" id="ws_assetName" placeholder="Auto-filled from asset" readonly style="background:#f5f5f5">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Asset Serial Number</label>
+            <input class="form-input" id="ws_assetSerial" placeholder="Auto-filled from asset" readonly style="background:#f5f5f5">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-select" id="ws_status">
+              <option>Active</option>
+              <option>Completed</option>
+              <option>On Hold</option>
+              <option>Cancelled</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Scope of Work</label>
+          <input class="form-input" id="ws_scopeOfWork" placeholder="e.g. Full overhaul, Cat III Inspection…">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Start Date</label>
+            <input class="form-input" id="ws_startDate" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">End Date</label>
+            <input class="form-input" id="ws_endDate" type="date">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Technician / Supervisor</label>
+            <input class="form-input" id="ws_technician" placeholder="Name or team">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Contact</label>
+            <input class="form-input" id="ws_contact" placeholder="Phone or email">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea class="form-textarea" id="ws_notes" rows="2" placeholder="Additional notes…"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('addWorkshopModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveWorkshop()"><i class="fas fa-save"></i> Save Workshop</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="importGuideOverlay">
     <div class="modal" style="width:700px;max-width:96vw">
       <div class="modal-header" style="background:linear-gradient(90deg,#0040B0 0%,#0070F2 100%);color:#fff;border-radius:4px 4px 0 0;padding:12px 18px">
@@ -6294,6 +6491,7 @@ Asset Management System</textarea>
 
 
     const RIGS = [];
+    const WORKSHOPS = [];
 
     const CONTRACTS = [];
 
@@ -6340,7 +6538,7 @@ Asset Management System</textarea>
       { key: 'name', label: 'Asset Name', locked: false, default: true, sortKey: 'name' },
       { key: 'category', label: 'Category', locked: false, default: true, sortKey: 'category' },
 
-      { key: 'rigName', label: 'Rig', locked: false, default: true, sortKey: 'rigName' },
+      { key: 'rigName', label: 'Rig / Workshop', locked: false, default: true, sortKey: 'rigName' },
       { key: 'location', label: 'Location', locked: false, default: true, sortKey: 'location' },
       { key: 'status', label: 'Status', locked: false, default: true, sortKey: 'status' },
 
@@ -6376,7 +6574,7 @@ Asset Management System</textarea>
       { key: 'status', label: 'Status', locked: false, default: true, sortKey: 'status' },
       { key: 'priority', label: 'Priority', locked: false, default: true, sortKey: 'priority' },
 
-      { key: 'rigName', label: 'Rig', locked: false, default: true, sortKey: 'rigName' },
+      { key: 'rigName', label: 'Rig / Workshop', locked: false, default: true, sortKey: 'rigName' },
       { key: 'manager', label: 'Manager', locked: false, default: true, sortKey: 'manager' },
       { key: 'startDate', label: 'Start Date', locked: false, default: true, sortKey: 'startDate' },
       { key: 'endDate', label: 'End Date', locked: false, default: true, sortKey: 'endDate' },
@@ -7928,6 +8126,22 @@ Asset Management System</textarea>
       const rig = document.getElementById('filterRig')?.value || '';
       const loc = document.getElementById('filterLocation')?.value || '';
 
+      // Populate Rig / Workshop dropdown dynamically
+      const rigSel = document.getElementById('filterRig');
+      if (rigSel) {
+        const cur = rigSel.value;
+        rigSel.innerHTML = '<option value="">All</option>';
+        RIGS.forEach(r => rigSel.appendChild(new Option(r.name, r.name)));
+        if (typeof WORKSHOPS !== 'undefined' && WORKSHOPS.length) {
+          const grp = document.createElement('optgroup');
+          grp.label = '── Workshops ──';
+          [...new Set(WORKSHOPS.map(w => w.name).filter(Boolean))].sort()
+            .forEach(n => grp.appendChild(new Option(n, n)));
+          rigSel.appendChild(grp);
+        }
+        rigSel.value = cur;
+      }
+
       // Populate location dropdown dynamically from current ASSETS
       const locSel = document.getElementById('filterLocation');
       if (locSel) {
@@ -8484,13 +8698,360 @@ Asset Management System</textarea>
     }
     function populateFormSelects() {
       const rigSel = document.getElementById('f_rig');
+      if (!rigSel) return;
+      const cur = rigSel.value;
+      rigSel.innerHTML = '<option value="">— None —</option>';
       RIGS.forEach(r => rigSel.appendChild(new Option(r.name, r.name)));
+      const wsNames = [...new Set(WORKSHOPS.map(w => w.workshopName).filter(Boolean))].sort();
+      if (wsNames.length) {
+        const grp = document.createElement('optgroup');
+        grp.label = 'Workshops';
+        wsNames.forEach(n => grp.appendChild(new Option('🔧 ' + n, n)));
+        rigSel.appendChild(grp);
+      }
+      if (cur) rigSel.value = cur;
     }
 
-    // ══════════════════════════════════
-    //  RENDER CONTRACTS
-    // ══════════════════════════════════
-    function renderContracts() { renderContractRows(CONTRACTS); }
+    // ══════════════════════════════════════════════════════════════════════════
+    //  WORKSHOPS — Data, Render, CRUD, Import, Export
+    // ══════════════════════════════════════════════════════════════════════════
+
+    function normWS(w) {
+      if (!w) return {};
+      return {
+        ...w,
+        workshopId:   w.workshop_id   || w.workshopId   || '',
+        workshopName: w.workshop_name || w.workshopName || '',
+        assignedRig:  w.assigned_rig  || w.assignedRig  || '',
+        assetId:      w.asset_id      || w.assetId      || '',
+        assetName:    w.asset_name    || w.assetName    || '',
+        assetSerial:  w.asset_serial  || w.assetSerial  || '',
+        scopeOfWork:  w.scope_of_work || w.scopeOfWork  || '',
+        startDate:    w.start_date    || w.startDate    || '',
+        endDate:      w.end_date      || w.endDate      || '',
+        status:       w.status        || 'Active',
+        technician:   w.technician    || '',
+        contact:      w.contact       || '',
+        notes:        w.notes         || '',
+      };
+    }
+
+    let wsSortKey = 'workshopId', wsSortDir = 1, wsPage = 1, wsPageSize = 50;
+    let editingWorkshopId = null;
+
+    function renderWorkshops() {
+      // Repopulate filter dropdowns dynamically from live data
+      const filterDefs = [
+        { id: 'wsFilterRig',      key: 'assignedRig',  label: 'All Rigs' },
+        { id: 'wsFilterLocation', key: 'location',     label: 'All Locations' },
+        { id: 'wsFilterWorkshop', key: 'workshopName', label: 'All Workshops' },
+      ];
+      filterDefs.forEach(({ id, key, label }) => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const cur = sel.value;
+        const vals = [...new Set(WORKSHOPS.map(w => w[key]).filter(Boolean))].sort();
+        sel.innerHTML = `<option value="">${label}</option>` +
+          vals.map(v => `<option value="${v}"${v === cur ? ' selected' : ''}>${v}</option>`).join('');
+      });
+
+      const q      = (document.getElementById('wsSearch')?.value       || '').toLowerCase();
+      const fId    = (document.getElementById('wsFilterId')?.value      || '').toLowerCase();
+      const fR     = document.getElementById('wsFilterRig')?.value      || '';
+      const fL     = document.getElementById('wsFilterLocation')?.value || '';
+      const fW     = document.getElementById('wsFilterWorkshop')?.value || '';
+      const fSt    = document.getElementById('wsFilterStatus')?.value   || '';
+      const fAId   = (document.getElementById('wsFilterAssetId')?.value   || '').toLowerCase();
+      const fAName = (document.getElementById('wsFilterAssetName')?.value || '').toLowerCase();
+      const fSer   = (document.getElementById('wsFilterSerial')?.value    || '').toLowerCase();
+      const fScp   = (document.getElementById('wsFilterScope')?.value     || '').toLowerCase();
+
+      let list = WORKSHOPS.filter(w => {
+        const hay = [w.workshopId, w.workshopName, w.location, w.assignedRig,
+          w.assetId, w.assetName, w.assetSerial, w.scopeOfWork, w.technician, w.notes]
+          .join(' ').toLowerCase();
+        return (!q      || hay.includes(q))
+          && (!fId    || w.workshopId.toLowerCase().includes(fId))
+          && (!fR     || w.assignedRig  === fR)
+          && (!fL     || w.location     === fL)
+          && (!fW     || w.workshopName === fW)
+          && (!fSt    || w.status       === fSt)
+          && (!fAId   || w.assetId.toLowerCase().includes(fAId))
+          && (!fAName || w.assetName.toLowerCase().includes(fAName))
+          && (!fSer   || w.assetSerial.toLowerCase().includes(fSer))
+          && (!fScp   || w.scopeOfWork.toLowerCase().includes(fScp));
+      });
+
+      list = [...list].sort((a, b) => {
+        const va = (a[wsSortKey] || '').toString().toLowerCase();
+        const vb = (b[wsSortKey] || '').toString().toLowerCase();
+        return va > vb ? wsSortDir : va < vb ? -wsSortDir : 0;
+      });
+
+      const total = list.length;
+      const start = (wsPage - 1) * wsPageSize;
+      const end   = Math.min(start + wsPageSize, total);
+      const page  = list.slice(start, end);
+      const stColors = { Active: 's-active', Completed: 's-contracted', 'On Hold': 's-maintenance', Cancelled: 's-inactive' };
+
+      const tbody = document.getElementById('workshopTbody');
+      if (!tbody) return;
+      tbody.innerHTML = !page.length
+        ? `<tr><td colspan="14" style="text-align:center;padding:40px;color:var(--sap-text-muted)"><i class="fas fa-industry" style="font-size:24px;display:block;margin-bottom:8px;opacity:.3"></i>No workshops found</td></tr>`
+        : page.map(w => `<tr>
+          <td><span class="tag">${w.workshopId}</span></td>
+          <td style="font-weight:500">${w.workshopName || '—'}</td>
+          <td>${w.location || '—'}</td>
+          <td>${w.assignedRig ? `<span class="tag blue">${w.assignedRig}</span>` : '—'}</td>
+          <td>${w.assetId ? `<span class="tag blue">${w.assetId}</span>` : '—'}</td>
+          <td>${w.assetName || '—'}</td>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${w.assetSerial || '—'}</td>
+          <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="${(w.scopeOfWork||'').replace(/"/g,'&quot;')}">${w.scopeOfWork || '—'}</td>
+          <td style="font-size:12.5px">${w.startDate || '—'}</td>
+          <td style="font-size:12.5px">${w.endDate || '—'}</td>
+          <td><span class="status-badge ${stColors[w.status] || 's-inactive'}" style="font-size:11px">${w.status || '—'}</span></td>
+          <td style="font-size:12.5px">${w.technician || '—'}</td>
+          <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">${w.notes || '—'}</td>
+          <td onclick="event.stopPropagation()">
+            <button class="btn btn-ghost btn-icon" title="Edit" onclick="openAddWorkshopModal('${w.workshopId}')"><i class="fas fa-edit"></i></button>
+            <button class="btn btn-ghost btn-icon" title="Delete" style="color:var(--sap-error)" onclick="deleteWorkshop('${w.workshopId}')"><i class="fas fa-trash"></i></button>
+          </td>
+        </tr>`).join('');
+
+      const countEl = document.getElementById('workshopCount');
+      if (countEl) countEl.textContent = `(${total} records)`;
+      const pgInfo = document.getElementById('wsPagInfo');
+      if (pgInfo) pgInfo.textContent = total ? `Showing ${start+1}–${end} of ${total}` : 'No records';
+      const pgDiv = document.getElementById('wsPagPages');
+      if (pgDiv) {
+        pgDiv.innerHTML = '';
+        const pages = Math.ceil(total / wsPageSize) || 1;
+        for (let i = 1; i <= Math.min(pages, 7); i++) {
+          const btn = document.createElement('button');
+          btn.className = 'pag-btn' + (i === wsPage ? ' active' : '');
+          btn.textContent = i;
+          btn.onclick = (p => () => { wsPage = p; renderWorkshops(); })(i);
+          pgDiv.appendChild(btn);
+        }
+        const prev = document.getElementById('wsBtnPrev');
+        const next = document.getElementById('wsBtnNext');
+        if (prev) prev.disabled = wsPage <= 1;
+        if (next) next.disabled = wsPage >= pages;
+      }
+    }
+
+    function sortWorkshopTable(key) {
+      if (wsSortKey === key) wsSortDir *= -1; else { wsSortKey = key; wsSortDir = 1; }
+      renderWorkshops();
+    }
+    function wsChangePage(d) { wsPage = Math.max(1, wsPage + d); renderWorkshops(); }
+    function wsChangePageSize() { wsPageSize = parseInt(document.getElementById('wsPageSizeSel').value); wsPage = 1; renderWorkshops(); }
+    function clearWorkshopFilters() {
+      ['wsSearch','wsFilterId','wsFilterRig','wsFilterLocation','wsFilterWorkshop','wsFilterStatus','wsFilterAssetId','wsFilterAssetName','wsFilterSerial','wsFilterScope'].forEach(id => {
+        const e = document.getElementById(id); if (e) e.value = '';
+      });
+      wsPage = 1; renderWorkshops();
+    }
+
+    function openAddWorkshopModal(workshopId) {
+      editingWorkshopId = workshopId || null;
+      const titleEl = document.getElementById('workshopModalTitle');
+      if (titleEl) titleEl.textContent = workshopId ? 'Edit Workshop' : 'Add Workshop';
+
+      const rSel = document.getElementById('ws_rig');
+      if (rSel) {
+        rSel.innerHTML = '<option value="">— None —</option>';
+        RIGS.forEach(r => rSel.appendChild(new Option(r.name, r.name)));
+      }
+      const aSel = document.getElementById('ws_assetId');
+      if (aSel) {
+        aSel.innerHTML = '<option value="">— Select Asset (optional) —</option>';
+        ASSETS.forEach(a => aSel.appendChild(new Option(`${a.assetId} – ${a.name}`, a.assetId)));
+      }
+
+      if (workshopId) {
+        const w = WORKSHOPS.find(x => x.workshopId === workshopId);
+        if (!w) return;
+        document.getElementById('ws_id').value          = w.workshopId;
+        document.getElementById('ws_id').disabled       = true;
+        document.getElementById('ws_name').value        = w.workshopName;
+        document.getElementById('ws_location').value    = w.location;
+        if (rSel) rSel.value                            = w.assignedRig;
+        if (aSel) aSel.value                            = w.assetId;
+        document.getElementById('ws_assetName').value   = w.assetName;
+        document.getElementById('ws_assetSerial').value = w.assetSerial;
+        document.getElementById('ws_scopeOfWork').value = w.scopeOfWork;
+        document.getElementById('ws_startDate').value   = w.startDate;
+        document.getElementById('ws_endDate').value     = w.endDate;
+        document.getElementById('ws_status').value      = w.status;
+        document.getElementById('ws_technician').value  = w.technician;
+        document.getElementById('ws_contact').value     = w.contact;
+        document.getElementById('ws_notes').value       = w.notes;
+      } else {
+        document.getElementById('ws_id').disabled = false;
+        document.getElementById('ws_id').value    = 'WS-' + String(WORKSHOPS.length + 1).padStart(3, '0');
+        ['ws_name','ws_location','ws_assetName','ws_assetSerial','ws_scopeOfWork',
+         'ws_startDate','ws_endDate','ws_technician','ws_contact','ws_notes'].forEach(id => {
+          const el = document.getElementById(id); if (el) el.value = '';
+        });
+        if (rSel) rSel.value = '';
+        document.getElementById('ws_status').value = 'Active';
+      }
+      openModal('addWorkshopModal');
+    }
+
+    function onWsAssetChange() {
+      const assetId = document.getElementById('ws_assetId').value;
+      const a = ASSETS.find(x => x.assetId === assetId);
+      document.getElementById('ws_assetName').value   = a?.name   || '';
+      document.getElementById('ws_assetSerial').value = a?.serial || '';
+      if (a?.rigName) { const rs = document.getElementById('ws_rig'); if (rs && !rs.value) rs.value = a.rigName; }
+      if (a?.location) { const ls = document.getElementById('ws_location'); if (ls && !ls.value) ls.value = a.location; }
+    }
+
+    async function saveWorkshop() {
+      const wsId   = document.getElementById('ws_id').value.trim();
+      const wsName = document.getElementById('ws_name').value.trim();
+      if (!wsId || !wsName) { showToast('Workshop ID and Name are required.', 'error'); return; }
+      const payload = {
+        workshop_id:   wsId,
+        workshop_name: wsName,
+        location:      document.getElementById('ws_location').value,
+        assigned_rig:  document.getElementById('ws_rig').value,
+        asset_id:      document.getElementById('ws_assetId').value,
+        asset_name:    document.getElementById('ws_assetName').value,
+        asset_serial:  document.getElementById('ws_assetSerial').value,
+        scope_of_work: document.getElementById('ws_scopeOfWork').value,
+        start_date:    document.getElementById('ws_startDate').value   || null,
+        end_date:      document.getElementById('ws_endDate').value     || null,
+        status:        document.getElementById('ws_status').value,
+        technician:    document.getElementById('ws_technician').value,
+        contact:       document.getElementById('ws_contact').value,
+        notes:         document.getElementById('ws_notes').value,
+      };
+      try {
+        if (editingWorkshopId) {
+          const r = typeof PUT !== 'undefined' ? await PUT(`/workshops/${editingWorkshopId}`, payload) : { data: payload };
+          const idx = WORKSHOPS.findIndex(w => w.workshopId === editingWorkshopId);
+          if (idx >= 0) WORKSHOPS[idx] = normWS(r.data || payload); else WORKSHOPS.push(normWS(r.data || payload));
+          showToast('Workshop updated ✓', 'success');
+        } else {
+          if (WORKSHOPS.find(w => w.workshopId === wsId)) { showToast('Workshop ID already exists.', 'error'); return; }
+          const r = typeof POST !== 'undefined' ? await POST('/workshops', payload) : { data: payload };
+          WORKSHOPS.push(normWS(r.data || payload));
+          showToast('Workshop added ✓', 'success');
+        }
+        closeModal('addWorkshopModal');
+        renderWorkshops();
+        populateFormSelects();
+        refreshRigFilterWithWorkshops();
+      } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
+    }
+
+    async function deleteWorkshop(id) {
+      if (!confirm(`Delete workshop ${id}? This cannot be undone.`)) return;
+      try {
+        if (typeof DELETE !== 'undefined') await DELETE(`/workshops/${id}`);
+        const i = WORKSHOPS.findIndex(w => w.workshopId === id);
+        if (i >= 0) WORKSHOPS.splice(i, 1);
+        renderWorkshops();
+        populateFormSelects();
+        refreshRigFilterWithWorkshops();
+        showToast('Workshop deleted.', 'warning');
+      } catch(e) { showToast('Delete failed: ' + e.message, 'error'); }
+    }
+
+    function exportWorkshops() {
+      if (!WORKSHOPS.length) { showToast('No workshops to export.', 'warning'); return; }
+      const ws = XLSX.utils.json_to_sheet(WORKSHOPS.map(w => ({
+        'Workshop ID': w.workshopId, 'Workshop Name': w.workshopName,
+        'Location': w.location, 'Assigned Rig': w.assignedRig,
+        'Asset ID': w.assetId, 'Asset Name': w.assetName, 'Asset Serial': w.assetSerial,
+        'Scope of Work': w.scopeOfWork, 'Start Date': w.startDate, 'End Date': w.endDate,
+        'Status': w.status, 'Technician': w.technician, 'Contact': w.contact, 'Notes': w.notes,
+      })));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Workshops');
+      XLSX.writeFile(wb, 'Workshops_Export.xlsx');
+      showToast(`Exported ${WORKSHOPS.length} workshops ✓`, 'success');
+    }
+
+    async function importWorkshops(event) {
+      if (typeof canImport === 'function' && !canImport()) { showToast('Only Admins can import data.', 'error'); return; }
+      const file = event.target.files[0];
+      if (!file) return;
+      event.target.value = '';
+      showToast('Importing workshops…', 'info');
+      try {
+        const rows = await readXlsx(file);
+        let added = 0;
+        const failedRows = [];
+        for (let i = 0; i < rows.length; i++) {
+          const r = rows[i];
+          if (Object.values(r).every(v => v === '' || v == null)) continue;
+          const workshopId = (r['Workshop ID'] || r['ID'] || '').toString().trim();
+          if (!workshopId) { failedRows.push({ row: i+2, id: '', reason: 'Missing: Workshop ID' }); continue; }
+          const wsName = (r['Workshop Name'] || r['Name'] || '').toString().trim();
+          if (!wsName)  { failedRows.push({ row: i+2, id: workshopId, reason: 'Missing: Workshop Name' }); continue; }
+          const assetId = (r['Asset ID'] || '').toString().trim();
+          const asset   = ASSETS.find(a => a.assetId === assetId);
+          const payload = {
+            workshop_id: workshopId, workshop_name: wsName,
+            location:      r['Location']     || asset?.location || '',
+            assigned_rig:  r['Assigned Rig'] || r['Rig'] || asset?.rigName || '',
+            asset_id:      assetId,
+            asset_name:    r['Asset Name']   || asset?.name   || '',
+            asset_serial:  r['Asset Serial'] || r['Serial Number'] || asset?.serial || '',
+            scope_of_work: r['Scope of Work'] || r['Scope'] || '',
+            start_date:    r['Start Date']   || null,
+            end_date:      r['End Date']     || null,
+            status:        r['Status']       || 'Active',
+            technician:    r['Technician']   || r['Supervisor'] || '',
+            contact:       r['Contact']      || '',
+            notes:         r['Notes']        || '',
+          };
+          try {
+            const existing = WORKSHOPS.find(w => w.workshopId === workshopId);
+            if (existing) {
+              const res = typeof PUT  !== 'undefined' ? await PUT(`/workshops/${workshopId}`, payload) : { data: payload };
+              const idx = WORKSHOPS.findIndex(w => w.workshopId === workshopId);
+              if (idx >= 0) WORKSHOPS[idx] = normWS(res.data || payload);
+            } else {
+              const res = typeof POST !== 'undefined' ? await POST('/workshops', payload)              : { data: payload };
+              WORKSHOPS.push(normWS(res.data || payload));
+            }
+            added++;
+          } catch(e) { failedRows.push({ row: i+2, id: workshopId, reason: e.message || 'API error' }); }
+        }
+        renderWorkshops();
+        populateFormSelects();
+        refreshRigFilterWithWorkshops();
+        if (typeof showImportResults === 'function') showImportResults('Workshops', file.name, added, failedRows);
+        else showToast(`Imported ${added} workshops${failedRows.length ? `, ${failedRows.length} failed` : ''} ✓`, added ? 'success' : 'error');
+      } catch(err) { showToast('Import failed: ' + err.message, 'error'); }
+    }
+
+    function refreshRigFilterWithWorkshops() {
+      // Keeps the assets-page Rig/Workshop filter dropdown in sync with WORKSHOPS
+      const sel = document.getElementById('filterRig');
+      if (!sel) return;
+      const cur = sel.value;
+      Array.from(sel.options).forEach(o => { if (o.dataset.ws) o.remove(); });
+      const wsNames = [...new Set(WORKSHOPS.map(w => w.workshopName).filter(Boolean))].sort();
+      if (wsNames.length) {
+        const grp = document.createElement('optgroup');
+        grp.label = 'Workshops';
+        wsNames.forEach(n => {
+          const o = new Option('🔧 ' + n, n);
+          o.dataset.ws = '1';
+          grp.appendChild(o);
+        });
+        sel.appendChild(grp);
+      }
+      if (cur) try { sel.value = cur; } catch(e) {}
+    }
+
+      function renderContracts() { renderContractRows(CONTRACTS); }
     function renderContractRows(list) {
       document.getElementById('contractTbody').innerHTML = list.map(c => `
     <tr>
@@ -12656,11 +13217,11 @@ Instructions:
       function rerenderAll() {
         if (typeof filteredAssets !== 'undefined') filteredAssets = [...ASSETS];
         rerender(
-          'renderAssets', 'renderContracts', 'renderRigs', 'renderProjects', 'renderInspections', 'renderInspections',
+          'renderAssets', 'renderContracts', 'renderRigs', 'renderWorkshops', 'renderProjects', 'renderInspections', 'renderInspections',
           'renderUsers', 'renderTransfers', 'renderMaintenance', 'renderCertificates',
           'renderBOMSection', 'renderNotifications', 'updateKPIs', 'updateReportKPIs',
           'updateCertKPIs', 'updateMaintKPIs', 'updateTransferKPIs', 'checkMaintAlerts',
-          'populateBomSelects', 'populateFormSelects',
+          'populateBomSelects', 'populateFormSelects', 'refreshRigFilterWithWorkshops', 'renderWorkshops',
           'renderMaintRigSelector', 'runAllAlertRules'
         );
       }
@@ -12672,9 +13233,10 @@ Instructions:
         try {
           showToast('Connecting to database…', 'info');
 
-          const [aR, rR, conR, mR, tR, cR, bR, uR, nR, prjR, inspR] = await Promise.all([
+          const [aR, rR, wsR, conR, mR, tR, cR, bR, uR, nR, prjR, inspR] = await Promise.all([
             GET('/assets', { limit: 500 }),
             GET('/rigs'),
+            GET('/workshops', { limit: 500 }),
             GET('/contracts', { limit: 200 }),
             GET('/maintenance', { limit: 500 }),
             GET('/transfers', { limit: 200 }),
@@ -12689,6 +13251,7 @@ Instructions:
           // Mutate arrays in place — render functions always see live DB data
           refill(ASSETS, (aR.data || []).map(normA));
           refill(RIGS, rR.data || []);
+          refill(WORKSHOPS, (wsR.data || []).map(normWS));
 
           refill(CONTRACTS, (conR.data || []).map(c => ({
             ...c,
@@ -13886,6 +14449,29 @@ Instructions:
             { col: 'Notes' },
           ]
         },
+        workshops: {
+          label: 'Workshops',
+          fileInputId: 'importFileWorkshops',
+          icon: 'fa-industry',
+          required: [
+            { col: 'Workshop ID', alt: 'ID', note: 'Unique identifier (e.g. WS-001)' },
+            { col: 'Workshop Name', alt: 'Name', note: 'Workshop display name' },
+          ],
+          optional: [
+            { col: 'Asset ID', note: 'Must match an existing asset ID' },
+            { col: 'Asset Name' },
+            { col: 'Asset Serial', alt: 'Serial Number' },
+            { col: 'Assigned Rig', alt: 'Rig' },
+            { col: 'Location' },
+            { col: 'Status', note: 'Active / Completed / On Hold / Cancelled' },
+            { col: 'Scope of Work', alt: 'Scope' },
+            { col: 'Start Date', note: 'YYYY-MM-DD' },
+            { col: 'End Date', note: 'YYYY-MM-DD' },
+            { col: 'Technician', alt: 'Supervisor' },
+            { col: 'Contact' },
+            { col: 'Notes' },
+          ]
+        },
       };
 
       let __importCurrentType = null;
@@ -14040,7 +14626,9 @@ Instructions:
         } catch(e) { showToast('Download failed: ' + e.message, 'error'); }
       };
 
-      // ══════════════════════════════════
+      
+
+            // ══════════════════════════════════
       //  MODAL HELPERS
       // ══════════════════════════════════
 
