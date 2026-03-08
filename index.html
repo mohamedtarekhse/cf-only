@@ -13395,9 +13395,6 @@ Instructions:
               inspection_type:  r['Inspection Type']                          || '',
               // Fix 5: accept both export column name and short name
               cert_link:        r['Cert Link']         || r['Certificate Link'] || '',
-              // Fix 3: include value and acquisition_date
-              value:            Number(r['Value']      || r['Value (USD)']    || 0) || 0,
-              acquisition_date: r['Acquisition Date']                         || null,
             };
             try {
               const existing = ASSETS.find(a => a.assetId === asset_id);
@@ -13763,8 +13760,6 @@ Instructions:
             { col: 'Location' },
             { col: 'Status', note: 'Active / Maintenance / Inactive / Contracted / Retired' },
             { col: 'Serial', alt: 'Serial Number' },
-            { col: 'Value', alt: 'Value (USD)', note: 'Numeric — e.g. 15000' },
-            { col: 'Acquisition Date', note: 'Format: YYYY-MM-DD' },
             { col: 'Notes' },
             { col: 'Last Inspection', note: 'Format: YYYY-MM-DD' },
             { col: 'Inspection Type' },
