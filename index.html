@@ -3843,8 +3843,6 @@
               <div class="bom-cell w80">Type</div>
               <div class="bom-cell w80">Qty</div>
               <div class="bom-cell w90">Unit</div>
-              <div class="bom-cell w120">Unit Cost (USD)</div>
-              <div class="bom-cell w120">Total Cost (USD)</div>
               <div class="bom-cell w90">Status</div>
               <div class="bom-cell" style="width:100px">Actions</div>
             </div>
@@ -5310,8 +5308,6 @@ Asset Management System</textarea>
             <div class="bom-cell w80">Type</div>
             <div class="bom-cell w80">Qty</div>
             <div class="bom-cell w90">Unit</div>
-            <div class="bom-cell w120">Unit Cost (USD)</div>
-            <div class="bom-cell w120">Total Cost (USD)</div>
             <div class="bom-cell w90">Status</div>
             <div class="bom-cell" style="width:80px">Actions</div>
           </div>
@@ -6147,15 +6143,9 @@ Asset Management System</textarea>
             </select>
           </div>
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Unit Cost (USD)</label>
-            <input class="form-input" id="bom_unitCost" type="number" min="0" placeholder="0.00">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Lead Time (days)</label>
-            <input class="form-input" id="bom_leadTime" type="number" min="0" placeholder="0">
-          </div>
+        <div class="form-group">
+          <label class="form-label">Lead Time (days)</label>
+          <input class="form-input" id="bom_leadTime" type="number" min="0" placeholder="0">
         </div>
         <div class="form-group">
           <label class="form-label">Notes / Description</label>
@@ -9163,7 +9153,6 @@ Asset Management System</textarea>
         document.getElementById('bom_manufacturer').value = b.manufacturer || '';
         document.getElementById('bom_qty').value = b.qty || 1;
         document.getElementById('bom_uom').value = b.uom || 'EA';
-        document.getElementById('bom_unitCost').value = b.unitCost || 0;
         document.getElementById('bom_leadTime').value = b.leadTime || 0;
         document.getElementById('bom_status').value = b.status || 'Active';
         document.getElementById('bom_notes').value = b.notes || '';
@@ -9172,7 +9161,6 @@ Asset Management System</textarea>
         document.getElementById('bomModalTitle').textContent = 'Add BOM Component';
         ['bom_name', 'bom_partNo', 'bom_serial', 'bom_manufacturer', 'bom_notes'].forEach(f => document.getElementById(f).value = '');
         document.getElementById('bom_qty').value = 1;
-        document.getElementById('bom_unitCost').value = '';
         document.getElementById('bom_leadTime').value = '';
         document.getElementById('bom_type').value = 'Serialized';
         document.getElementById('bom_status').value = 'Active';
@@ -9207,7 +9195,6 @@ Asset Management System</textarea>
         manufacturer: document.getElementById('bom_manufacturer').value.trim() || null,
         qty,
         uom: document.getElementById('bom_uom').value,
-        unitCost: parseFloat(document.getElementById('bom_unitCost').value) || 0,
         leadTime: parseInt(document.getElementById('bom_leadTime').value) || 0,
         status: document.getElementById('bom_status').value,
         notes: document.getElementById('bom_notes').value.trim() || null,
@@ -9297,8 +9284,6 @@ Asset Management System</textarea>
     <div class="bom-cell w80"><span class="bom-bulk-badge ${typeClass}">${typeLabel}</span></div>
     <div class="bom-cell w80 mono">${item.qty}</div>
     <div class="bom-cell w90">${item.uom || 'EA'}</div>
-    <div class="bom-cell w120 mono">${item.unitCost ? '$' + Number(item.unitCost).toLocaleString() : '<span style="color:#ccc">—</span>'}</div>
-    <div class="bom-cell w120 mono" style="font-weight:600">${totalCost ? '$' + Number(totalCost).toLocaleString() : '<span style="color:#ccc">—</span>'}</div>
     <div class="bom-cell w90"><span class="status-badge ${statusColors[item.status] || 's-inactive'}" style="font-size:11px">${item.status}</span></div>
     <div class="bom-cell" style="width:${compact ? '80' : '120'}px;display:flex;gap:2px">
       <button class="btn btn-ghost btn-icon" title="Transfer this part" onclick="openBomTransferModal('${item.assetId}',['${item.id}'])"
@@ -12809,7 +12794,6 @@ Instructions:
           manufacturer: document.getElementById('bom_manufacturer').value.trim() || null,
           qty,
           uom: document.getElementById('bom_uom').value,
-          unit_cost: parseFloat(document.getElementById('bom_unitCost').value) || 0,
           lead_time: parseInt(document.getElementById('bom_leadTime').value) || 0,
           status: document.getElementById('bom_status').value,
           notes: document.getElementById('bom_notes').value.trim() || null,
