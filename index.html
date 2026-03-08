@@ -4598,7 +4598,6 @@
         <input type="hidden" id="insp_editId">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
 
-          <!-- Row 1: PO Number + Service Order No -->
           <div class="form-group">
             <label class="form-label">PO Number</label>
             <input class="form-control" id="insp_po" placeholder="e.g. PO-2025-001">
@@ -4608,29 +4607,6 @@
             <input class="form-control" id="insp_so" placeholder="e.g. SO-12345">
           </div>
 
-          <!-- Row 2: Inspection By + Inspection Date -->
-          <div class="form-group">
-            <label class="form-label">Inspection By</label>
-            <input class="form-control" id="insp_by" placeholder="Inspector name or company">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Inspection Date <span style="color:#b00">*</span></label>
-            <input class="form-control" id="insp_start" type="date">
-          </div>
-
-          <!-- Row 3: Rig + Location -->
-          <div class="form-group">
-            <label class="form-label">Rig</label>
-            <select class="form-control" id="insp_rig">
-              <option value="">— None —</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Location</label>
-            <input class="form-control" id="insp_location" placeholder="e.g. Field A, Block 3">
-          </div>
-
-          <!-- Supporting fields -->
           <div class="form-group">
             <label class="form-label">Type of Inspection <span style="color:#b00">*</span></label>
             <select class="form-control" id="insp_type">
@@ -4638,28 +4614,26 @@
             </select>
           </div>
           <div class="form-group">
+            <label class="form-label">Rig</label>
+            <select class="form-control" id="insp_rig">
+              <option value="">— None —</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Start Date <span style="color:#b00">*</span></label>
+            <input class="form-control" id="insp_start" type="date">
+          </div>
+          <div class="form-group">
             <label class="form-label">End Date</label>
             <input class="form-control" id="insp_end" type="date">
           </div>
-          <div class="form-group">
-            <label class="form-label">Cost / Day (USD)</label>
-            <input class="form-control" id="insp_costday" type="number" min="0" step="0.01" placeholder="0.00">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Joint Total Cost (USD)</label>
-            <input class="form-control" id="insp_totalcost" type="number" min="0" step="0.01"
-              placeholder="Auto-calculated or manual">
-          </div>
+
           <div class="form-group" style="grid-column:1/-1">
             <label class="form-label">Notes</label>
             <textarea class="form-control" id="insp_notes" rows="2" placeholder="Additional notes..."></textarea>
           </div>
 
-        </div>
-        <div
-          style="background:#EBF4FF;border:1px solid #B3D4FF;border-radius:6px;padding:8px 14px;margin-top:8px;font-size:12.5px;color:#0040B0">
-          <i class="fas fa-calculator" style="margin-right:6px"></i>
-          Total cost auto-calculated from Cost/Day × number of days when end date is set. Override manually if needed.
         </div>
       </div>
       <div class="modal-footer">
@@ -4789,10 +4763,6 @@
           <div class="form-group">
             <label class="form-label">End Date</label>
             <input class="form-control" id="prj_end" type="date">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Budget (USD)</label>
-            <input class="form-control" id="prj_budget" type="number" min="0" placeholder="0">
           </div>
           <div class="form-group">
             <label class="form-label">Progress (%)</label>
@@ -6637,7 +6607,6 @@ Asset Management System</textarea>
         document.getElementById('prj_manager').value = p.manager || '';
         document.getElementById('prj_start').value = p.startDate || '';
         document.getElementById('prj_end').value = p.endDate || '';
-        document.getElementById('prj_budget').value = p.budget || 0;
         document.getElementById('prj_progress').value = p.progress || 0;
         document.getElementById('prj_desc').value = p.description || '';
         document.getElementById('prj_notes').value = p.notes || '';
@@ -6645,11 +6614,9 @@ Asset Management System</textarea>
         document.getElementById('prj_editId').value = '';
         document.getElementById('prj_id').readOnly = false;
         ['prj_id', 'prj_name', 'prj_location', 'prj_manager', 'prj_start', 'prj_end', 'prj_desc', 'prj_notes'].forEach(i => { document.getElementById(i).value = ''; });
-        document.getElementById('prj_budget').value = '0';
         document.getElementById('prj_progress').value = '0';
         document.getElementById('prj_status').value = 'Planning';
         document.getElementById('prj_priority').value = 'Normal';
-
         document.getElementById('prj_rig').value = '';
       }
       openModal('projectModal');
@@ -6670,7 +6637,7 @@ Asset Management System</textarea>
         manager: document.getElementById('prj_manager').value.trim(),
         start_date: document.getElementById('prj_start').value || null,
         end_date: document.getElementById('prj_end').value || null,
-        budget: parseFloat(document.getElementById('prj_budget').value) || 0,
+        budget: parseFloat(0),
         progress: parseInt(document.getElementById('prj_progress').value) || 0,
         description: document.getElementById('prj_desc').value.trim(),
         notes: document.getElementById('prj_notes').value.trim(),
@@ -7536,63 +7503,37 @@ Asset Management System</textarea>
       if (id) {
         const insp = INSPECTIONS.find(x => x.id === id);
         if (!insp) return;
-        document.getElementById('insp_editId').value    = insp.id;
-        document.getElementById('insp_po').value        = insp.po || '';
-        document.getElementById('insp_so').value        = insp.serviceOrder || '';
-        document.getElementById('insp_by').value        = insp.inspectedBy || '';
-        document.getElementById('insp_start').value     = insp.startDate || '';
-        if (rigSel) rigSel.value                        = insp.rigName || '';
-        document.getElementById('insp_location').value  = insp.location || '';
-        document.getElementById('insp_type').value      = insp.inspectionType || '';
-        document.getElementById('insp_end').value       = insp.endDate || '';
-        document.getElementById('insp_costday').value   = insp.costPerDay || '';
-        document.getElementById('insp_totalcost').value = insp.totalCost || '';
-        document.getElementById('insp_notes').value     = insp.notes || '';
+        document.getElementById('insp_editId').value = insp.id;
+        document.getElementById('insp_po').value     = insp.po || '';
+        document.getElementById('insp_so').value     = insp.serviceOrder || '';
+        document.getElementById('insp_start').value  = insp.startDate || '';
+        if (rigSel) rigSel.value                     = insp.rigName || '';
+        document.getElementById('insp_type').value   = insp.inspectionType || '';
+        document.getElementById('insp_end').value    = insp.endDate || '';
+        document.getElementById('insp_notes').value  = insp.notes || '';
       } else {
-        ['insp_editId', 'insp_start', 'insp_end', 'insp_costday', 'insp_totalcost',
-         'insp_po', 'insp_so', 'insp_by', 'insp_location', 'insp_notes'].forEach(fid => {
+        ['insp_editId', 'insp_start', 'insp_end', 'insp_po', 'insp_so', 'insp_notes'].forEach(fid => {
           document.getElementById(fid).value = '';
         });
         document.getElementById('insp_type').value = '';
         if (rigSel) rigSel.value = '';
       }
 
-      // Auto-calc total cost when dates or cost/day changes
-      const autoCalc = () => {
-        const s = document.getElementById('insp_start').value;
-        const e = document.getElementById('insp_end').value;
-        const cpd = parseFloat(document.getElementById('insp_costday').value);
-        if (s && e && !isNaN(cpd) && cpd > 0) {
-          const days = Math.max(1, Math.ceil((new Date(e) - new Date(s)) / 86400000) + 1);
-          document.getElementById('insp_totalcost').value = (cpd * days).toFixed(2);
-        }
-      };
-      document.getElementById('insp_start').oninput = autoCalc;
-      document.getElementById('insp_end').oninput = autoCalc;
-      document.getElementById('insp_costday').oninput = autoCalc;
-
       openModal('inspectionModal');
     }
 
     async function saveInspection() {
       const startDate = document.getElementById('insp_start').value;
-
       const type = document.getElementById('insp_type').value;
       if (!startDate) { showToast('Start date is required.', 'error'); return; }
-
       if (!type) { showToast('Inspection type is required.', 'error'); return; }
-
       const payload = {
         po_number:       document.getElementById('insp_po').value.trim(),
         service_order:   document.getElementById('insp_so').value.trim(),
-        inspected_by:    document.getElementById('insp_by').value.trim(),
         start_date:      startDate,
         rig_name:        document.getElementById('insp_rig').value || null,
-        location:        document.getElementById('insp_location').value.trim(),
         inspection_type: type,
         end_date:        document.getElementById('insp_end').value || null,
-        cost_per_day:    parseFloat(document.getElementById('insp_costday').value) || 0,
-        total_cost:      parseFloat(document.getElementById('insp_totalcost').value) || 0,
         notes:           document.getElementById('insp_notes').value.trim(),
       };
 
@@ -13142,8 +13083,6 @@ Instructions:
           description: document.getElementById('prj_desc').value.trim(),
           notes:       document.getElementById('prj_notes').value.trim(),
         };
-        const budgetEl = document.getElementById('prj_budget');
-        if (budgetEl) payload.budget = parseFloat(budgetEl.value) || 0;
         try {
           if (window._prjEditId) {
             const r = await PUT(`/projects/${window._prjEditId}`, payload);
@@ -13183,19 +13122,12 @@ Instructions:
         const payload = {
           po_number:       document.getElementById('insp_po').value.trim(),
           service_order:   document.getElementById('insp_so').value.trim(),
-          inspected_by:    document.getElementById('insp_by') ? document.getElementById('insp_by').value.trim() : '',
           start_date:      startDate,
           rig_name:        document.getElementById('insp_rig').value || null,
-          location:        document.getElementById('insp_location') ? document.getElementById('insp_location').value.trim() : '',
           inspection_type: type,
           end_date:        document.getElementById('insp_end').value || null,
           notes:           document.getElementById('insp_notes').value.trim(),
         };
-        // include cost fields if they still exist in DB (migration not yet run)
-        const cdEl = document.getElementById('insp_costday');
-        const tcEl = document.getElementById('insp_totalcost');
-        if (cdEl) payload.cost_per_day = parseFloat(cdEl.value) || 0;
-        if (tcEl) payload.total_cost   = parseFloat(tcEl.value) || 0;
         try {
           if (window._inspEditId) {
             const r = await PUT(`/inspections/${window._inspEditId}`, payload);
