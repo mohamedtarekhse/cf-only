@@ -3478,10 +3478,10 @@
             <div class="kpi-sub">Finished</div>
           </div>
           <div class="kpi-card" style="border-top:3px solid #6D28D9">
-            <div class="kpi-icon" style="background:#EDE9FE;color:#6D28D9"><i class="fas fa-coins"></i></div>
-            <div class="kpi-label">Total Budget</div>
-            <div class="kpi-value" id="prjKpiBudget" style="font-size:18px">$0</div>
-            <div class="kpi-sub">All projects</div>
+            <div class="kpi-icon" style="background:#EDE9FE;color:#6D28D9"><i class="fas fa-drafting-compass"></i></div>
+            <div class="kpi-label">Planning</div>
+            <div class="kpi-value" id="prjKpiPlanning">0</div>
+            <div class="kpi-sub">Not started</div>
           </div>
         </div>
 
@@ -3511,7 +3511,7 @@
             <div class="filter-group search-wrap">
               <label class="filter-label">Search</label>
               <i class="search-icon fas fa-search"></i>
-              <input class="filter-input" id="prjSearch" placeholder="ID, name, manager, location..."
+              <input class="filter-input" id="prjSearch" placeholder="ID, description, manager, supervisor..."
                 oninput="applyProjectFilters()">
             </div>
             <div class="filter-group">
@@ -4906,24 +4906,27 @@
 
   <!-- PROJECT ADD/EDIT MODAL -->
   <div class="modal-overlay" id="projectModal">
-    <div class="modal" style="width:700px;max-width:96vw">
+    <div class="modal" style="width:720px;max-width:96vw">
       <div class="modal-header">
         <i class="fas fa-layer-group" style="color:var(--sap-blue);font-size:18px"></i>
         <h2 id="projectModalTitle">New Project</h2>
-        <button class="shell-btn" style="color:var(--sap-text-muted)" onclick="closeModal('projectModal')"><i
-            class="fas fa-times"></i></button>
+        <button class="shell-btn" style="color:var(--sap-text-muted)" onclick="closeModal('projectModal')"><i class="fas fa-times"></i></button>
       </div>
       <div class="modal-body">
         <input type="hidden" id="prj_editId">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+
+          <!-- Row 1: ID + Description -->
           <div class="form-group">
-            <label class="form-label">Project ID <span style="color:#b00">*</span></label>
+            <label class="form-label">Project ID</label>
             <input class="form-control" id="prj_id" placeholder="Auto-generated if blank">
           </div>
           <div class="form-group">
-            <label class="form-label">Project Name <span style="color:#b00">*</span></label>
-            <input class="form-control" id="prj_name" placeholder="Project name">
+            <label class="form-label">Project Description <span style="color:#b00">*</span></label>
+            <input class="form-control" id="prj_desc" placeholder="Short project description">
           </div>
+
+          <!-- Row 2: Status + Priority -->
           <div class="form-group">
             <label class="form-label">Status</label>
             <select class="form-control" id="prj_status">
@@ -4944,8 +4947,9 @@
             </select>
           </div>
 
+          <!-- Row 3: Rig + Location -->
           <div class="form-group">
-            <label class="form-label">Rig</label>
+            <label class="form-label">Rig / Workshop</label>
             <select class="form-control" id="prj_rig">
               <option value="">— None —</option>
             </select>
@@ -4954,10 +4958,28 @@
             <label class="form-label">Location</label>
             <input class="form-control" id="prj_location" placeholder="e.g. Field A, Block 3">
           </div>
+
+          <!-- Row 4: Manager + Initiation Date -->
           <div class="form-group">
             <label class="form-label">Project Manager</label>
             <input class="form-control" id="prj_manager" placeholder="Manager name">
           </div>
+          <div class="form-group">
+            <label class="form-label">Initiation Date</label>
+            <input class="form-control" id="prj_initiation" type="date">
+          </div>
+
+          <!-- Row 5: Supervisor Name + Supervisor Contact -->
+          <div class="form-group">
+            <label class="form-label"><i class="fas fa-user-tie" style="color:var(--sap-blue);margin-right:5px"></i>Supervisor Name</label>
+            <input class="form-control" id="prj_supervisor_name" placeholder="Supervisor full name">
+          </div>
+          <div class="form-group">
+            <label class="form-label"><i class="fas fa-phone" style="color:var(--sap-blue);margin-right:5px"></i>Supervisor Contact</label>
+            <input class="form-control" id="prj_supervisor_contact" placeholder="+966 5X XXX XXXX">
+          </div>
+
+          <!-- Row 6: Start Date + End Date -->
           <div class="form-group">
             <label class="form-label">Start Date</label>
             <input class="form-control" id="prj_start" type="date">
@@ -4966,18 +4988,19 @@
             <label class="form-label">End Date</label>
             <input class="form-control" id="prj_end" type="date">
           </div>
+
+          <!-- Row 7: Progress -->
           <div class="form-group">
             <label class="form-label">Progress (%)</label>
             <input class="form-control" id="prj_progress" type="number" min="0" max="100" placeholder="0">
           </div>
-          <div class="form-group" style="grid-column:1/-1">
-            <label class="form-label">Description</label>
-            <textarea class="form-control" id="prj_desc" rows="2" placeholder="Project description..."></textarea>
-          </div>
+
+          <!-- Row 8: Notes (full width) -->
           <div class="form-group" style="grid-column:1/-1">
             <label class="form-label">Notes</label>
             <textarea class="form-control" id="prj_notes" rows="2" placeholder="Additional notes..."></textarea>
           </div>
+
         </div>
       </div>
       <div class="modal-footer">
@@ -6569,21 +6592,21 @@ Asset Management System</textarea>
 
     // ── Visible column state (Set of keys) ──────────────────────────
     const PROJECT_COLS = [
-      { key: 'projectId', label: 'Project ID', locked: true, default: true, sortKey: 'projectId' },
-      { key: 'name', label: 'Name', locked: false, default: true, sortKey: 'name' },
-      { key: 'status', label: 'Status', locked: false, default: true, sortKey: 'status' },
-      { key: 'priority', label: 'Priority', locked: false, default: true, sortKey: 'priority' },
-
-      { key: 'rigName', label: 'Rig / Workshop', locked: false, default: true, sortKey: 'rigName' },
-      { key: 'manager', label: 'Manager', locked: false, default: true, sortKey: 'manager' },
-      { key: 'startDate', label: 'Start Date', locked: false, default: true, sortKey: 'startDate' },
-      { key: 'endDate', label: 'End Date', locked: false, default: true, sortKey: 'endDate' },
-      { key: 'budget', label: 'Budget (USD)', locked: false, default: true, sortKey: 'budget' },
-      { key: 'progress', label: 'Progress', locked: false, default: true, sortKey: 'progress' },
-      { key: 'location', label: 'Location', locked: false, default: false, sortKey: 'location' },
-      { key: 'spent', label: 'Spent (USD)', locked: false, default: false, sortKey: 'spent' },
-      { key: 'linkedAssets', label: 'Linked Assets', locked: false, default: false, sortKey: null },
-      { key: 'description', label: 'Description', locked: false, default: false, sortKey: null },
+      { key: 'projectId',         label: 'Project ID',         locked: true,  default: true,  sortKey: 'projectId' },
+      { key: 'description',       label: 'Description',        locked: false, default: true,  sortKey: 'description' },
+      { key: 'status',            label: 'Status',             locked: false, default: true,  sortKey: 'status' },
+      { key: 'priority',          label: 'Priority',           locked: false, default: true,  sortKey: 'priority' },
+      { key: 'rigName',           label: 'Rig / Workshop',     locked: false, default: true,  sortKey: 'rigName' },
+      { key: 'manager',           label: 'Manager',            locked: false, default: true,  sortKey: 'manager' },
+      { key: 'supervisorName',    label: 'Supervisor',         locked: false, default: true,  sortKey: 'supervisorName' },
+      { key: 'supervisorContact', label: 'Supervisor Contact', locked: false, default: false, sortKey: 'supervisorContact' },
+      { key: 'initiationDate',    label: 'Initiation Date',    locked: false, default: true,  sortKey: 'initiationDate' },
+      { key: 'startDate',         label: 'Start Date',         locked: false, default: true,  sortKey: 'startDate' },
+      { key: 'endDate',           label: 'End Date',           locked: false, default: true,  sortKey: 'endDate' },
+      { key: 'progress',          label: 'Progress',           locked: false, default: true,  sortKey: 'progress' },
+      { key: 'location',          label: 'Location',           locked: false, default: false, sortKey: 'location' },
+      { key: 'linkedAssets',      label: 'Linked Assets',      locked: false, default: false, sortKey: null },
+      { key: 'notes',             label: 'Notes',              locked: false, default: false, sortKey: null },
     ];
 
     const _colState = {
@@ -6723,25 +6746,25 @@ Asset Management System</textarea>
     function normP(p) {
       return {
         ...p,
-        projectId: p.project_id || p.projectId || '',
-        rigName: p.rig_name || p.rigName || '',
-        startDate: p.start_date || p.startDate || '',
-        endDate: p.end_date || p.endDate || '',
-        budget: Number(p.budget || 0),
-        spent: Number(p.spent || 0),
-        progress: Number(p.progress || 0),
+        projectId:         p.project_id          || p.projectId          || '',
+        description:       p.description         || p.name               || '',
+        rigName:           p.rig_name            || p.rigName            || '',
+        supervisorName:    p.supervisor_name     || p.supervisorName     || '',
+        supervisorContact: p.supervisor_contact  || p.supervisorContact  || '',
+        initiationDate:    p.initiation_date     || p.initiationDate     || '',
+        startDate:         p.start_date          || p.startDate          || '',
+        endDate:           p.end_date            || p.endDate            || '',
+        progress:          Number(p.progress || 0),
       };
     }
 
     // ── KPIs ────────────────────────────────────────────────────────
     function updateProjectKPIs() {
-      document.getElementById('prjKpiTotal').textContent = PROJECTS.length;
-      document.getElementById('prjKpiActive').textContent = PROJECTS.filter(p => p.status === 'Active').length;
-      document.getElementById('prjKpiHold').textContent = PROJECTS.filter(p => p.status === 'On Hold').length;
-      document.getElementById('prjKpiDone').textContent = PROJECTS.filter(p => p.status === 'Completed').length;
-      const tot = PROJECTS.reduce((s, p) => s + p.budget, 0);
-      const el = document.getElementById('prjKpiBudget');
-      if (el) el.textContent = tot >= 1e6 ? '$' + (tot / 1e6).toFixed(1) + 'M' : '$' + tot.toLocaleString();
+      document.getElementById('prjKpiTotal').textContent    = PROJECTS.length;
+      document.getElementById('prjKpiActive').textContent   = PROJECTS.filter(p => p.status === 'Active').length;
+      document.getElementById('prjKpiHold').textContent     = PROJECTS.filter(p => p.status === 'On Hold').length;
+      document.getElementById('prjKpiDone').textContent     = PROJECTS.filter(p => p.status === 'Completed').length;
+      document.getElementById('prjKpiPlanning').textContent = PROJECTS.filter(p => p.status === 'Planning').length;
       const active = PROJECTS.filter(p => p.status === 'Active').length;
       const badge = document.getElementById('prjBadge');
       if (badge) { badge.textContent = active; badge.style.display = active ? '' : 'none'; }
@@ -6765,7 +6788,7 @@ Asset Management System</textarea>
       }
 
       filteredProjects = PROJECTS.filter(p => {
-        const hay = [p.projectId, p.name, p.manager || '', p.location || '', p.description || ''].join(' ').toLowerCase();
+        const hay = [p.projectId, p.description || '', p.manager || '', p.supervisorName || '', p.supervisorContact || '', p.location || '', p.notes || ''].join(' ').toLowerCase();
         const matchL = !fL || p.location === fL;
         return (!q || hay.includes(q)) && (!fS || p.status === fS) && (!fP || p.priority === fP) && (!fR || p.rigName === fR) && matchL;
       });
@@ -6853,20 +6876,20 @@ Asset Management System</textarea>
           const cells = cols.map(c => {
             switch (c.key) {
               case 'projectId': return `<td><span class="tag blue" style="font-family:'IBM Plex Mono',monospace;font-size:11px">${p.projectId}</span></td>`;
-              case 'name': return `<td style="font-weight:600;font-size:13px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(p.name || '').replace(/"/g, '&quot;')}">${p.name}</td>`;
+              case 'description': return `<td style="font-weight:600;font-size:13px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(p.description || '').replace(/"/g, '&quot;')}">${p.description || '—'}</td>`;
               case 'status': return `<td>${prjStatusBadge(p.status)}</td>`;
               case 'priority': return `<td>${prjPriBadge(p.priority)}</td>`;
-
               case 'rigName': return `<td style="font-size:12.5px">${p.rigName || '—'}</td>`;
               case 'manager': return `<td style="font-size:12.5px">${p.manager || '—'}</td>`;
+              case 'supervisorName': return `<td style="font-size:12.5px">${p.supervisorName || '—'}</td>`;
+              case 'supervisorContact': return `<td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${p.supervisorContact || '—'}</td>`;
+              case 'initiationDate': return `<td style="font-size:12px;color:var(--sap-text-muted)">${p.initiationDate || '—'}</td>`;
               case 'startDate': return `<td style="font-size:12px;color:var(--sap-text-muted)">${p.startDate || '—'}</td>`;
               case 'endDate': return `<td style="font-size:12px;color:var(--sap-text-muted)">${p.endDate || '—'}</td>`;
-              case 'budget': return `<td style="font-family:'IBM Plex Mono',monospace;font-size:12.5px">$${p.budget.toLocaleString()}</td>`;
-              case 'spent': return `<td style="font-family:'IBM Plex Mono',monospace;font-size:12.5px">$${p.spent.toLocaleString()}</td>`;
               case 'progress': return `<td>${prjProgressBar(p.progress)}</td>`;
               case 'location': return `<td style="font-size:12.5px">${p.location || '—'}</td>`;
               case 'linkedAssets': return `<td><span class="tag blue" style="font-size:11px">${linkedCount}</span></td>`;
-              case 'description': return `<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="${(p.description || '').replace(/"/g, '&quot;')}">${p.description || '—'}</td>`;
+              case 'notes': return `<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="${(p.notes || '').replace(/"/g, '&quot;')}">${p.notes || '—'}</td>`;
               default: return `<td>—</td>`;
             }
           }).join('');
@@ -6914,7 +6937,7 @@ Asset Management System</textarea>
     function openProjectDetail(id) {
       const p = PROJECTS.find(x => x.projectId === id); if (!p) return;
       const linked = ASSETS.filter(a => a.rigName === p.rigName);
-      showToast(`${p.name} · ${p.status} · ${p.progress}% · Budget: $${p.budget.toLocaleString()} · ${linked.length} linked assets`, 'info');
+      showToast(`${p.description || p.projectId} · ${p.status} · ${p.progress}% · Supervisor: ${p.supervisorName || 'N/A'} · ${linked.length} linked assets`, 'info');
     }
 
     // ── Add / Edit modal ────────────────────────────────────────────
@@ -6931,25 +6954,28 @@ Asset Management System</textarea>
 
       if (_prjEditId) {
         const p = PROJECTS.find(x => x.projectId === _prjEditId); if (!p) return;
-        document.getElementById('prj_editId').value = p.projectId;
-        document.getElementById('prj_id').value = p.projectId;
-        document.getElementById('prj_id').readOnly = true;
-        document.getElementById('prj_name').value = p.name || '';
-        document.getElementById('prj_status').value = p.status || 'Planning';
-        document.getElementById('prj_priority').value = p.priority || 'Normal';
-
-        document.getElementById('prj_rig').value = p.rigName || '';
-        document.getElementById('prj_location').value = p.location || '';
-        document.getElementById('prj_manager').value = p.manager || '';
-        document.getElementById('prj_start').value = p.startDate || '';
-        document.getElementById('prj_end').value = p.endDate || '';
-        document.getElementById('prj_progress').value = p.progress || 0;
-        document.getElementById('prj_desc').value = p.description || '';
-        document.getElementById('prj_notes').value = p.notes || '';
+        document.getElementById('prj_editId').value           = p.projectId;
+        document.getElementById('prj_id').value               = p.projectId;
+        document.getElementById('prj_id').readOnly            = true;
+        document.getElementById('prj_desc').value             = p.description || '';
+        document.getElementById('prj_status').value           = p.status || 'Planning';
+        document.getElementById('prj_priority').value         = p.priority || 'Normal';
+        document.getElementById('prj_rig').value              = p.rigName || '';
+        document.getElementById('prj_location').value         = p.location || '';
+        document.getElementById('prj_manager').value          = p.manager || '';
+        document.getElementById('prj_supervisor_name').value    = p.supervisorName || '';
+        document.getElementById('prj_supervisor_contact').value = p.supervisorContact || '';
+        document.getElementById('prj_initiation').value       = p.initiationDate || '';
+        document.getElementById('prj_start').value            = p.startDate || '';
+        document.getElementById('prj_end').value              = p.endDate || '';
+        document.getElementById('prj_progress').value         = p.progress || 0;
+        document.getElementById('prj_notes').value            = p.notes || '';
       } else {
         document.getElementById('prj_editId').value = '';
         document.getElementById('prj_id').readOnly = false;
-        ['prj_id', 'prj_name', 'prj_location', 'prj_manager', 'prj_start', 'prj_end', 'prj_desc', 'prj_notes'].forEach(i => { document.getElementById(i).value = ''; });
+        ['prj_id', 'prj_desc', 'prj_location', 'prj_manager', 'prj_supervisor_name',
+         'prj_supervisor_contact', 'prj_initiation', 'prj_start', 'prj_end', 'prj_notes'
+        ].forEach(i => { document.getElementById(i).value = ''; });
         document.getElementById('prj_progress').value = '0';
         document.getElementById('prj_status').value = 'Planning';
         document.getElementById('prj_priority').value = 'Normal';
@@ -6960,23 +6986,24 @@ Asset Management System</textarea>
 
     async function saveProject() {
       let id = (document.getElementById('prj_editId').value || document.getElementById('prj_id').value).trim();
-      const name = document.getElementById('prj_name').value.trim();
-      if (!name) { showToast('Project Name is required.', 'error'); return; }
+      const description = document.getElementById('prj_desc').value.trim();
+      if (!description) { showToast('Project Description is required.', 'error'); return; }
       if (!id) { id = 'PRJ-' + Date.now().toString().slice(-8); document.getElementById('prj_id').value = id; }
       const payload = {
-        project_id: id, name,
-        status: document.getElementById('prj_status').value,
-        priority: document.getElementById('prj_priority').value,
-
-        rig_name: document.getElementById('prj_rig').value,
-        location: document.getElementById('prj_location').value.trim(),
-        manager: document.getElementById('prj_manager').value.trim(),
-        start_date: document.getElementById('prj_start').value || null,
-        end_date: document.getElementById('prj_end').value || null,
-        budget: parseFloat(0),
-        progress: parseInt(document.getElementById('prj_progress').value) || 0,
-        description: document.getElementById('prj_desc').value.trim(),
-        notes: document.getElementById('prj_notes').value.trim(),
+        project_id:         id,
+        description,
+        status:             document.getElementById('prj_status').value,
+        priority:           document.getElementById('prj_priority').value,
+        rig_name:           document.getElementById('prj_rig').value,
+        location:           document.getElementById('prj_location').value.trim(),
+        manager:            document.getElementById('prj_manager').value.trim(),
+        supervisor_name:    document.getElementById('prj_supervisor_name').value.trim(),
+        supervisor_contact: document.getElementById('prj_supervisor_contact').value.trim(),
+        initiation_date:    document.getElementById('prj_initiation').value || null,
+        start_date:         document.getElementById('prj_start').value || null,
+        end_date:           document.getElementById('prj_end').value || null,
+        progress:           parseInt(document.getElementById('prj_progress').value) || 0,
+        notes:              document.getElementById('prj_notes').value.trim(),
       };
       try {
         if (_prjEditId) {
@@ -6997,7 +7024,7 @@ Asset Management System</textarea>
     // ── Delete ──────────────────────────────────────────────────────
     async function deleteProject(id, silent) {
       const p = PROJECTS.find(x => x.projectId === id); if (!p) return;
-      if (!silent && !confirm(`Delete project "${p.name}"?  This cannot be undone.`)) return;
+      if (!silent && !confirm(`Delete project "${p.description || id}"?  This cannot be undone.`)) return;
       try {
         if (typeof DELETE !== 'undefined') await DELETE(`/projects/${id}`);
         PROJECTS.splice(PROJECTS.findIndex(x => x.projectId === id), 1);
@@ -7064,14 +7091,13 @@ Asset Management System</textarea>
         const results = await Promise.allSettled(ids.map(async id => {
           const p = PROJECTS.find(x => x.projectId === id); if (!p) throw new Error('Not found');
           const payload = {
-            project_id: p.projectId, name: p.name,
+            project_id: p.projectId, description: p.description,
             status: changes.status ?? p.status,
             priority: changes.priority ?? p.priority,
-
             rig_name: changes.rig_name ?? p.rigName,
             location: changes.location ?? p.location,
             manager: changes.manager ?? p.manager,
-            budget: p.budget, progress: p.progress,
+            progress: p.progress,
           };
           const res = await PUT(`/projects/${id}`, payload);
           const idx = PROJECTS.findIndex(x => x.projectId === id);
@@ -7105,13 +7131,13 @@ Asset Management System</textarea>
       const data = filteredProjects.length < PROJECTS.length ? filteredProjects : PROJECTS;
       if (!data.length) { showToast('No data to export.', 'warning'); return; }
       const ws = XLSX.utils.json_to_sheet(data.map(p => ({
-        'Project ID': p.projectId, 'Name': p.name, 'Status': p.status, 'Priority': p.priority,
+        'Project ID': p.projectId, 'Description': p.description || '', 'Status': p.status, 'Priority': p.priority,
         'Rig': p.rigName || '', 'Manager': p.manager || '',
-        'Location': p.location || '', 'Start Date': p.startDate || '', 'End Date': p.endDate || '',
-        'Budget (USD)': p.budget, 'Spent (USD)': p.spent, 'Progress (%)': p.progress,
-        'Description': p.description || '',
+        'Supervisor': p.supervisorName || '', 'Supervisor Contact': p.supervisorContact || '',
+        'Initiation Date': p.initiationDate || '', 'Start Date': p.startDate || '', 'End Date': p.endDate || '',
+        'Progress (%)': p.progress, 'Location': p.location || '', 'Notes': p.notes || '',
       })));
-      ws['!cols'] = [12, 30, 12, 10, 20, 15, 20, 20, 12, 12, 14, 14, 12, 40].map(w => ({ wch: w }));
+      ws['!cols'] = [12, 35, 12, 10, 20, 18, 20, 18, 14, 14, 14, 12, 20, 30].map(w => ({ wch: w }));
       const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Projects');
       const suffix = filteredProjects.length < PROJECTS.length ? `_filtered_${filteredProjects.length}` : `_all_${PROJECTS.length}`;
       XLSX.writeFile(wb, `Projects${suffix}.xlsx`);
@@ -7133,10 +7159,10 @@ Asset Management System</textarea>
       doc.text(`${note}   |   ${new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}`, 14, 33);
       doc.autoTable({
         startY: 44,
-        head: [['Project ID', 'Name', 'Status', 'Priority', 'Rig', 'Manager', 'Start', 'End', 'Budget', 'Progress']],
-        body: data.map(p => [p.projectId, p.name, p.status, p.priority || 'Normal', p.rigName || '',
-        p.manager || '', p.startDate || '', p.endDate || '',
-        '$' + p.budget.toLocaleString(), (p.progress || 0) + '%']),
+        head: [['Project ID', 'Description', 'Status', 'Priority', 'Rig', 'Manager', 'Supervisor', 'Initiation', 'Start', 'End', 'Progress']],
+        body: data.map(p => [p.projectId, p.description || '', p.status, p.priority || 'Normal', p.rigName || '',
+        p.manager || '', p.supervisorName || '', p.initiationDate || '', p.startDate || '', p.endDate || '',
+        (p.progress || 0) + '%']),
         styles: { fontSize: 7.5, cellPadding: 3, textColor: [50, 54, 58] },
         headStyles: { fillColor: [0, 112, 242], textColor: 255, fontStyle: 'bold', fontSize: 8 },
         alternateRowStyles: { fillColor: [245, 246, 247] },
@@ -13781,25 +13807,27 @@ Instructions:
       // ── PROJECT save/delete ─────────────────────────────────────────────────
       window.saveProject = async function () {
         let id = (document.getElementById('prj_editId').value || document.getElementById('prj_id').value).trim();
-        const name = document.getElementById('prj_name').value.trim();
-        if (!name) { showToast('Project Name is required.', 'error'); return; }
-        // Auto-generate project ID if user left it blank
+        const description = document.getElementById('prj_desc').value.trim();
+        if (!description) { showToast('Project Description is required.', 'error'); return; }
         if (!id) {
           id = 'PRJ-' + Date.now().toString().slice(-8);
           document.getElementById('prj_id').value = id;
         }
         const payload = {
-          project_id: id, name,
-          status:      document.getElementById('prj_status').value,
-          priority:    document.getElementById('prj_priority').value,
-          rig_name:    document.getElementById('prj_rig').value,
-          location:    document.getElementById('prj_location').value.trim(),
-          manager:     document.getElementById('prj_manager').value.trim(),
-          start_date:  document.getElementById('prj_start').value || null,
-          end_date:    document.getElementById('prj_end').value || null,
-          progress:    parseInt(document.getElementById('prj_progress').value) || 0,
-          description: document.getElementById('prj_desc').value.trim(),
-          notes:       document.getElementById('prj_notes').value.trim(),
+          project_id:         id,
+          description,
+          status:             document.getElementById('prj_status').value,
+          priority:           document.getElementById('prj_priority').value,
+          rig_name:           document.getElementById('prj_rig').value,
+          location:           document.getElementById('prj_location').value.trim(),
+          manager:            document.getElementById('prj_manager').value.trim(),
+          supervisor_name:    document.getElementById('prj_supervisor_name').value.trim(),
+          supervisor_contact: document.getElementById('prj_supervisor_contact').value.trim(),
+          initiation_date:    document.getElementById('prj_initiation').value || null,
+          start_date:         document.getElementById('prj_start').value || null,
+          end_date:           document.getElementById('prj_end').value || null,
+          progress:           parseInt(document.getElementById('prj_progress').value) || 0,
+          notes:              document.getElementById('prj_notes').value.trim(),
         };
         try {
           if (window._prjEditId) {
@@ -13821,7 +13849,7 @@ Instructions:
       window.deleteProject = async function (id, silent) {
         const p = PROJECTS.find(x => x.projectId === id);
         if (!p) return;
-        if (!silent && !confirm(`Delete project "${p.name}"? This cannot be undone.`)) return;
+        if (!silent && !confirm(`Delete project "${p.description || id}"? This cannot be undone.`)) return;
         try {
           await DELETE(`/projects/${id}`);
           PROJECTS.splice(PROJECTS.findIndex(x => x.projectId === id), 1);

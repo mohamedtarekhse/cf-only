@@ -274,7 +274,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     }
     if(method==='GET')   return ok(await sbGet(SB,KEY,'projects',{filters:{project_id:`eq.${id}`},single:true}));
     if(method==='POST')  { if(!body.project_id) body.project_id='PRJ-'+Date.now().toString().slice(-8); return ok(await sbPost(SB,KEY,'projects',body)); }
-    if(method==='PUT')   { const {id:_i,project_id:_p,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'projects',{project_id:`eq.${id}`},u)); }
+    if(method==='PUT')   { const {id:_i,project_id:_p,created_at,updated_at,budget,spent,...u}=body; return ok(await sbPatch(SB,KEY,'projects',{project_id:`eq.${id}`},u)); }
     if(method==='DELETE'){ const r=await sbDelete(SB,KEY,'projects',{project_id:`eq.${id}`}); if(r.error)return err500(r.error); return ok({deleted:id}); }
   }
 
