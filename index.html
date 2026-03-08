@@ -4742,7 +4742,7 @@
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
           <div class="form-group">
             <label class="form-label">Project ID <span style="color:#b00">*</span></label>
-            <input class="form-control" id="prj_id" placeholder="e.g. PRJ-2025-001">
+            <input class="form-control" id="prj_id" placeholder="Auto-generated if blank">
           </div>
           <div class="form-group">
             <label class="form-label">Project Name <span style="color:#b00">*</span></label>
@@ -6656,10 +6656,10 @@ Asset Management System</textarea>
     }
 
     async function saveProject() {
-      const id = (document.getElementById('prj_editId').value || document.getElementById('prj_id').value).trim();
+      let id = (document.getElementById('prj_editId').value || document.getElementById('prj_id').value).trim();
       const name = document.getElementById('prj_name').value.trim();
-      if (!id) { showToast('Project ID is required.', 'error'); return; }
       if (!name) { showToast('Project Name is required.', 'error'); return; }
+      if (!id) { id = 'PRJ-' + Date.now().toString().slice(-8); document.getElementById('prj_id').value = id; }
       const payload = {
         project_id: id, name,
         status: document.getElementById('prj_status').value,
@@ -7823,9 +7823,8 @@ Asset Management System</textarea>
       initMaintenance();
       initProjects();
       initInspections();
-      // Apply role-based UI restrictions after all data is loaded
       if (typeof applyRoleUI === 'function') applyRoleUI();
-      // NOTE: do NOT set __bootstrapDone here — let the IIFE trigger bootstrap
+      // __bootstrapDone is set by the IIFE after it calls bootstrap()
     };
 
     // ══════════════════════════════════
@@ -13033,7 +13032,7 @@ Instructions:
         } catch (e) { console.error('markAllRead failed:', e); }
       };
 
-      // ── saveRigEntry override (needs POST/PUT in scope) ─────────────
+      // ── RIG save/delete ─────────────────────────────────────────────────────
       window.saveRigEntry = async function () {
         const name = document.getElementById('rig_name').value.trim();
         if (!name) { showToast('Rig Name is required.', 'error'); return; }
@@ -13057,22 +13056,39 @@ Instructions:
             showToast('Rig added ✓', 'success');
           }
           closeModal('addRigModal');
-          renderRigs();
+          if (typeof renderRigs === 'function') renderRigs();
           if (typeof populateFormSelects === 'function') populateFormSelects();
         } catch (e) { showToast('Save failed: ' + e.message, 'error'); }
       };
 
-      // ── saveContractEntry override (needs POST/PUT in scope) ────────
+      window.deleteRig = async function (id) {
+        const rig = RIGS.find(r => r.id === id);
+        if (!rig) return;
+        if (!confirm(`Delete rig "${rig.name}"? This cannot be undone.`)) return;
+        try {
+          await DELETE(`/rigs/${id}`);
+          RIGS.splice(RIGS.findIndex(r => r.id === id), 1);
+          if (typeof renderRigs === 'function') renderRigs();
+          if (typeof populateFormSelects === 'function') populateFormSelects();
+          showToast('Rig deleted.', 'success');
+        } catch (e) { showToast('Delete failed: ' + e.message, 'error'); }
+      };
+
+      // ── CONTRACT save/delete ────────────────────────────────────────────────
       window.saveContractEntry = async function () {
         const id = document.getElementById('contract_id').value.trim();
         if (!id) { showToast('Contract ID is required.', 'error'); return; }
         const payload = {
-          id, rig: document.getElementById('contract_rig').value,
+          id,
+          rig: document.getElementById('contract_rig').value,
           start_date: document.getElementById('contract_start').value || null,
           end_date: document.getElementById('contract_end').value || null,
           status: document.getElementById('contract_status_field').value,
           notes: document.getElementById('contract_notes').value.trim(),
         };
+        // include value if field exists
+        const valEl = document.getElementById('contract_value');
+        if (valEl) payload.value = parseFloat(valEl.value) || 0;
         try {
           if (window.contractEditId) {
             const res = await PUT(`/contracts/${window.contractEditId}`, payload);
@@ -13086,15 +13102,33 @@ Instructions:
           }
           closeModal('addContractModal');
           if (typeof applyContractFilters === 'function') applyContractFilters();
+          else if (typeof renderContracts === 'function') renderContracts();
         } catch (e) { showToast('Save failed: ' + e.message, 'error'); }
       };
 
-      // ── saveProject override (needs POST/PUT in scope) ──────────────
+      window.deleteContract = async function (id) {
+        const c = CONTRACTS.find(x => x.id === id);
+        if (!c) return;
+        if (!confirm(`Delete contract "${id}"? This cannot be undone.`)) return;
+        try {
+          await DELETE(`/contracts/${id}`);
+          CONTRACTS.splice(CONTRACTS.findIndex(x => x.id === id), 1);
+          if (typeof applyContractFilters === 'function') applyContractFilters();
+          else if (typeof renderContracts === 'function') renderContracts();
+          showToast('Contract deleted.', 'success');
+        } catch (e) { showToast('Delete failed: ' + e.message, 'error'); }
+      };
+
+      // ── PROJECT save/delete ─────────────────────────────────────────────────
       window.saveProject = async function () {
-        const id = (document.getElementById('prj_editId').value || document.getElementById('prj_id').value).trim();
+        let id = (document.getElementById('prj_editId').value || document.getElementById('prj_id').value).trim();
         const name = document.getElementById('prj_name').value.trim();
-        if (!id)   { showToast('Project ID is required.', 'error'); return; }
         if (!name) { showToast('Project Name is required.', 'error'); return; }
+        // Auto-generate project ID if user left it blank
+        if (!id) {
+          id = 'PRJ-' + Date.now().toString().slice(-8);
+          document.getElementById('prj_id').value = id;
+        }
         const payload = {
           project_id: id, name,
           status:      document.getElementById('prj_status').value,
@@ -13108,6 +13142,8 @@ Instructions:
           description: document.getElementById('prj_desc').value.trim(),
           notes:       document.getElementById('prj_notes').value.trim(),
         };
+        const budgetEl = document.getElementById('prj_budget');
+        if (budgetEl) payload.budget = parseFloat(budgetEl.value) || 0;
         try {
           if (window._prjEditId) {
             const r = await PUT(`/projects/${window._prjEditId}`, payload);
@@ -13125,7 +13161,20 @@ Instructions:
         } catch (e) { showToast('Save failed: ' + e.message, 'error'); }
       };
 
-      // ── saveInspection override (needs POST/PUT in scope) ──────────
+      window.deleteProject = async function (id, silent) {
+        const p = PROJECTS.find(x => x.projectId === id);
+        if (!p) return;
+        if (!silent && !confirm(`Delete project "${p.name}"? This cannot be undone.`)) return;
+        try {
+          await DELETE(`/projects/${id}`);
+          PROJECTS.splice(PROJECTS.findIndex(x => x.projectId === id), 1);
+          filteredProjects = [...PROJECTS];
+          if (typeof applyProjectFilters === 'function') applyProjectFilters();
+          if (!silent) showToast('Project deleted.', 'success');
+        } catch (e) { if (!silent) showToast('Delete failed: ' + e.message, 'error'); }
+      };
+
+      // ── INSPECTION save/delete ──────────────────────────────────────────────
       window.saveInspection = async function () {
         const startDate = document.getElementById('insp_start').value;
         const type      = document.getElementById('insp_type').value;
@@ -13134,14 +13183,19 @@ Instructions:
         const payload = {
           po_number:       document.getElementById('insp_po').value.trim(),
           service_order:   document.getElementById('insp_so').value.trim(),
-          inspected_by:    document.getElementById('insp_by').value.trim(),
+          inspected_by:    document.getElementById('insp_by') ? document.getElementById('insp_by').value.trim() : '',
           start_date:      startDate,
           rig_name:        document.getElementById('insp_rig').value || null,
-          location:        document.getElementById('insp_location').value.trim(),
+          location:        document.getElementById('insp_location') ? document.getElementById('insp_location').value.trim() : '',
           inspection_type: type,
           end_date:        document.getElementById('insp_end').value || null,
           notes:           document.getElementById('insp_notes').value.trim(),
         };
+        // include cost fields if they still exist in DB (migration not yet run)
+        const cdEl = document.getElementById('insp_costday');
+        const tcEl = document.getElementById('insp_totalcost');
+        if (cdEl) payload.cost_per_day = parseFloat(cdEl.value) || 0;
+        if (tcEl) payload.total_cost   = parseFloat(tcEl.value) || 0;
         try {
           if (window._inspEditId) {
             const r = await PUT(`/inspections/${window._inspEditId}`, payload);
@@ -13159,6 +13213,19 @@ Instructions:
         } catch (e) { showToast('Save failed: ' + e.message, 'error'); }
       };
 
+      window.deleteInspection = async function (id, silent) {
+        const insp = INSPECTIONS.find(x => x.id === id);
+        if (!insp) return;
+        if (!silent && !confirm(`Delete this inspection record?\n${insp.inspectionType} · ${insp.startDate}\n\nThis cannot be undone.`)) return;
+        try {
+          await DELETE(`/inspections/${id}`);
+          INSPECTIONS.splice(INSPECTIONS.findIndex(x => x.id === id), 1);
+          filteredInspections = [...INSPECTIONS];
+          if (typeof applyInspectionFilters === 'function') applyInspectionFilters();
+          if (!silent) showToast('Inspection deleted.', 'success');
+        } catch (e) { if (!silent) showToast('Delete failed: ' + e.message, 'error'); }
+      };
+
       // Auto-boot after login succeeds
       const _origDoLogin = window.doLogin;
       window.doLogin = async function () {
@@ -13170,10 +13237,9 @@ Instructions:
         }
       };
 
-      // If session was already restored (page refresh with saved session),
-      // run bootstrap now. Use setTimeout(0) to ensure window.onload has
-      // fully completed before we start fetching data.
-      if (window.__sessionRestored) {
+      // If session was already restored (page refresh), trigger bootstrap.
+      // setTimeout(0) lets window.onload finish before we fetch data.
+      if (window.__sessionRestored && !window.__bootstrapDone) {
         window.__bootstrapDone = true;
         setTimeout(bootstrap, 0);
       }
