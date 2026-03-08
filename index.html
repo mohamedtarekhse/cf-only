@@ -3286,7 +3286,6 @@
                   <th onclick="sortTable('rigName')">Rig <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortTable('location')">Location <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortTable('status')">Status <i class="fas fa-sort sort-icon"></i></th>
-                  <th onclick="sortTable('value')">Value (USD) <i class="fas fa-sort sort-icon"></i></th>
                   <th onclick="sortTable('acquisitionDate')">Acquisition Date <i class="fas fa-sort sort-icon"></i></th>
                   <th>Actions</th>
                 </tr>
@@ -3357,7 +3356,6 @@
                   <th>Asset Count</th>
                   <th>Start Date</th>
                   <th>End Date</th>
-                  <th>Value (USD)</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -3398,12 +3396,6 @@
             <div class="kpi-label">Completed</div>
             <div class="kpi-value" id="prjKpiDone">0</div>
             <div class="kpi-sub">Finished</div>
-          </div>
-          <div class="kpi-card" style="border-top:3px solid #6D28D9">
-            <div class="kpi-icon" style="background:#EDE9FE;color:#6D28D9"><i class="fas fa-coins"></i></div>
-            <div class="kpi-label">Total Budget</div>
-            <div class="kpi-value" id="prjKpiBudget" style="font-size:18px">$0</div>
-            <div class="kpi-sub">All projects</div>
           </div>
         </div>
 
@@ -3535,12 +3527,6 @@
             <div class="kpi-label">Companies</div>
             <div class="kpi-value" id="inspKpiCompanies">0</div>
             <div class="kpi-sub">Unique companies</div>
-          </div>
-          <div class="kpi-card" style="border-top:3px solid #6D28D9">
-            <div class="kpi-icon" style="background:#EDE9FE;color:#6D28D9"><i class="fas fa-dollar-sign"></i></div>
-            <div class="kpi-label">Total Cost</div>
-            <div class="kpi-value" id="inspKpiCost" style="font-size:18px">$0</div>
-            <div class="kpi-sub">Joint total cost</div>
           </div>
         </div>
 
@@ -3746,8 +3732,6 @@
               <div class="bom-cell w80">Type</div>
               <div class="bom-cell w80">Qty</div>
               <div class="bom-cell w90">Unit</div>
-              <div class="bom-cell w120">Unit Cost (USD)</div>
-              <div class="bom-cell w120">Total Cost (USD)</div>
               <div class="bom-cell w90">Status</div>
               <div class="bom-cell" style="width:100px">Actions</div>
             </div>
@@ -4052,7 +4036,6 @@
                   <th>Priority</th>
                   <th>Technician</th>
                   <th>Est. Hours</th>
-                  <th>Cost (USD)</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -4435,10 +4418,6 @@
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Value (USD)</label>
-            <input class="form-control" id="contract_value" type="number" placeholder="e.g. 500000">
-          </div>
-          <div class="form-group">
             <label class="form-label">Start Date</label>
             <input class="form-control" id="contract_start" type="date">
           </div>
@@ -4641,25 +4620,11 @@
             <label class="form-label">End Date</label>
             <input class="form-control" id="insp_end" type="date">
           </div>
-          <div class="form-group">
-            <label class="form-label">Cost / Day (USD)</label>
-            <input class="form-control" id="insp_costday" type="number" min="0" step="0.01" placeholder="0.00">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Joint Total Cost (USD)</label>
-            <input class="form-control" id="insp_totalcost" type="number" min="0" step="0.01"
-              placeholder="Auto-calculated or manual">
-          </div>
           <div class="form-group" style="grid-column:1/-1">
             <label class="form-label">Notes</label>
             <textarea class="form-control" id="insp_notes" rows="2" placeholder="Additional notes..."></textarea>
           </div>
 
-        </div>
-        <div
-          style="background:#EBF4FF;border:1px solid #B3D4FF;border-radius:6px;padding:8px 14px;margin-top:8px;font-size:12.5px;color:#0040B0">
-          <i class="fas fa-calculator" style="margin-right:6px"></i>
-          Total cost auto-calculated from Cost/Day × number of days when end date is set. Override manually if needed.
         </div>
       </div>
       <div class="modal-footer">
@@ -4707,13 +4672,6 @@
           <label for="imef_so_chk">Service Order</label>
           <div class="field-ctrl">
             <input class="form-control" id="imef_so" placeholder="New service order..." disabled>
-          </div>
-        </div>
-        <div class="mass-edit-field" id="imef-costday">
-          <input type="checkbox" id="imef_costday_chk" onchange="toggleInspField('costday')">
-          <label for="imef_costday_chk">Cost / Day</label>
-          <div class="field-ctrl">
-            <input class="form-control" id="imef_costday" type="number" min="0" placeholder="0.00" disabled>
           </div>
         </div>
       </div>
@@ -4789,10 +4747,6 @@
           <div class="form-group">
             <label class="form-label">End Date</label>
             <input class="form-control" id="prj_end" type="date">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Budget (USD)</label>
-            <input class="form-control" id="prj_budget" type="number" min="0" placeholder="0">
           </div>
           <div class="form-group">
             <label class="form-label">Progress (%)</label>
@@ -5237,8 +5191,6 @@ Asset Management System</textarea>
             <div class="bom-cell w80">Type</div>
             <div class="bom-cell w80">Qty</div>
             <div class="bom-cell w90">Unit</div>
-            <div class="bom-cell w120">Unit Cost (USD)</div>
-            <div class="bom-cell w120">Total Cost (USD)</div>
             <div class="bom-cell w90">Status</div>
             <div class="bom-cell" style="width:80px">Actions</div>
           </div>
@@ -5854,10 +5806,6 @@ Asset Management System</textarea>
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Estimated Cost (USD)</label>
-            <input class="form-input" type="number" id="m_cost" placeholder="e.g. 1500">
-          </div>
-          <div class="form-group">
             <label class="form-label">Status</label>
             <select class="form-select" id="m_status">
               <option>Scheduled</option>
@@ -5935,10 +5883,6 @@ Asset Management System</textarea>
           <div class="form-group">
             <label class="form-label">Actual Duration (hours)</label>
             <input class="form-input" type="number" id="ml_hours" step="0.5" placeholder="e.g. 3.5">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Actual Cost (USD)</label>
-            <input class="form-input" type="number" id="ml_cost" placeholder="e.g. 1200">
           </div>
         </div>
         <div class="form-group">
@@ -6076,10 +6020,6 @@ Asset Management System</textarea>
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Unit Cost (USD)</label>
-            <input class="form-input" id="bom_unitCost" type="number" min="0" placeholder="0.00">
-          </div>
-          <div class="form-group">
             <label class="form-label">Lead Time (days)</label>
             <input class="form-input" id="bom_leadTime" type="number" min="0" placeholder="0">
           </div>
@@ -6127,7 +6067,6 @@ Asset Management System</textarea>
                 <th>Name</th>
                 <th>Category</th>
                 <th>Status</th>
-                <th>Value (USD)</th>
               </tr>
             </thead>
             <tbody id="rigAssetsTbody"></tbody>
@@ -6171,7 +6110,6 @@ Asset Management System</textarea>
                 <th>Category</th>
                 <th>Rig</th>
                 <th>Status</th>
-                <th>Value (USD)</th>
               </tr>
             </thead>
             <tbody id="contractAssetsTbody"></tbody>
@@ -6283,10 +6221,8 @@ Asset Management System</textarea>
       { key: 'manager', label: 'Manager', locked: false, default: true, sortKey: 'manager' },
       { key: 'startDate', label: 'Start Date', locked: false, default: true, sortKey: 'startDate' },
       { key: 'endDate', label: 'End Date', locked: false, default: true, sortKey: 'endDate' },
-      { key: 'budget', label: 'Budget (USD)', locked: false, default: true, sortKey: 'budget' },
       { key: 'progress', label: 'Progress', locked: false, default: true, sortKey: 'progress' },
       { key: 'location', label: 'Location', locked: false, default: false, sortKey: 'location' },
-      { key: 'spent', label: 'Spent (USD)', locked: false, default: false, sortKey: 'spent' },
       { key: 'linkedAssets', label: 'Linked Assets', locked: false, default: false, sortKey: null },
       { key: 'description', label: 'Description', locked: false, default: false, sortKey: null },
     ];
@@ -6432,8 +6368,6 @@ Asset Management System</textarea>
         rigName: p.rig_name || p.rigName || '',
         startDate: p.start_date || p.startDate || '',
         endDate: p.end_date || p.endDate || '',
-        budget: Number(p.budget || 0),
-        spent: Number(p.spent || 0),
         progress: Number(p.progress || 0),
       };
     }
@@ -6444,9 +6378,6 @@ Asset Management System</textarea>
       document.getElementById('prjKpiActive').textContent = PROJECTS.filter(p => p.status === 'Active').length;
       document.getElementById('prjKpiHold').textContent = PROJECTS.filter(p => p.status === 'On Hold').length;
       document.getElementById('prjKpiDone').textContent = PROJECTS.filter(p => p.status === 'Completed').length;
-      const tot = PROJECTS.reduce((s, p) => s + p.budget, 0);
-      const el = document.getElementById('prjKpiBudget');
-      if (el) el.textContent = tot >= 1e6 ? '$' + (tot / 1e6).toFixed(1) + 'M' : '$' + tot.toLocaleString();
       const active = PROJECTS.filter(p => p.status === 'Active').length;
       const badge = document.getElementById('prjBadge');
       if (badge) { badge.textContent = active; badge.style.display = active ? '' : 'none'; }
@@ -6476,7 +6407,7 @@ Asset Management System</textarea>
       if (prjSortKey === key) prjSortDir *= -1; else { prjSortKey = key; prjSortDir = 1; }
       filteredProjects.sort((a, b) => {
         let va = a[key] ?? '', vb = b[key] ?? '';
-        if (['budget', 'spent', 'progress'].includes(key)) { va = Number(va); vb = Number(vb); }
+        if (['progress'].includes(key)) { va = Number(va); vb = Number(vb); }
         return va > vb ? prjSortDir : va < vb ? -prjSortDir : 0;
       });
       renderProjects();
@@ -6555,8 +6486,6 @@ Asset Management System</textarea>
               case 'manager': return `<td style="font-size:12.5px">${p.manager || '—'}</td>`;
               case 'startDate': return `<td style="font-size:12px;color:var(--sap-text-muted)">${p.startDate || '—'}</td>`;
               case 'endDate': return `<td style="font-size:12px;color:var(--sap-text-muted)">${p.endDate || '—'}</td>`;
-              case 'budget': return `<td style="font-family:'IBM Plex Mono',monospace;font-size:12.5px">$${p.budget.toLocaleString()}</td>`;
-              case 'spent': return `<td style="font-family:'IBM Plex Mono',monospace;font-size:12.5px">$${p.spent.toLocaleString()}</td>`;
               case 'progress': return `<td>${prjProgressBar(p.progress)}</td>`;
               case 'location': return `<td style="font-size:12.5px">${p.location || '—'}</td>`;
               case 'linkedAssets': return `<td><span class="tag blue" style="font-size:11px">${linkedCount}</span></td>`;
@@ -6608,7 +6537,7 @@ Asset Management System</textarea>
     function openProjectDetail(id) {
       const p = PROJECTS.find(x => x.projectId === id); if (!p) return;
       const linked = ASSETS.filter(a => a.rigName === p.rigName);
-      showToast(`${p.name} · ${p.status} · ${p.progress}% · Budget: $${p.budget.toLocaleString()} · ${linked.length} linked assets`, 'info');
+      showToast(`${p.name} · ${p.status} · ${p.progress}% · ${linked.length} linked assets`, 'info');
     }
 
     // ── Add / Edit modal ────────────────────────────────────────────
@@ -6635,7 +6564,6 @@ Asset Management System</textarea>
         document.getElementById('prj_manager').value = p.manager || '';
         document.getElementById('prj_start').value = p.startDate || '';
         document.getElementById('prj_end').value = p.endDate || '';
-        document.getElementById('prj_budget').value = p.budget || 0;
         document.getElementById('prj_progress').value = p.progress || 0;
         document.getElementById('prj_desc').value = p.description || '';
         document.getElementById('prj_notes').value = p.notes || '';
@@ -6643,7 +6571,6 @@ Asset Management System</textarea>
         document.getElementById('prj_editId').value = '';
         document.getElementById('prj_id').readOnly = false;
         ['prj_id', 'prj_name', 'prj_location', 'prj_manager', 'prj_start', 'prj_end', 'prj_desc', 'prj_notes'].forEach(i => { document.getElementById(i).value = ''; });
-        document.getElementById('prj_budget').value = '0';
         document.getElementById('prj_progress').value = '0';
         document.getElementById('prj_status').value = 'Planning';
         document.getElementById('prj_priority').value = 'Normal';
@@ -6668,7 +6595,6 @@ Asset Management System</textarea>
         manager: document.getElementById('prj_manager').value.trim(),
         start_date: document.getElementById('prj_start').value || null,
         end_date: document.getElementById('prj_end').value || null,
-        budget: parseFloat(document.getElementById('prj_budget').value) || 0,
         progress: parseInt(document.getElementById('prj_progress').value) || 0,
         description: document.getElementById('prj_desc').value.trim(),
         notes: document.getElementById('prj_notes').value.trim(),
@@ -6766,7 +6692,7 @@ Asset Management System</textarea>
             rig_name: changes.rig_name ?? p.rigName,
             location: changes.location ?? p.location,
             manager: changes.manager ?? p.manager,
-            budget: p.budget, progress: p.progress,
+            progress: p.progress,
           };
           const res = await PUT(`/projects/${id}`, payload);
           const idx = PROJECTS.findIndex(x => x.projectId === id);
@@ -6803,7 +6729,7 @@ Asset Management System</textarea>
         'Project ID': p.projectId, 'Name': p.name, 'Status': p.status, 'Priority': p.priority,
         'Rig': p.rigName || '', 'Manager': p.manager || '',
         'Location': p.location || '', 'Start Date': p.startDate || '', 'End Date': p.endDate || '',
-        'Budget (USD)': p.budget, 'Spent (USD)': p.spent, 'Progress (%)': p.progress,
+        'Progress (%)': p.progress,
         'Description': p.description || '',
       })));
       ws['!cols'] = [12, 30, 12, 10, 20, 15, 20, 20, 12, 12, 14, 14, 12, 40].map(w => ({ wch: w }));
@@ -6828,10 +6754,10 @@ Asset Management System</textarea>
       doc.text(`${note}   |   ${new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}`, 14, 33);
       doc.autoTable({
         startY: 44,
-        head: [['Project ID', 'Name', 'Status', 'Priority', 'Rig', 'Manager', 'Start', 'End', 'Budget', 'Progress']],
+        head: [['Project ID', 'Name', 'Status', 'Priority', 'Rig', 'Manager', 'Start', 'End', 'Progress']],
         body: data.map(p => [p.projectId, p.name, p.status, p.priority || 'Normal', p.rigName || '',
         p.manager || '', p.startDate || '', p.endDate || '',
-        '$' + p.budget.toLocaleString(), (p.progress || 0) + '%']),
+        (p.progress || 0) + '%']),
         styles: { fontSize: 7.5, cellPadding: 3, textColor: [50, 54, 58] },
         headStyles: { fillColor: [0, 112, 242], textColor: 255, fontStyle: 'bold', fontSize: 8 },
         alternateRowStyles: { fillColor: [245, 246, 247] },
@@ -7316,8 +7242,6 @@ Asset Management System</textarea>
         location:       r.location       || '',
         endDate:        r.end_date       || r.endDate        || '',
         inspectionType: r.inspection_type|| r.inspectionType || '',
-        costPerDay:     Number(r.cost_per_day || r.costPerDay || 0),
-        totalCost:      Number(r.total_cost   || r.totalCost  || 0),
         notes:          r.notes || '',
       };
     }
@@ -7333,9 +7257,6 @@ Asset Management System</textarea>
         return d.getMonth() === month && d.getFullYear() === year;
       }).length;
       document.getElementById('inspKpiMonth').textContent = thisMonth;
-      const total = INSPECTIONS.reduce((s, i) => s + i.totalCost, 0);
-      const el = document.getElementById('inspKpiCost');
-      if (el) el.textContent = total >= 1e6 ? '$' + (total / 1e6).toFixed(1) + 'M' : '$' + total.toLocaleString();
     }
 
     // ── Populate filter dropdowns ────────────────────────────────────
@@ -7381,7 +7302,7 @@ Asset Management System</textarea>
       if (inspSortKey === key) inspSortDir *= -1; else { inspSortKey = key; inspSortDir = 1; }
       filteredInspections.sort((a, b) => {
         let va = a[key] ?? '', vb = b[key] ?? '';
-        if (['costPerDay', 'totalCost'].includes(key)) { va = Number(va); vb = Number(vb); }
+        if (['progress'].includes(key)) { va = Number(va); vb = Number(vb); }
         return va > vb ? inspSortDir : va < vb ? -inspSortDir : 0;
       });
       renderInspections();
@@ -7541,31 +7462,15 @@ Asset Management System</textarea>
         document.getElementById('insp_location').value  = insp.location || '';
         document.getElementById('insp_type').value      = insp.inspectionType || '';
         document.getElementById('insp_end').value       = insp.endDate || '';
-        document.getElementById('insp_costday').value   = insp.costPerDay || '';
-        document.getElementById('insp_totalcost').value = insp.totalCost || '';
         document.getElementById('insp_notes').value     = insp.notes || '';
       } else {
-        ['insp_editId', 'insp_start', 'insp_end', 'insp_costday', 'insp_totalcost',
+        ['insp_editId', 'insp_start', 'insp_end',
          'insp_po', 'insp_so', 'insp_by', 'insp_location', 'insp_notes'].forEach(fid => {
           document.getElementById(fid).value = '';
         });
         document.getElementById('insp_type').value = '';
         if (rigSel) rigSel.value = '';
       }
-
-      // Auto-calc total cost when dates or cost/day changes
-      const autoCalc = () => {
-        const s = document.getElementById('insp_start').value;
-        const e = document.getElementById('insp_end').value;
-        const cpd = parseFloat(document.getElementById('insp_costday').value);
-        if (s && e && !isNaN(cpd) && cpd > 0) {
-          const days = Math.max(1, Math.ceil((new Date(e) - new Date(s)) / 86400000) + 1);
-          document.getElementById('insp_totalcost').value = (cpd * days).toFixed(2);
-        }
-      };
-      document.getElementById('insp_start').oninput = autoCalc;
-      document.getElementById('insp_end').oninput = autoCalc;
-      document.getElementById('insp_costday').oninput = autoCalc;
 
       openModal('inspectionModal');
     }
@@ -7587,8 +7492,6 @@ Asset Management System</textarea>
         location:        document.getElementById('insp_location').value.trim(),
         inspection_type: type,
         end_date:        document.getElementById('insp_end').value || null,
-        cost_per_day:    parseFloat(document.getElementById('insp_costday').value) || 0,
-        total_cost:      parseFloat(document.getElementById('insp_totalcost').value) || 0,
         notes:           document.getElementById('insp_notes').value.trim(),
       };
 
@@ -7686,12 +7589,12 @@ Asset Management System</textarea>
     async function applyInspectionMassEdit() {
       const ids = [..._selectedInspections];
       if (!ids.length) { showToast('No inspections selected.', 'warning'); return; }
-      const fMap = { type: 'inspection_type', po: 'po_number', so: 'service_order', costday: 'cost_per_day' };
+      const fMap = { type: 'inspection_type', po: 'po_number', so: 'service_order' };
       const changes = {};
       Object.entries(fMap).forEach(([f, key]) => {
         const chk = document.getElementById(`imef_${f}_chk`);
         const ctrl = document.getElementById(`imef_${f}`);
-        if (chk?.checked && ctrl) changes[key] = key === 'cost_per_day' ? parseFloat(ctrl.value) || 0 : ctrl.value;
+        if (chk?.checked && ctrl) changes[key] = ctrl.value;
       });
       if (!Object.keys(changes).length) { showToast('Check at least one field.', 'warning'); return; }
       document.getElementById('inspMassProgress').textContent = 'Applying…';
@@ -7705,8 +7608,6 @@ Asset Management System</textarea>
             end_date: insp.endDate || null,
 
             inspection_type: changes.inspection_type ?? insp.inspectionType,
-            cost_per_day: changes.cost_per_day ?? insp.costPerDay,
-            total_cost: insp.totalCost,
             po_number: changes.po_number ?? insp.po,
             service_order: changes.service_order ?? insp.serviceOrder,
             notes: insp.notes,
@@ -7725,7 +7626,6 @@ Asset Management System</textarea>
 
           if (changes.po_number) INSPECTIONS[idx].po = changes.po_number;
           if (changes.service_order) INSPECTIONS[idx].serviceOrder = changes.service_order;
-          if (changes.cost_per_day !== undefined) INSPECTIONS[idx].costPerDay = changes.cost_per_day;
           updated++;
         });
       }
@@ -7733,7 +7633,7 @@ Asset Management System</textarea>
       _selectedInspections.clear();
       closeModal('inspectionMassEditModal');
       applyInspectionFilters();
-      const labels = { inspection_type: 'Type', po_number: 'PO', service_order: 'Service Order', cost_per_day: 'Cost/Day' };
+      const labels = { inspection_type: 'Type', po_number: 'PO', service_order: 'Service Order' };
       const changed = Object.keys(changes).map(k => labels[k] || k).join(', ');
       showToast(failed ? `Updated ${updated}, ${failed} failed. (${changed})` : `${updated} inspection(s) updated ✓  (${changed})`, failed ? 'warning' : 'success');
     }
@@ -7745,10 +7645,8 @@ Asset Management System</textarea>
       const ws = XLSX.utils.json_to_sheet(data.map(i => ({
         'Start Date': i.startDate || '',
         'End Date': i.endDate || '',
-
         'Type of Inspection': i.inspectionType || '',
-        'Cost / Day (USD)': i.costPerDay || 0,
-        'Joint Total Cost': i.totalCost || 0,
+        'Rig': i.rigName || '',
         'PO Number': i.po || '',
         'Service Order': i.serviceOrder || '',
         'Notes': i.notes || '',
@@ -7774,18 +7672,17 @@ Asset Management System</textarea>
       doc.text(`Records: ${data.length}   |   ${new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}`, 14, 33);
       doc.autoTable({
         startY: 44,
-        head: [['Start Date', 'End Date', 'Type of Inspection', 'Cost/Day', 'Total Cost', 'PO', 'Service Order']],
+        head: [['Start Date', 'End Date', 'Type of Inspection', 'Rig', 'PO', 'Service Order']],
         body: data.map(i => [
           i.startDate || '', i.endDate || '',
           i.inspectionType || '',
-          i.costPerDay ? '$' + i.costPerDay.toLocaleString() : '—',
-          i.totalCost ? '$' + i.totalCost.toLocaleString() : '—',
+          i.rigName || '',
           i.po || '', i.serviceOrder || '',
         ]),
         styles: { fontSize: 7.5, cellPadding: 3, textColor: [50, 54, 58] },
         headStyles: { fillColor: [0, 112, 242], textColor: 255, fontStyle: 'bold', fontSize: 8 },
         alternateRowStyles: { fillColor: [245, 246, 247] },
-        columnStyles: { 4: { halign: 'right' }, 5: { halign: 'right' } },
+        columnStyles: {},
         margin: { left: 14, right: 14 },
         didDrawPage: function () {
           const pg = doc.internal.getCurrentPageInfo().pageNumber;
@@ -8408,7 +8305,6 @@ Asset Management System</textarea>
       <td>${c.assetCount}</td>
       <td>${c.start}</td>
       <td>${c.end}</td>
-      <td style="font-family:'IBM Plex Mono',monospace;font-size:12.5px">$${Number(c.value).toLocaleString()}</td>
       <td>${statusBadge(c.status)}</td>
       <td><button class="btn btn-ghost btn-icon" onclick="openContractDetail('${c.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-ghost btn-icon" onclick="openAddContractModal(CONTRACTS.find(x=>x.id==='${c.id}'))"><i class="fas fa-edit"></i></button><button class="btn btn-ghost btn-icon" title="Delete" style="color:var(--sap-error)" onclick="deleteContract('${c.id}')"><i class="fas fa-trash"></i></button></td>
     </tr>`).join('');
@@ -8469,9 +8365,8 @@ Asset Management System</textarea>
             <td style="font-weight:500">${a.name}</td>
             <td>${a.category || '—'}</td>
             <td>${statusBadge(a.status)}</td>
-            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">$${Number(a.value || 0).toLocaleString()}</td>
           </tr>`).join('')
-        : '<tr><td colspan="5" style="text-align:center;color:var(--sap-text-muted);padding:16px">No assets assigned to this rig</td></tr>';
+        : '<tr><td colspan="4" style="text-align:center;color:var(--sap-text-muted);padding:16px">No assets assigned to this rig</td></tr>';
 
       openModal('rigDetailModal');
     }
@@ -8500,7 +8395,6 @@ Asset Management System</textarea>
       const fields = [
         { label: 'Contract ID', value: c.id },
         { label: 'Rig', value: c.rig || '—' },
-        { label: 'Contract Value', value: '$' + Number(c.value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 }) },
         { label: 'Start Date', value: startFmt },
         { label: 'End Date', value: endFmt },
         { label: 'Status', value: c.status || '—' },
@@ -8520,9 +8414,8 @@ Asset Management System</textarea>
             <td>${a.category || '—'}</td>
             <td>${a.rigName || '—'}</td>
             <td>${statusBadge(a.status)}</td>
-            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">$${Number(a.value || 0).toLocaleString()}</td>
           </tr>`).join('')
-        : '<tr><td colspan="6" style="text-align:center;color:var(--sap-text-muted);padding:16px">No assets found for this contract</td></tr>';
+        : '<tr><td colspan="5" style="text-align:center;color:var(--sap-text-muted);padding:16px">No assets found for this contract</td></tr>';
 
       openModal('contractDetailModal');
     }
@@ -8731,7 +8624,6 @@ Asset Management System</textarea>
         document.getElementById('contract_id').disabled = !!contractEditId;
 
         document.getElementById('contract_rig').value = contract.rig || '';
-        document.getElementById('contract_value').value = contract.value || '';
         document.getElementById('contract_start').value = contract.start || '';
         document.getElementById('contract_end').value = contract.end || '';
         document.getElementById('contract_status_field').value = contract.status || 'Pending';
@@ -8740,7 +8632,7 @@ Asset Management System</textarea>
         document.getElementById('contract_editId').value = '';
         document.getElementById('contract_id').value = '';
         document.getElementById('contract_id').disabled = false;
-        ['contract_rig', 'contract_value', 'contract_start', 'contract_end', 'contract_notes'].forEach(id => document.getElementById(id).value = '');
+        ['contract_rig', 'contract_start', 'contract_end', 'contract_notes'].forEach(id => document.getElementById(id).value = '');
         document.getElementById('contract_status_field').value = 'Pending';
       }
       openModal('addContractModal');
@@ -8753,7 +8645,6 @@ Asset Management System</textarea>
 
       const payload = {
         id, rig: document.getElementById('contract_rig').value,
-        value: parseFloat(document.getElementById('contract_value').value) || 0,
         start_date: document.getElementById('contract_start').value || null,
         end_date: document.getElementById('contract_end').value || null,
         status: document.getElementById('contract_status_field').value,
@@ -8926,7 +8817,7 @@ Asset Management System</textarea>
       const data = getFilteredContracts();
       const ws = XLSX.utils.json_to_sheet(data.map(c => ({
         'Contract ID': c.id, 'Rig': c.rig, 'Assets': c.assetCount,
-        'Start': c.start, 'End': c.end, 'Value': c.value, 'Status': c.status
+        'Start': c.start, 'End': c.end, 'Status': c.status
       })));
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Contracts');
@@ -8950,13 +8841,12 @@ Asset Management System</textarea>
       doc.text(`${filterNote}   |   Exported: ${now}`, 14, 32);
       doc.autoTable({
         startY: 46,
-        head: [['Contract ID', 'Rig', 'Start Date', 'End Date', 'Value (USD)', 'Status']],
-        body: data.map(c => [c.id || '', c.rig || '', c.start || '', c.end || '',
-        c.value != null ? Number(c.value).toLocaleString() : '', c.status || '']),
+        head: [['Contract ID', 'Rig', 'Start Date', 'End Date', 'Status']],
+        body: data.map(c => [c.id || '', c.rig || '', c.start || '', c.end || '', c.status || '']),
         styles: { fontSize: 8, cellPadding: 4, font: 'helvetica', textColor: [50, 54, 58] },
         headStyles: { fillColor: [0, 112, 242], textColor: 255, fontStyle: 'bold' },
         alternateRowStyles: { fillColor: [245, 246, 247] },
-        columnStyles: { 5: { halign: 'right' } },
+        columnStyles: {},
         margin: { left: 14, right: 14 },
         didDrawPage: (d) => {
           const pg = doc.internal.getCurrentPageInfo().pageNumber;
@@ -9057,7 +8947,7 @@ Asset Management System</textarea>
         document.getElementById('bom_manufacturer').value = b.manufacturer || '';
         document.getElementById('bom_qty').value = b.qty || 1;
         document.getElementById('bom_uom').value = b.uom || 'EA';
-        document.getElementById('bom_unitCost').value = b.unitCost || 0;
+        document.getElementById('bom_leadTime').value = b.leadTime || 0;
         document.getElementById('bom_leadTime').value = b.leadTime || 0;
         document.getElementById('bom_status').value = b.status || 'Active';
         document.getElementById('bom_notes').value = b.notes || '';
@@ -9066,7 +8956,6 @@ Asset Management System</textarea>
         document.getElementById('bomModalTitle').textContent = 'Add BOM Component';
         ['bom_name', 'bom_partNo', 'bom_serial', 'bom_manufacturer', 'bom_notes'].forEach(f => document.getElementById(f).value = '');
         document.getElementById('bom_qty').value = 1;
-        document.getElementById('bom_unitCost').value = '';
         document.getElementById('bom_leadTime').value = '';
         document.getElementById('bom_type').value = 'Serialized';
         document.getElementById('bom_status').value = 'Active';
@@ -9101,7 +8990,6 @@ Asset Management System</textarea>
         manufacturer: document.getElementById('bom_manufacturer').value.trim() || null,
         qty,
         uom: document.getElementById('bom_uom').value,
-        unitCost: parseFloat(document.getElementById('bom_unitCost').value) || 0,
         leadTime: parseInt(document.getElementById('bom_leadTime').value) || 0,
         status: document.getElementById('bom_status').value,
         notes: document.getElementById('bom_notes').value.trim() || null,
@@ -9156,7 +9044,6 @@ Asset Management System</textarea>
     function renderBomRow(item, level, compact = false) {
       const isBulk = item.type === 'Bulk';
       const hasChildren = BOM_ITEMS.some(b => b.parentId === item.id);
-      const totalCost = (item.unitCost || 0) * (item.qty || 0);
 
       const statusColors = { Active: 's-active', Inactive: 's-inactive', Obsolete: 's-retired', 'On Order': 's-maintenance' };
       const typeClass = isBulk ? 'bulk' : 'serialized';
@@ -9191,8 +9078,6 @@ Asset Management System</textarea>
     <div class="bom-cell w80"><span class="bom-bulk-badge ${typeClass}">${typeLabel}</span></div>
     <div class="bom-cell w80 mono">${item.qty}</div>
     <div class="bom-cell w90">${item.uom || 'EA'}</div>
-    <div class="bom-cell w120 mono">${item.unitCost ? '$' + Number(item.unitCost).toLocaleString() : '<span style="color:#ccc">—</span>'}</div>
-    <div class="bom-cell w120 mono" style="font-weight:600">${totalCost ? '$' + Number(totalCost).toLocaleString() : '<span style="color:#ccc">—</span>'}</div>
     <div class="bom-cell w90"><span class="status-badge ${statusColors[item.status] || 's-inactive'}" style="font-size:11px">${item.status}</span></div>
     <div class="bom-cell" style="width:${compact ? '80' : '120'}px;display:flex;gap:2px">
       <button class="btn btn-ghost btn-icon" title="Transfer this part" onclick="openBomTransferModal('${item.assetId}',['${item.id}'])"
@@ -9430,7 +9315,7 @@ Asset Management System</textarea>
         const asset = ASSETS.find(a => a.assetId === aid);
         const assetItems = items.filter(b => b.assetId === aid);
         const tree = buildBomTree(assetItems);
-        const totalCost = assetItems.reduce((s, b) => s + (b.unitCost || 0) * (b.qty || 0), 0);
+        const totalCost = 0; // cost column removed
         const bulkCount = assetItems.filter(b => b.type === 'Bulk').length;
         const serialCount = assetItems.filter(b => b.type === 'Serialized').length;
 
@@ -9442,7 +9327,6 @@ Asset Management System</textarea>
         <div style="flex:1"></div>
         <span style="font-size:12px;opacity:0.8"><i class="fas fa-barcode"></i> ${serialCount} Serialized</span>
         <span style="font-size:12px;opacity:0.8"><i class="fas fa-boxes"></i> ${bulkCount} Bulk</span>
-        <span style="font-size:12px;font-weight:700;font-family:'IBM Plex Mono',monospace">Total: $${Number(totalCost).toLocaleString()}</span>
         <button class="btn" style="height:26px;font-size:11.5px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3)" onclick="openBomModal('${aid}')"><i class="fas fa-plus"></i> Add</button>
         <button class="btn" id="trSelected_${aid}" style="height:26px;font-size:11.5px;background:rgba(233,115,12,0.85);color:#fff;border:1px solid rgba(233,115,12,0.5);display:none" onclick="transferSelectedBomItems('${aid}')"><i class="fas fa-exchange-alt"></i> Transfer Selected (<span id="trSelCount_${aid}">0</span>)</button>
         <button class="btn" style="height:26px;font-size:11.5px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.2)" onclick="selectAllBomForAsset('${aid}', this)"><i class="fas fa-check-square"></i> Select All</button>
@@ -9466,7 +9350,6 @@ Asset Management System</textarea>
     function renderPopupBOM(assetId) {
       const items = BOM_ITEMS.filter(b => b.assetId === assetId);
       const tree = buildBomTree(items);
-      const totalCost = items.reduce((s, b) => s + (b.unitCost || 0) * (b.qty || 0), 0);
       const bulkCount = items.filter(b => b.type === 'Bulk').length;
       const serialCount = items.filter(b => b.type === 'Serialized').length;
       const onOrder = items.filter(b => b.status === 'On Order').length;
@@ -9475,8 +9358,7 @@ Asset Management System</textarea>
     <div class="bom-summary-item"><div class="bom-summary-label">Total Components</div><div class="bom-summary-value">${items.length}</div></div>
     <div class="bom-summary-item"><div class="bom-summary-label">Serialized</div><div class="bom-summary-value" style="color:var(--sap-blue)">${serialCount}</div></div>
     <div class="bom-summary-item"><div class="bom-summary-label">Bulk</div><div class="bom-summary-value" style="color:#A05000">${bulkCount}</div></div>
-    <div class="bom-summary-item"><div class="bom-summary-label">On Order</div><div class="bom-summary-value" style="color:var(--sap-warning)">${onOrder}</div></div>
-    <div class="bom-summary-item"><div class="bom-summary-label">Total BOM Cost</div><div class="bom-summary-value" style="color:var(--sap-success)">$${Number(totalCost).toLocaleString()}</div></div>`;
+    <div class="bom-summary-item"><div class="bom-summary-label">On Order</div><div class="bom-summary-value" style="color:var(--sap-warning)">${onOrder}</div></div>`;
 
       document.getElementById('popupBomTree').innerHTML = items.length
         ? flattenTree(tree, 0)
@@ -9503,8 +9385,6 @@ Asset Management System</textarea>
           'Manufacturer': b.manufacturer || '',
           'Quantity': b.qty,
           'UOM': b.uom,
-          'Unit Cost (USD)': b.unitCost || 0,
-          'Total Cost (USD)': (b.unitCost || 0) * (b.qty || 0),
           'Lead Time (days)': b.leadTime || 0,
           'Status': b.status,
           'Notes': b.notes || '',
@@ -9537,12 +9417,10 @@ Asset Management System</textarea>
       doc.text(`${filterNote}   |   Exported: ${now}`, 14, 32);
       doc.autoTable({
         startY: 46,
-        head: [['Asset ID', 'Component', 'Part No.', 'Type', 'Serial', 'Qty', 'UOM', 'Unit Cost', 'Total Cost', 'Status']],
+        head: [['Asset ID', 'Component', 'Part No.', 'Type', 'Serial', 'Qty', 'UOM', 'Status']],
         body: items.map(b => {
-          const asset = ASSETS.find(a => a.assetId === b.assetId);
           return [b.assetId || '', b.name || '', b.partNo || '', b.type || '', b.serial || '',
-          b.qty || 0, b.uom || '', b.unitCost ? '$' + Number(b.unitCost).toLocaleString() : '$0',
-          b.unitCost ? '$' + ((b.unitCost || 0) * (b.qty || 0)).toLocaleString() : '$0', b.status || ''];
+          b.qty || 0, b.uom || '', b.status || ''];
         }),
         styles: { fontSize: 7.5, cellPadding: 3, font: 'helvetica', textColor: [50, 54, 58] },
         headStyles: { fillColor: [0, 112, 242], textColor: 255, fontStyle: 'bold', fontSize: 8 },
@@ -10426,7 +10304,6 @@ Asset Management System</textarea>
       <td><span class="${prioClass[m.priority] || 'priority-normal'}" style="font-size:12px">${m.priority === 'Critical' ? '⚠ ' : ''}${m.priority}</span></td>
       <td style="font-size:12.5px">${m.tech || '—'}</td>
       <td style="font-size:12px;font-family:'IBM Plex Mono',monospace">${m.hours ? m.hours + 'h' : '—'}</td>
-      <td style="font-size:12px;font-family:'IBM Plex Mono',monospace">${m.cost ? '$' + Number(m.cost).toLocaleString() : '—'}</td>
       <td>${maintStatusBadge(liveS)}</td>
       <td style="white-space:nowrap">
         ${liveS !== 'Completed' && liveS !== 'Cancelled' ?
@@ -10570,7 +10447,7 @@ Asset Management System</textarea>
         document.getElementById('m_nextDue').value = m.nextDue || '';
         document.getElementById('m_tech').value = m.tech || '';
         document.getElementById('m_hours').value = m.hours || '';
-        document.getElementById('m_cost').value = m.cost || '';
+        document.getElementById('m_hours').value = m.hours || '';
         document.getElementById('m_status').value = m.status;
         document.getElementById('m_notes').value = m.notes || '';
         // frequency
@@ -10585,7 +10462,7 @@ Asset Management System</textarea>
         const ad = document.querySelector(`input[name="m_alertDays"][value="${m.alertDays}"]`);
         if (ad) ad.checked = true;
       } else {
-        ['m_task', 'm_lastDone', 'm_nextDue', 'm_tech', 'm_hours', 'm_cost', 'm_notes'].forEach(id => document.getElementById(id).value = '');
+        ['m_task', 'm_lastDone', 'm_nextDue', 'm_tech', 'm_hours', 'm_notes'].forEach(id => document.getElementById(id).value = '');
         document.getElementById('m_type').value = 'Inspection';
         document.getElementById('m_priority').value = 'Normal';
         document.getElementById('m_freq').value = '30';
@@ -10649,7 +10526,6 @@ Asset Management System</textarea>
         nextDue,
         tech: document.getElementById('m_tech').value,
         hours: parseFloat(document.getElementById('m_hours').value) || null,
-        cost: parseFloat(document.getElementById('m_cost').value) || null,
         status: document.getElementById('m_status').value,
         alertDays,
         notes: document.getElementById('m_notes').value,
@@ -10684,7 +10560,6 @@ Asset Management System</textarea>
       document.getElementById('ml_date').value = today();
       document.getElementById('ml_by').value = '';
       document.getElementById('ml_hours').value = m?.hours || '';
-      document.getElementById('ml_cost').value = m?.cost || '';
       document.getElementById('ml_parts').value = '';
       document.getElementById('ml_notes').value = '';
 
@@ -10709,7 +10584,6 @@ Asset Management System</textarea>
         date: completionDate,
         by,
         hours: parseFloat(document.getElementById('ml_hours').value) || null,
-        cost: parseFloat(document.getElementById('ml_cost').value) || null,
         parts: document.getElementById('ml_parts').value,
         notes: document.getElementById('ml_notes').value,
       };
@@ -10741,7 +10615,6 @@ Asset Management System</textarea>
       if (!m) return;
       document.getElementById('maintHistTitle').textContent = `History: ${m.task}`;
 
-      const totalCost = (m.logs || []).reduce((s, l) => s + (l.cost || 0), 0);
       const totalHours = (m.logs || []).reduce((s, l) => s + (l.hours || 0), 0);
 
       let html = `<div style="background:linear-gradient(135deg,#354A5E,#4A6580);color:#fff;padding:14px 18px;display:flex;align-items:center;gap:12px">
@@ -10754,13 +10627,9 @@ Asset Management System</textarea>
       <div style="font-size:11px;color:var(--sap-text-muted);text-transform:uppercase;letter-spacing:.4px">Log Entries</div>
       <div style="font-size:20px;font-weight:700;margin-top:4px">${(m.logs || []).length}</div>
     </div>
-    <div style="flex:1;padding:12px 16px;text-align:center;border-right:1px solid var(--sap-border)">
+    <div style="flex:1;padding:12px 16px;text-align:center">
       <div style="font-size:11px;color:var(--sap-text-muted);text-transform:uppercase;letter-spacing:.4px">Total Hours</div>
       <div style="font-size:20px;font-weight:700;margin-top:4px">${totalHours}h</div>
-    </div>
-    <div style="flex:1;padding:12px 16px;text-align:center">
-      <div style="font-size:11px;color:var(--sap-text-muted);text-transform:uppercase;letter-spacing:.4px">Total Cost</div>
-      <div style="font-size:20px;font-weight:700;margin-top:4px;color:var(--sap-success)">$${Number(totalCost).toLocaleString()}</div>
     </div>
   </div>`;
 
@@ -10775,7 +10644,6 @@ Asset Management System</textarea>
             <span style="font-weight:600;font-size:13px">${l.date}</span>
             <span style="font-size:12px;color:var(--sap-text-muted)">by ${l.by}</span>
             ${l.hours ? `<span class="tag">${l.hours}h</span>` : ''}
-            ${l.cost ? `<span class="tag" style="color:var(--sap-success)">$${Number(l.cost).toLocaleString()}</span>` : ''}
           </div>
           ${l.parts ? `<div style="font-size:12px;color:var(--sap-text-muted);margin-top:4px"><i class="fas fa-box"></i> Parts: ${l.parts}</div>` : ''}
           ${l.notes ? `<div style="font-size:12.5px;margin-top:6px;padding:8px 10px;background:#F8F9FA;border-radius:4px;border-left:3px solid var(--sap-border);line-height:1.5">${l.notes}</div>` : ''}
@@ -10838,7 +10706,6 @@ Asset Management System</textarea>
           'Last Performed': m.lastDone || '', 'Next Due Date': m.nextDue || '',
           'Days Until Due': d, 'Priority': m.priority, 'Status': live,
           'Technician': m.tech || '', 'Est. Hours': m.hours || '',
-          'Est. Cost (USD)': m.cost || '', 'Alert Days': m.alertDays,
           'Log Entries': (m.logs || []).length, 'Notes': m.notes || '',
         };
       });
@@ -11490,7 +11357,7 @@ Asset Management System</textarea>
     // ── System prompt (same for both providers) ──────────────────────
     function buildSystemPrompt() {
       const assetsSummary = ASSETS.map(a =>
-        `ID:${a.assetId}|Name:${a.name}|Cat:${a.category}|Rig:${a.rigName}|Loc:${a.location}|Status:${a.status}|Value:$${Number(a.value).toLocaleString()}|Acquired:${a.acquisitionDate}|Serial:${a.serial}|LastInsp:${a.lastInspection || 'N/A'}|InspType:${a.inspectionType || 'N/A'}`
+        `ID:${a.assetId}|Name:${a.name}|Cat:${a.category}|Rig:${a.rigName}|Loc:${a.location}|Status:${a.status}|Acquired:${a.acquisitionDate}|Serial:${a.serial}|LastInsp:${a.lastInspection || 'N/A'}|InspType:${a.inspectionType || 'N/A'}`
       ).join('\n');
       const certsSummary = CERTIFICATES.map(c =>
         `AssetID:${c.assetId}|Asset:${c.name}|Serial:${c.serial}|Rig:${c.rigName}|Type:${c.inspectionType}|LastInsp:${c.lastInspection}|NextInsp:${c.nextInspection}|Status:${certStatus(c)}|DaysLeft:${daysUntilCert(c.nextInspection) ?? 'N/A'}`
@@ -11501,7 +11368,7 @@ Asset Management System</textarea>
         return `ID:${m.id}|Asset:${asset?.name || m.assetId}|Task:${m.task}|Type:${m.type}|Priority:${m.priority}|NextDue:${m.nextDue}|Status:${s}|Tech:${m.tech || 'N/A'}`;
       }).join('\n');
       const contractsSummary = CONTRACTS.map(c =>
-        `ID:${c.id}|Rig:${c.rig}|Assets:${c.assetCount}|Start:${c.start}|End:${c.end}|Value:$${Number(c.value).toLocaleString()}|Status:${c.status}`
+        `ID:${c.id}|Rig:${c.rig}|Assets:${c.assetCount}|Start:${c.start}|End:${c.end}|Status:${c.status}`
       ).join('\n');
       const rigsSummary = RIGS.map(r =>
         `ID:${r.id}|Name:${r.name}|Type:${r.type}|Location:${r.location}|Status:${r.status}|Assets:${ASSETS.filter(a => a.rigName === r.name).length}`
@@ -12694,7 +12561,6 @@ Instructions:
           manufacturer: document.getElementById('bom_manufacturer').value.trim() || null,
           qty,
           uom: document.getElementById('bom_uom').value,
-          unit_cost: parseFloat(document.getElementById('bom_unitCost').value) || 0,
           lead_time: parseInt(document.getElementById('bom_leadTime').value) || 0,
           status: document.getElementById('bom_status').value,
           notes: document.getElementById('bom_notes').value.trim() || null,
@@ -12762,7 +12628,6 @@ Instructions:
           next_due: nextDue,
           tech: document.getElementById('m_tech').value,
           hours: parseFloat(document.getElementById('m_hours').value) || null,
-          cost: parseFloat(document.getElementById('m_cost').value) || null,
           status: document.getElementById('m_status').value,
           alert_days: alertDays,
           notes: document.getElementById('m_notes').value,
@@ -12796,7 +12661,6 @@ Instructions:
           completion_date: completionDate,
           performed_by: by,
           hours: parseFloat(document.getElementById('ml_hours').value) || null,
-          cost: parseFloat(document.getElementById('ml_cost').value) || null,
           parts_used: document.getElementById('ml_parts').value,
           notes: document.getElementById('ml_notes').value,
           next_due_override: document.getElementById('ml_nextDue').value || undefined,
@@ -13129,7 +12993,6 @@ Instructions:
               id,
 
               rig: r['Rig'] || '',
-              value: Number(r['Value'] || r['Value (USD)'] || 0) || 0,
               start_date: r['Start Date'] || null,
               end_date: r['End Date'] || null,
               status: r['Status'] || 'Pending',
@@ -13257,7 +13120,6 @@ Instructions:
               manufacturer: r['Manufacturer'] || '',
               qty: Number(r['Qty'] || r['Quantity'] || 1) || 1,
               uom: r['UOM'] || 'EA',
-              unit_cost: Number(r['Unit Cost'] || 0) || 0,
               lead_time: Number(r['Lead Time'] || 0) || 0,
               status: r['Status'] || 'Active',
               notes: r['Notes'] || '',
@@ -13352,7 +13214,6 @@ Instructions:
               next_due,
               tech: r['Technician'] || r['Tech'] || '',
               hours: Number(r['Hours'] || 0) || null,
-              cost: Number(r['Cost'] || 0) || null,
               status: r['Status'] || 'Scheduled',
               alert_days: Number(r['Alert Days'] || 14) || 14,
               notes: r['Notes'] || '',
