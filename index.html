@@ -7665,7 +7665,7 @@ Asset Management System</textarea>
 
       const fY = document.getElementById('inspFilterYear')?.value || '';
       filteredInspections = INSPECTIONS.filter(i => {
-        const hay = [i.po, i.serviceOrder, i.inspectionType, i.notes].join(' ').toLowerCase();
+        const hay = [i.po, i.serviceOrder, i.inspectionType, i.rigName, i.location, i.inspectedBy, i.startDate, i.endDate, i.notes].join(' ').toLowerCase();
         return (!q || hay.includes(q))
           && (!fT || i.inspectionType === fT)
 
@@ -8135,7 +8135,7 @@ Asset Management System</textarea>
         if (typeof WORKSHOPS !== 'undefined' && WORKSHOPS.length) {
           const grp = document.createElement('optgroup');
           grp.label = '── Workshops ──';
-          [...new Set(WORKSHOPS.map(w => w.name).filter(Boolean))].sort()
+          [...new Set(WORKSHOPS.map(w => w.workshopName).filter(Boolean))].sort()
             .forEach(n => grp.appendChild(new Option(n, n)));
           rigSel.appendChild(grp);
         }
@@ -8771,15 +8771,15 @@ Asset Management System</textarea>
           w.assetId, w.assetName, w.assetSerial, w.scopeOfWork, w.technician, w.notes]
           .join(' ').toLowerCase();
         return (!q      || hay.includes(q))
-          && (!fId    || w.workshopId.toLowerCase().includes(fId))
+          && (!fId    || (w.workshopId  || '').toLowerCase().includes(fId))
           && (!fR     || w.assignedRig  === fR)
           && (!fL     || w.location     === fL)
           && (!fW     || w.workshopName === fW)
           && (!fSt    || w.status       === fSt)
-          && (!fAId   || w.assetId.toLowerCase().includes(fAId))
-          && (!fAName || w.assetName.toLowerCase().includes(fAName))
-          && (!fSer   || w.assetSerial.toLowerCase().includes(fSer))
-          && (!fScp   || w.scopeOfWork.toLowerCase().includes(fScp));
+          && (!fAId   || (w.assetId     || '').toLowerCase().includes(fAId))
+          && (!fAName || (w.assetName   || '').toLowerCase().includes(fAName))
+          && (!fSer   || (w.assetSerial || '').toLowerCase().includes(fSer))
+          && (!fScp   || (w.scopeOfWork || '').toLowerCase().includes(fScp));
       });
 
       list = [...list].sort((a, b) => {
@@ -8942,6 +8942,7 @@ Asset Management System</textarea>
           showToast('Workshop added ✓', 'success');
         }
         closeModal('addWorkshopModal');
+        editingWorkshopId = null;
         renderWorkshops();
         populateFormSelects();
         refreshRigFilterWithWorkshops();
@@ -13215,7 +13216,9 @@ Instructions:
         fns.forEach(fn => { if (typeof window[fn] === 'function') window[fn](); });
       }
       function rerenderAll() {
-        if (typeof filteredAssets !== 'undefined') filteredAssets = [...ASSETS];
+        if (typeof filteredAssets     !== 'undefined') filteredAssets     = [...ASSETS];
+        if (typeof filteredProjects   !== 'undefined') filteredProjects   = [...PROJECTS];
+        if (typeof filteredInspections !== 'undefined') filteredInspections = [...INSPECTIONS];
         rerender(
           'renderAssets', 'renderContracts', 'renderRigs', 'renderWorkshops', 'renderProjects', 'renderInspections', 'renderInspections',
           'renderUsers', 'renderTransfers', 'renderMaintenance', 'renderCertificates',
