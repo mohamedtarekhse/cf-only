@@ -1490,6 +1490,56 @@
       display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px;
     }
 
+
+    /* ── IMPORT PREVIEW MODAL ── */
+    #importPreviewTable th {
+      background: #EEF1F5;
+      padding: 7px 10px;
+      white-space: nowrap;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #354A5E;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      border-bottom: 2px solid #D0D5DD;
+      border-right: 1px solid #E0E4EA;
+      cursor: pointer;
+      user-select: none;
+      transition: background .15s;
+      position: relative;
+    }
+    #importPreviewTable th:first-child { cursor: default; min-width: 40px; text-align:center; }
+    #importPreviewTable th.col-active { background: #DBEEFF; color: #0040B0; }
+    #importPreviewTable th.col-inactive { background: #F0F0F0; color: #AAA; text-decoration: line-through; }
+    #importPreviewTable th:hover:not(:first-child) { background: #D0E8FF; }
+    #importPreviewTable th.col-inactive:hover:not(:first-child) { background: #E8E8E8; }
+    #importPreviewTable td {
+      padding: 5px 10px;
+      border-bottom: 1px solid #ECEEF0;
+      border-right: 1px solid #F0F2F4;
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 12.5px;
+      color: #354A5E;
+      vertical-align: middle;
+    }
+    #importPreviewTable td:first-child { text-align:center; min-width:40px; max-width:40px; }
+    #importPreviewTable td.col-inactive { color: #CCC; background: #FAFAFA; }
+    #importPreviewTable tr.row-deselected td { background: #F7F7F7; color: #BBB; }
+    #importPreviewTable tr.row-deselected td.col-inactive { background: #F4F4F4; }
+    #importPreviewTable tr:hover td { background: #F0F6FF; }
+    #importPreviewTable tr.row-deselected:hover td { background: #F2F2F2; }
+    .import-col-toggle-badge {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      margin-right: 5px;
+      background: #0070F2;
+    }
+    .col-inactive .import-col-toggle-badge { background: #CCC; }
+
     .form-group {
       display: flex;
       flex-direction: column;
@@ -4196,7 +4246,7 @@
           <button id="btnNewWorkshop" class="btn btn-primary" onclick="openAddWorkshopModal()"><i class="fas fa-plus"></i> New Workshop</button>
           <button class="btn btn-secondary" onclick="exportWorkshops()"><i class="fas fa-file-excel"></i> Export Excel</button>
           <button class="btn btn-secondary" id="btnImportWorkshops" onclick="openImportGuide('workshops')"><i class="fas fa-upload"></i> Import</button>
-          <input type="file" id="importFileWorkshops" accept=".xlsx,.xls,.csv" style="display:none" onchange="importWorkshops(event)">
+          <input type="file" id="importFileWorkshops" accept=".xlsx,.xls,.csv" style="display:none">
         </div>
 
         <!-- FILTER BAR -->
@@ -6150,13 +6200,13 @@ Asset Management System</textarea>
   <!-- ═══════════════════ IMPORT COLUMN GUIDE MODAL ═══════════════════ -->
   <!-- ======= ADD / EDIT WORKSHOP MODAL ======= -->
   <div class="modal-overlay" id="addWorkshopModal">
-    <div class="modal-dialog" style="max-width:620px">
+    <div class="modal" style="max-width:640px;width:96vw">
       <div class="modal-header" style="background:linear-gradient(135deg,#1a4a7a,#0070F2)">
         <div>
           <h2 style="color:#fff;font-size:15px" id="workshopModalTitle">Add Workshop</h2>
           <p style="color:rgba(255,255,255,.7);font-size:12px;margin:2px 0 0">Workshop record</p>
         </div>
-        <button class="shell-btn" style="color:#fff" onclick="closeModal('addWorkshopModal')"><i class="fas fa-times"></i></button>
+        <button class="shell-btn" style="color:#fff" onclick="closeModal('addWorkshopModal');editingWorkshopId=null;"><i class="fas fa-times"></i></button>
       </div>
       <div class="modal-body">
         <div class="form-row">
@@ -6238,7 +6288,7 @@ Asset Management System</textarea>
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="closeModal('addWorkshopModal')">Cancel</button>
+        <button class="btn btn-secondary" onclick="closeModal('addWorkshopModal');editingWorkshopId=null;">Cancel</button>
         <button class="btn btn-primary" onclick="saveWorkshop()"><i class="fas fa-save"></i> Save Workshop</button>
       </div>
     </div>
@@ -6273,6 +6323,60 @@ Asset Management System</textarea>
       <div class="modal-footer">
         <button class="btn btn-secondary" id="importResultsDownloadBtn" onclick="downloadFailedRows()" style="display:none"><i class="fas fa-download"></i> Download Failed Rows (.xlsx)</button>
         <button class="btn btn-primary" onclick="closeImportResults()"><i class="fas fa-check"></i> Close</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════ IMPORT PREVIEW MODAL ═══════════════════ -->
+  <div class="modal-overlay" id="importPreviewOverlay" style="z-index:1100">
+    <div class="modal" style="width:92vw;max-width:1200px;height:88vh;display:flex;flex-direction:column">
+      <div class="modal-header" style="background:linear-gradient(90deg,#0D47A1 0%,#1976D2 100%);color:#fff;border-radius:4px 4px 0 0;padding:12px 18px;flex-shrink:0">
+        <i class="fas fa-table-cells" style="font-size:17px"></i>
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <h2 id="importPreviewTitle" style="color:#fff;font-size:15px;margin:0">Preview &amp; Select Data</h2>
+          <span id="importPreviewSubtitle" style="font-size:11.5px;opacity:.8;font-weight:400"></span>
+        </div>
+        <div style="flex:1"></div>
+        <button style="background:rgba(255,255,255,.15);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center" onclick="closeImportPreview()"><i class="fas fa-times"></i></button>
+      </div>
+      <div id="importPreviewToolbar" style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:#F5F7FA;border-bottom:1px solid #E0E4EA;flex-shrink:0;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:6px;padding:4px 10px;background:#fff;border:1px solid #d0d5dd;border-radius:5px;font-size:12.5px">
+          <i class="fas fa-list-check" style="color:#0070F2"></i>
+          <strong id="importPreviewRowCount">0</strong>&nbsp;of&nbsp;<strong id="importPreviewRowTotal">0</strong>&nbsp;rows selected
+        </div>
+        <button class="btn btn-secondary" style="height:30px;font-size:12px" onclick="importPreviewSelectAllRows(true)"><i class="fas fa-check-double"></i> All Rows</button>
+        <button class="btn btn-ghost" style="height:30px;font-size:12px" onclick="importPreviewSelectAllRows(false)"><i class="fas fa-square"></i> None</button>
+        <div style="width:1px;height:20px;background:#d0d5dd;margin:0 4px"></div>
+        <div style="display:flex;align-items:center;gap:6px;padding:4px 10px;background:#fff;border:1px solid #d0d5dd;border-radius:5px;font-size:12.5px">
+          <i class="fas fa-columns" style="color:#0070F2"></i>
+          <strong id="importPreviewColCount">0</strong>&nbsp;of&nbsp;<strong id="importPreviewColTotal">0</strong>&nbsp;columns
+        </div>
+        <button class="btn btn-secondary" style="height:30px;font-size:12px" onclick="importPreviewSelectAllCols(true)"><i class="fas fa-check-double"></i> All Cols</button>
+        <button class="btn btn-ghost" style="height:30px;font-size:12px" onclick="importPreviewSelectAllCols(false)"><i class="fas fa-square"></i> None</button>
+        <div style="flex:1"></div>
+        <div style="position:relative">
+          <i class="fas fa-search" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:#888;font-size:12px;pointer-events:none"></i>
+          <input id="importPreviewSearch" type="text" placeholder="Filter rows…" style="height:30px;padding:0 8px 0 26px;border:1px solid #d0d5dd;border-radius:5px;font-size:12.5px;width:160px;outline:none" oninput="importPreviewFilterRows()">
+        </div>
+      </div>
+      <div style="flex:1;overflow:auto;position:relative">
+        <table id="importPreviewTable" style="width:100%;border-collapse:collapse;font-size:12.5px;table-layout:auto">
+          <thead id="importPreviewThead" style="position:sticky;top:0;z-index:10;background:#F0F2F5"></thead>
+          <tbody id="importPreviewTbody"></tbody>
+        </table>
+      </div>
+      <div class="modal-footer" style="flex-shrink:0;justify-content:space-between">
+        <div style="font-size:12px;color:var(--sap-text-muted)">
+          <i class="fas fa-info-circle"></i> Click column headers to toggle columns &nbsp;&middot;&nbsp; Use checkboxes to select rows
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" onclick="closeImportPreview()"><i class="fas fa-times"></i> Cancel</button>
+          <button class="btn btn-primary" id="importPreviewConfirmBtn" onclick="confirmImportPreview()">
+            <i class="fas fa-file-import"></i> Import Selected
+            <span id="importPreviewConfirmCount" style="background:rgba(255,255,255,.25);padding:1px 7px;border-radius:10px;margin-left:4px;font-size:11px"></span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -6531,12 +6635,11 @@ Asset Management System</textarea>
 
     // ── KPIs ────────────────────────────────────────────────────────
     function updateProjectKPIs() {
-      const _s = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-      _s('prjKpiTotal',    PROJECTS.length);
-      _s('prjKpiActive',   PROJECTS.filter(p => p.status === 'Active').length);
-      _s('prjKpiHold',     PROJECTS.filter(p => p.status === 'On Hold').length);
-      _s('prjKpiDone',     PROJECTS.filter(p => p.status === 'Completed').length);
-      _s('prjKpiPlanning', PROJECTS.filter(p => p.status === 'Planning').length);
+      document.getElementById('prjKpiTotal').textContent    = PROJECTS.length;
+      document.getElementById('prjKpiActive').textContent   = PROJECTS.filter(p => p.status === 'Active').length;
+      document.getElementById('prjKpiHold').textContent     = PROJECTS.filter(p => p.status === 'On Hold').length;
+      document.getElementById('prjKpiDone').textContent     = PROJECTS.filter(p => p.status === 'Completed').length;
+      document.getElementById('prjKpiPlanning').textContent = PROJECTS.filter(p => p.status === 'Planning').length;
       const active = PROJECTS.filter(p => p.status === 'Active').length;
       const badge = document.getElementById('prjBadge');
       if (badge) { badge.textContent = active; badge.style.display = active ? '' : 'none'; }
@@ -7427,8 +7530,7 @@ Asset Management System</textarea>
 
     // ── KPIs ─────────────────────────────────────────────────────────
     function updateInspectionKPIs() {
-      const _s = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-      _s('inspKpiTotal', INSPECTIONS.length);
+      document.getElementById('inspKpiTotal').textContent = INSPECTIONS.length;
       const now = new Date();
       const month = now.getMonth(), year = now.getFullYear();
       const thisMonth = INSPECTIONS.filter(i => {
@@ -7436,7 +7538,7 @@ Asset Management System</textarea>
         const d = new Date(i.startDate);
         return d.getMonth() === month && d.getFullYear() === year;
       }).length;
-      _s('inspKpiMonth', thisMonth);
+      document.getElementById('inspKpiMonth').textContent = thisMonth;
       const total = INSPECTIONS.reduce((s, i) => s + i.totalCost, 0);
       const el = document.getElementById('inspKpiCost');
       if (el) el.textContent = total >= 1e6 ? '$' + (total / 1e6).toFixed(1) + 'M' : '$' + total.toLocaleString();
@@ -8342,16 +8444,14 @@ Asset Management System</textarea>
     //  KPIs
     // ══════════════════════════════════
     function updateKPIs() {
-      const _s = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-      _s('kpiTotal',    ASSETS.length);
-      _s('kpiActive',   ASSETS.filter(a => a.status === 'Active').length);
-      _s('kpiMaint',    ASSETS.filter(a => a.status === 'Maintenance').length);
-      _s('kpiContract', ASSETS.filter(a => a.status === 'Contracted').length);
+      document.getElementById('kpiTotal').textContent = ASSETS.length;
+      document.getElementById('kpiActive').textContent = ASSETS.filter(a => a.status === 'Active').length;
+      document.getElementById('kpiMaint').textContent = ASSETS.filter(a => a.status === 'Maintenance').length;
+      document.getElementById('kpiContract').textContent = ASSETS.filter(a => a.status === 'Contracted').length;
     }
     function updateReportKPIs() {
-      const _s = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-      _s('rptContracts', CONTRACTS.filter(c => c.status === 'Active').length);
-      _s('rptRigs',      RIGS.filter(r => r.status === 'Active').length);
+      document.getElementById('rptContracts').textContent = CONTRACTS.filter(c => c.status === 'Active').length;
+      document.getElementById('rptRigs').textContent = RIGS.filter(r => r.status === 'Active').length;
     }
 
     // ══════════════════════════════════
@@ -8716,7 +8816,12 @@ Asset Management System</textarea>
         document.getElementById('ws_notes').value       = w.notes;
       } else {
         document.getElementById('ws_id').disabled = false;
-        document.getElementById('ws_id').value    = 'WS-' + String(WORKSHOPS.length + 1).padStart(3, '0');
+        // FIX: generate collision-safe ID by finding the next unused WS-NNN
+        let nextNum = WORKSHOPS.length + 1;
+        while (WORKSHOPS.find(w => w.workshopId === 'WS-' + String(nextNum).padStart(3,'0'))) nextNum++;
+        document.getElementById('ws_id').value = 'WS-' + String(nextNum).padStart(3, '0');
+        // FIX: include ws_assetId reset (was missing)
+        if (aSel) aSel.value = '';
         ['ws_name','ws_location','ws_assetName','ws_assetSerial','ws_scopeOfWork',
          'ws_startDate','ws_endDate','ws_technician','ws_contact','ws_notes'].forEach(id => {
           const el = document.getElementById(id); if (el) el.value = '';
@@ -8811,7 +8916,7 @@ Asset Management System</textarea>
       event.target.value = '';
       showToast('Importing workshops…', 'info');
       try {
-        const rows = await readXlsx(file);
+        const rows = await (window.readXlsx || readXlsx)(file);
         let added = 0;
         const failedRows = [];
         for (let i = 0; i < rows.length; i++) {
@@ -8858,6 +8963,7 @@ Asset Management System</textarea>
         else showToast(`Imported ${added} workshops${failedRows.length ? `, ${failedRows.length} failed` : ''} ✓`, added ? 'success' : 'error');
       } catch(err) { showToast('Import failed: ' + err.message, 'error'); }
     }
+    window.importWorkshops = importWorkshops;
 
     function refreshRigFilterWithWorkshops() {
       // Keeps the assets-page Rig/Workshop filter dropdown in sync with WORKSHOPS
@@ -10301,12 +10407,11 @@ Asset Management System</textarea>
 
     // ── KPIs ──────────────────────────────────────────────────
     function updateTransferKPIs() {
-      const _s = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-      _s('trKpiTotal',   TRANSFERS.length);
-      _s('trKpiPending', TRANSFERS.filter(t => t.status === 'Pending').length);
-      _s('trKpiOps',     TRANSFERS.filter(t => ['Supt Approved','Drilling Approved'].includes(t.status)).length);
-      _s('trKpiDone',    TRANSFERS.filter(t => t.status === 'Completed').length);
-      _s('trKpiRej',     TRANSFERS.filter(t => t.status === 'Rejected').length);
+      document.getElementById('trKpiTotal').textContent = TRANSFERS.length;
+      document.getElementById('trKpiPending').textContent = TRANSFERS.filter(t => t.status === 'Pending').length;
+      document.getElementById('trKpiOps').textContent = TRANSFERS.filter(t => ['Supt Approved','Drilling Approved'].includes(t.status)).length;
+      document.getElementById('trKpiDone').textContent = TRANSFERS.filter(t => t.status === 'Completed').length;
+      document.getElementById('trKpiRej').textContent = TRANSFERS.filter(t => t.status === 'Rejected').length;
     }
 
     // ── OPEN APPROVAL MODAL ────────────────────────────────────
@@ -10943,12 +11048,11 @@ Asset Management System</textarea>
       const soon = live.filter(s => s === 'Due Soon').length;
       const done = live.filter(s => s === 'Completed').length;
       const sched = live.filter(s => s === 'Scheduled').length;
-      const _s = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-      _s('mKpiTotal',   MAINT_SCHEDULES.length);
-      _s('mKpiOverdue', overdue);
-      _s('mKpiSoon',    soon);
-      _s('mKpiDone',    done);
-      _s('mKpiSched',   sched);
+      document.getElementById('mKpiTotal').textContent = MAINT_SCHEDULES.length;
+      document.getElementById('mKpiOverdue').textContent = overdue;
+      document.getElementById('mKpiSoon').textContent = soon;
+      document.getElementById('mKpiDone').textContent = done;
+      document.getElementById('mKpiSched').textContent = sched;
 
       // Nav badge
       const alertCount = overdue + soon;
@@ -11637,11 +11741,10 @@ Asset Management System</textarea>
       const valid = CERTIFICATES.filter(c => certStatus(c) === 'Valid').length;
       const soon = CERTIFICATES.filter(c => certStatus(c) === 'Expiring Soon').length;
       const expired = CERTIFICATES.filter(c => certStatus(c) === 'Expired').length;
-      const _s = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-      _s('certKpiTotal',   total);
-      _s('certKpiValid',   valid);
-      _s('certKpiSoon',    soon);
-      _s('certKpiExpired', expired);
+      document.getElementById('certKpiTotal').textContent = total;
+      document.getElementById('certKpiValid').textContent = valid;
+      document.getElementById('certKpiSoon').textContent = soon;
+      document.getElementById('certKpiExpired').textContent = expired;
       // Update nav badge
       const badge = document.getElementById('certAlertBadge');
       if (badge) { badge.textContent = soon + expired; badge.style.display = (soon + expired) > 0 ? '' : 'none'; }
@@ -13757,7 +13860,260 @@ Instructions:
       //  IMPORT HELPERS — all write to the database via the API
       // ══════════════════════════════════════════════════════════════
 
+
+      // ══════════════════════════════════════════════════════════════════════════
+      //  IMPORT PREVIEW ENGINE — Row & Column Selector
+      //  Intercepts every import file input, shows a preview table where users
+      //  can toggle individual rows and columns before importing.
+      // ══════════════════════════════════════════════════════════════════════════
+
+      let __ipState = {
+        allRows: [],          // all parsed rows from file
+        filteredRows: [],     // rows matching search filter
+        selectedRows: new Set(),  // indices into allRows
+        allCols: [],          // column names
+        activeCols: new Set(),// visible/selected column names
+        importFn: null,       // function to call with filtered rows
+        fileName: '',
+        importType: '',
+      };
+
+      // ── Intercept every file input ─────────────────────────────────────────
+      // Map: fileInputId → original window function name
+      const __importFnMap = {
+        'importFile':           'importAssets',
+        'importFileContracts':  'importContracts',
+        'importFileRigs':       'importRigs',
+        'importFileUsers':      'importUsers',
+        'importFileBom':        'importBOM',
+        'importFileTransfers':  'importTransfers',
+        'importFileMaint':      'importMaintenance',
+        'importFileCerts':      'importCertificates',
+        'importFileWorkshops':  'importWorkshops',
+      };
+
+      // Override all file inputs to open preview instead
+      function __attachImportPreviewInterceptors() {
+        Object.entries(__importFnMap).forEach(([inputId, fnName]) => {
+          const inp = document.getElementById(inputId);
+          if (!inp) return;
+          inp.removeAttribute('onchange');
+          inp.addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            e.target.value = '';  // reset so same file can be picked again
+            try {
+              const rows = await readXlsx(file);
+              if (!rows || rows.length === 0) { showToast('File is empty or unreadable.', 'error'); return; }
+              __openImportPreview(rows, file.name, fnName);
+            } catch(err) {
+              showToast('Could not read file: ' + err.message, 'error');
+            }
+          });
+        });
+      }
+
+      // Attach after DOM is ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', __attachImportPreviewInterceptors);
+      } else {
+        setTimeout(__attachImportPreviewInterceptors, 0);
+      }
+
+      // ── Open preview modal ──────────────────────────────────────────────────
+      function __openImportPreview(rows, fileName, fnName) {
+        const cols = Object.keys(rows[0] || {});
+        __ipState.allRows = rows;
+        __ipState.filteredRows = rows;
+        __ipState.selectedRows = new Set(rows.map((_, i) => i));
+        __ipState.allCols = cols;
+        __ipState.activeCols = new Set(cols);
+        __ipState.importFn = fnName;
+        __ipState.fileName = fileName;
+
+        const cfgKey = Object.entries(__importFnMap).find(([,v]) => v === fnName)?.[0];
+        const cfg = cfgKey ? Object.values(window.__IMPORT_CONFIGS_REF || IMPORT_CONFIGS || {}).find(c => c.fileInputId === cfgKey) : null;
+        const label = cfg ? cfg.label : fnName.replace('import','');
+
+        const titleEl = document.getElementById('importPreviewTitle');
+        const subtitleEl = document.getElementById('importPreviewSubtitle');
+        if (titleEl) titleEl.textContent = 'Preview: ' + label;
+        if (subtitleEl) subtitleEl.textContent = fileName + '  ·  ' + rows.length + ' rows  ·  ' + cols.length + ' columns';
+
+        document.getElementById('importPreviewSearch').value = '';
+        __renderPreviewTable();
+        document.getElementById('importPreviewOverlay').classList.add('open');
+      }
+
+      // ── Render the preview table ────────────────────────────────────────────
+      function __renderPreviewTable() {
+        const { filteredRows, allRows, selectedRows, allCols, activeCols } = __ipState;
+
+        // Update counters
+        const rowCount = document.getElementById('importPreviewRowCount');
+        const rowTotal = document.getElementById('importPreviewRowTotal');
+        const colCount = document.getElementById('importPreviewColCount');
+        const colTotal = document.getElementById('importPreviewColTotal');
+        const confirmCount = document.getElementById('importPreviewConfirmCount');
+        if (rowCount) rowCount.textContent = selectedRows.size;
+        if (rowTotal) rowTotal.textContent = allRows.length;
+        if (colCount) colCount.textContent = activeCols.size;
+        if (colTotal) colTotal.textContent = allCols.length;
+        if (confirmCount) confirmCount.textContent = selectedRows.size + ' rows, ' + activeCols.size + ' cols';
+
+        // THEAD
+        const thead = document.getElementById('importPreviewThead');
+        if (thead) {
+          const allSelected = filteredRows.length > 0 && filteredRows.every((_,fi) => {
+            const ai = allRows.indexOf(filteredRows[fi]);
+            return ai >= 0 && selectedRows.has(ai);
+          });
+          let th = '<tr>';
+          th += '<th><input type="checkbox" id="ipSelectAllRows" ' + (allSelected ? 'checked' : '') + ' title="Select/deselect all visible rows" onchange="importPreviewToggleAllVisible(this.checked)"></th>';
+          allCols.forEach(col => {
+            const active = activeCols.has(col);
+            th += '<th class="' + (active ? 'col-active' : 'col-inactive') + '" onclick="importPreviewToggleCol('' + col.replace(/'/g, "\'") + '')" title="Click to toggle column">'
+              + '<span class="import-col-toggle-badge"></span>'
+              + escHtml(col)
+              + '</th>';
+          });
+          th += '</tr>';
+          thead.innerHTML = th;
+        }
+
+        // TBODY
+        const tbody = document.getElementById('importPreviewTbody');
+        if (!tbody) return;
+        if (filteredRows.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="' + (allCols.length + 1) + '" style="text-align:center;padding:32px;color:#999">No rows match filter</td></tr>';
+          return;
+        }
+
+        const MAX_PREVIEW = 500; // cap for performance
+        const rows = filteredRows.slice(0, MAX_PREVIEW);
+        tbody.innerHTML = rows.map((row) => {
+          const ai = allRows.indexOf(row);
+          const checked = selectedRows.has(ai);
+          let tr = '<tr class="' + (checked ? '' : 'row-deselected') + '">';
+          tr += '<td><input type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="importPreviewToggleRow(' + ai + ', this.checked)"></td>';
+          allCols.forEach(col => {
+            const active = activeCols.has(col);
+            const val = row[col] != null ? String(row[col]) : '';
+            tr += '<td class="' + (active ? '' : 'col-inactive') + '" title="' + escHtml(val) + '">' + escHtml(val.length > 60 ? val.slice(0, 58) + '…' : val) + '</td>';
+          });
+          tr += '</tr>';
+          return tr;
+        }).join('');
+
+        if (filteredRows.length > MAX_PREVIEW) {
+          tbody.innerHTML += '<tr><td colspan="' + (allCols.length + 1) + '" style="text-align:center;padding:12px;color:#888;font-style:italic;background:#FAFAFA">Showing first ' + MAX_PREVIEW + ' of ' + filteredRows.length + ' rows</td></tr>';
+        }
+      }
+
+      function escHtml(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      }
+
+      // ── Row toggle ──────────────────────────────────────────────────────────
+      window.importPreviewToggleRow = function(ai, checked) {
+        if (checked) __ipState.selectedRows.add(ai);
+        else __ipState.selectedRows.delete(ai);
+        __renderPreviewTable();
+      };
+
+      window.importPreviewToggleAllVisible = function(checked) {
+        const { filteredRows, allRows, selectedRows } = __ipState;
+        filteredRows.forEach(row => {
+          const ai = allRows.indexOf(row);
+          if (ai >= 0) { if (checked) selectedRows.add(ai); else selectedRows.delete(ai); }
+        });
+        __renderPreviewTable();
+      };
+
+      window.importPreviewSelectAllRows = function(checked) {
+        const { allRows, selectedRows } = __ipState;
+        if (checked) allRows.forEach((_, i) => selectedRows.add(i));
+        else selectedRows.clear();
+        __renderPreviewTable();
+      };
+
+      // ── Column toggle ───────────────────────────────────────────────────────
+      window.importPreviewToggleCol = function(col) {
+        const { activeCols } = __ipState;
+        if (activeCols.has(col)) activeCols.delete(col);
+        else activeCols.add(col);
+        __renderPreviewTable();
+      };
+
+      window.importPreviewSelectAllCols = function(checked) {
+        const { allCols, activeCols } = __ipState;
+        if (checked) allCols.forEach(c => activeCols.add(c));
+        else activeCols.clear();
+        __renderPreviewTable();
+      };
+
+      // ── Search / filter rows ────────────────────────────────────────────────
+      window.importPreviewFilterRows = function() {
+        const q = (document.getElementById('importPreviewSearch').value || '').toLowerCase().trim();
+        if (!q) {
+          __ipState.filteredRows = __ipState.allRows;
+        } else {
+          __ipState.filteredRows = __ipState.allRows.filter(row =>
+            Object.values(row).some(v => String(v).toLowerCase().includes(q))
+          );
+        }
+        __renderPreviewTable();
+      };
+
+      // ── Confirm & run import ────────────────────────────────────────────────
+      window.confirmImportPreview = async function() {
+        const { allRows, selectedRows, activeCols, importFn, fileName } = __ipState;
+
+        if (selectedRows.size === 0) { showToast('No rows selected.', 'warning'); return; }
+        if (activeCols.size === 0)   { showToast('No columns selected.', 'warning'); return; }
+
+        // Build filtered rows with only active columns
+        const filteredData = [];
+        allRows.forEach((row, i) => {
+          if (!selectedRows.has(i)) return;
+          const filtered = {};
+          activeCols.forEach(col => { filtered[col] = row[col]; });
+          filteredData.push(filtered);
+        });
+
+        closeImportPreview();
+
+        // Wrap data into a fake File-like event that the import function can read
+        // We patch readXlsx temporarily to return our pre-filtered data
+        const origReadXlsx = window.__patchedReadXlsx || readXlsx;
+        const fakeFile = new File([''], fileName, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+        // Temporarily override readXlsx to return our filtered rows
+        window.__readXlsxOverride = filteredData;
+
+        const fn = window[importFn];
+        if (typeof fn !== 'function') { showToast('Import function not found: ' + importFn, 'error'); return; }
+
+        // Create a synthetic event
+        const fakeEvent = { target: { files: [fakeFile], value: '' } };
+        try {
+          await fn(fakeEvent);
+        } finally {
+          window.__readXlsxOverride = null;
+        }
+      };
+
+      window.closeImportPreview = function() {
+        document.getElementById('importPreviewOverlay').classList.remove('open');
+        __ipState = { allRows:[], filteredRows:[], selectedRows:new Set(), allCols:[], activeCols:new Set(), importFn:null, fileName:'', importType:'' };
+      };
+
       function readXlsx(file) {
+        // If the Import Preview engine pre-filtered the data, return it directly
+        if (window.__readXlsxOverride) {
+          const data = window.__readXlsxOverride;
+          return Promise.resolve(data);
+        }
         return new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = e => {
@@ -13771,6 +14127,8 @@ Instructions:
           reader.readAsBinaryString(file);
         });
       }
+      // Expose globally so outer-scope functions (importWorkshops) can access it
+      window.readXlsx = readXlsx;
 
       window.importAssets = async function importAssets(event) {
         if (!canImport()) { showToast('Only Admins can import data.', 'error'); return; }
