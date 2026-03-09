@@ -6531,11 +6531,12 @@ Asset Management System</textarea>
 
     // ── KPIs ────────────────────────────────────────────────────────
     function updateProjectKPIs() {
-      document.getElementById('prjKpiTotal').textContent    = PROJECTS.length;
-      document.getElementById('prjKpiActive').textContent   = PROJECTS.filter(p => p.status === 'Active').length;
-      document.getElementById('prjKpiHold').textContent     = PROJECTS.filter(p => p.status === 'On Hold').length;
-      document.getElementById('prjKpiDone').textContent     = PROJECTS.filter(p => p.status === 'Completed').length;
-      document.getElementById('prjKpiPlanning').textContent = PROJECTS.filter(p => p.status === 'Planning').length;
+      const _s = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+      _s('prjKpiTotal',    PROJECTS.length);
+      _s('prjKpiActive',   PROJECTS.filter(p => p.status === 'Active').length);
+      _s('prjKpiHold',     PROJECTS.filter(p => p.status === 'On Hold').length);
+      _s('prjKpiDone',     PROJECTS.filter(p => p.status === 'Completed').length);
+      _s('prjKpiPlanning', PROJECTS.filter(p => p.status === 'Planning').length);
       const active = PROJECTS.filter(p => p.status === 'Active').length;
       const badge = document.getElementById('prjBadge');
       if (badge) { badge.textContent = active; badge.style.display = active ? '' : 'none'; }
@@ -7426,7 +7427,8 @@ Asset Management System</textarea>
 
     // ── KPIs ─────────────────────────────────────────────────────────
     function updateInspectionKPIs() {
-      document.getElementById('inspKpiTotal').textContent = INSPECTIONS.length;
+      const _s = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+      _s('inspKpiTotal', INSPECTIONS.length);
       const now = new Date();
       const month = now.getMonth(), year = now.getFullYear();
       const thisMonth = INSPECTIONS.filter(i => {
@@ -7434,7 +7436,7 @@ Asset Management System</textarea>
         const d = new Date(i.startDate);
         return d.getMonth() === month && d.getFullYear() === year;
       }).length;
-      document.getElementById('inspKpiMonth').textContent = thisMonth;
+      _s('inspKpiMonth', thisMonth);
       const total = INSPECTIONS.reduce((s, i) => s + i.totalCost, 0);
       const el = document.getElementById('inspKpiCost');
       if (el) el.textContent = total >= 1e6 ? '$' + (total / 1e6).toFixed(1) + 'M' : '$' + total.toLocaleString();
@@ -8340,14 +8342,16 @@ Asset Management System</textarea>
     //  KPIs
     // ══════════════════════════════════
     function updateKPIs() {
-      document.getElementById('kpiTotal').textContent = ASSETS.length;
-      document.getElementById('kpiActive').textContent = ASSETS.filter(a => a.status === 'Active').length;
-      document.getElementById('kpiMaint').textContent = ASSETS.filter(a => a.status === 'Maintenance').length;
-      document.getElementById('kpiContract').textContent = ASSETS.filter(a => a.status === 'Contracted').length;
+      const _s = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+      _s('kpiTotal',    ASSETS.length);
+      _s('kpiActive',   ASSETS.filter(a => a.status === 'Active').length);
+      _s('kpiMaint',    ASSETS.filter(a => a.status === 'Maintenance').length);
+      _s('kpiContract', ASSETS.filter(a => a.status === 'Contracted').length);
     }
     function updateReportKPIs() {
-      document.getElementById('rptContracts').textContent = CONTRACTS.filter(c => c.status === 'Active').length;
-      document.getElementById('rptRigs').textContent = RIGS.filter(r => r.status === 'Active').length;
+      const _s = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+      _s('rptContracts', CONTRACTS.filter(c => c.status === 'Active').length);
+      _s('rptRigs',      RIGS.filter(r => r.status === 'Active').length);
     }
 
     // ══════════════════════════════════
@@ -10297,11 +10301,12 @@ Asset Management System</textarea>
 
     // ── KPIs ──────────────────────────────────────────────────
     function updateTransferKPIs() {
-      document.getElementById('trKpiTotal').textContent = TRANSFERS.length;
-      document.getElementById('trKpiPending').textContent = TRANSFERS.filter(t => t.status === 'Pending').length;
-      document.getElementById('trKpiOps').textContent = TRANSFERS.filter(t => ['Supt Approved','Drilling Approved'].includes(t.status)).length;
-      document.getElementById('trKpiDone').textContent = TRANSFERS.filter(t => t.status === 'Completed').length;
-      document.getElementById('trKpiRej').textContent = TRANSFERS.filter(t => t.status === 'Rejected').length;
+      const _s = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+      _s('trKpiTotal',   TRANSFERS.length);
+      _s('trKpiPending', TRANSFERS.filter(t => t.status === 'Pending').length);
+      _s('trKpiOps',     TRANSFERS.filter(t => ['Supt Approved','Drilling Approved'].includes(t.status)).length);
+      _s('trKpiDone',    TRANSFERS.filter(t => t.status === 'Completed').length);
+      _s('trKpiRej',     TRANSFERS.filter(t => t.status === 'Rejected').length);
     }
 
     // ── OPEN APPROVAL MODAL ────────────────────────────────────
@@ -10938,11 +10943,12 @@ Asset Management System</textarea>
       const soon = live.filter(s => s === 'Due Soon').length;
       const done = live.filter(s => s === 'Completed').length;
       const sched = live.filter(s => s === 'Scheduled').length;
-      document.getElementById('mKpiTotal').textContent = MAINT_SCHEDULES.length;
-      document.getElementById('mKpiOverdue').textContent = overdue;
-      document.getElementById('mKpiSoon').textContent = soon;
-      document.getElementById('mKpiDone').textContent = done;
-      document.getElementById('mKpiSched').textContent = sched;
+      const _s = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+      _s('mKpiTotal',   MAINT_SCHEDULES.length);
+      _s('mKpiOverdue', overdue);
+      _s('mKpiSoon',    soon);
+      _s('mKpiDone',    done);
+      _s('mKpiSched',   sched);
 
       // Nav badge
       const alertCount = overdue + soon;
@@ -11631,10 +11637,11 @@ Asset Management System</textarea>
       const valid = CERTIFICATES.filter(c => certStatus(c) === 'Valid').length;
       const soon = CERTIFICATES.filter(c => certStatus(c) === 'Expiring Soon').length;
       const expired = CERTIFICATES.filter(c => certStatus(c) === 'Expired').length;
-      document.getElementById('certKpiTotal').textContent = total;
-      document.getElementById('certKpiValid').textContent = valid;
-      document.getElementById('certKpiSoon').textContent = soon;
-      document.getElementById('certKpiExpired').textContent = expired;
+      const _s = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+      _s('certKpiTotal',   total);
+      _s('certKpiValid',   valid);
+      _s('certKpiSoon',    soon);
+      _s('certKpiExpired', expired);
       // Update nav badge
       const badge = document.getElementById('certAlertBadge');
       if (badge) { badge.textContent = soon + expired; badge.style.display = (soon + expired) > 0 ? '' : 'none'; }
