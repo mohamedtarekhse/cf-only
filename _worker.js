@@ -92,7 +92,7 @@ async function parseRes(r, single) {
 
 async function router(path, method, url, request, SB, KEY, env={}) {
   const q    = url.searchParams;
-  const seg  = path.replace(/^\/api\/?/,'').split('/');
+  const seg  = path.replace(/^\/(api\/)?/,'').split('/');
   const res  = seg[0];
   const id   = seg[1];
   const act  = seg[2];
