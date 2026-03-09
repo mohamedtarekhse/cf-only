@@ -2848,7 +2848,18 @@
       cursor: pointer;
     }
   </style>
-</head>
+<script>
+  // Mobile browser form-state prevention: runs before window.onload.
+  // iOS Safari / Android Chrome restore <select> values from last session,
+  // leaving every table empty on mobile until the user taps Clear.
+  // Blanking all filter controls at DOMContentLoaded blocks that restore.
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.filter-input, .filter-select').forEach(function (el) {
+      el.setAttribute('autocomplete', 'off');
+      el.value = '';
+    });
+  });
+</script>
 <script>
   // ═══════════════════════════════════════════════════════
   //  AUTH — Login / Logout
@@ -7866,6 +7877,19 @@ Asset Management System</textarea>
     }
 
     window.onload = function () {
+      // ── Mobile browser form-state reset ────────────────────────────
+      // iOS Safari and Android Chrome silently restore the last-used value
+      // of <select> and <input> elements across sessions.  If a filter
+      // select was left on e.g. "Active" last time, the browser re-applies
+      // it before our render runs, so every table except assets shows empty
+      // (no match against the still-empty data array) until the user taps
+      // "Clear".  Explicitly blanking every filter control here prevents
+      // that, regardless of what the browser cached.
+      document.querySelectorAll('.filter-input, .filter-select').forEach(function(el) {
+        el.value = '';
+      });
+      // ───────────────────────────────────────────────────────────────
+
       renderNotifications();
 
       populateFormSelects();
