@@ -4196,7 +4196,7 @@
           <button id="btnNewWorkshop" class="btn btn-primary" onclick="openAddWorkshopModal()"><i class="fas fa-plus"></i> New Workshop</button>
           <button class="btn btn-secondary" onclick="exportWorkshops()"><i class="fas fa-file-excel"></i> Export Excel</button>
           <button class="btn btn-secondary" id="btnImportWorkshops" onclick="openImportGuide('workshops')"><i class="fas fa-upload"></i> Import</button>
-          <input type="file" id="importFileWorkshops" accept=".xlsx,.xls,.csv" style="display:none" onchange="importWorkshops(event)">
+          <input type="file" id="importFileWorkshops" accept=".xlsx,.xls,.csv" style="display:none">
         </div>
 
         <!-- FILTER BAR -->
@@ -6241,6 +6241,79 @@ Asset Management System</textarea>
         <button class="btn btn-secondary" onclick="closeModal('addWorkshopModal')">Cancel</button>
         <button class="btn btn-primary" onclick="saveWorkshop()"><i class="fas fa-save"></i> Save Workshop</button>
       </div>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════ IMPORT PROGRESS OVERLAY ═══════════════════ -->
+  <div id="importProgressOverlay">
+    <div class="import-progress-box">
+      <div class="import-progress-icon"><i class="fas fa-spinner"></i></div>
+      <div class="import-progress-title" id="iprogTitle">Importing…</div>
+      <div class="import-progress-sub"  id="iprogSub">Preparing rows…</div>
+      <div class="import-progress-bar-wrap">
+        <div class="import-progress-bar" id="iprogBar" style="width:0%"></div>
+      </div>
+      <div class="import-progress-count" id="iprogCount"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ SMART IMPORT PREVIEW MODAL ═══════════════════ -->
+  <div id="importPreviewOverlay">
+    <div id="importPreviewModal">
+
+      <!-- Header -->
+      <div class="ipv-header">
+        <i class="fas fa-table" style="font-size:18px"></i>
+        <div style="flex:1;min-width:0">
+          <h2 id="ipvTitle">Review Import Data</h2>
+          <div class="ipv-header-sub" id="ipvSubtitle"></div>
+        </div>
+        <button style="background:rgba(255,255,255,.15);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center" onclick="ipvClose()"><i class="fas fa-times"></i></button>
+      </div>
+
+      <!-- Toolbar: stats + filters + search -->
+      <div class="ipv-toolbar">
+        <span class="ipv-stat-pill new"   ><i class="fas fa-plus-circle"></i> <span id="ipvStatNew">0</span> New</span>
+        <span class="ipv-stat-pill update"><i class="fas fa-edit"></i> <span id="ipvStatUpdate">0</span> Duplicates</span>
+        <span class="ipv-stat-pill selected"><i class="fas fa-check-square"></i> <span id="ipvStatSel">0</span> Selected</span>
+        <div class="ipv-divider"></div>
+        <button class="ipv-filter-btn active" id="ipvFAll"    onclick="ipvSetFilter('all')">All</button>
+        <button class="ipv-filter-btn"        id="ipvFNew"    onclick="ipvSetFilter('new')"><i class="fas fa-plus" style="font-size:10px"></i> New Only</button>
+        <button class="ipv-filter-btn"        id="ipvFDup"    onclick="ipvSetFilter('dup')"><i class="fas fa-clone" style="font-size:10px"></i> Duplicates Only</button>
+        <div class="ipv-divider"></div>
+        <button class="btn btn-secondary" style="height:28px;font-size:11.5px;padding:0 10px" onclick="ipvSelectAll(true)"><i class="fas fa-check-double"></i> All</button>
+        <button class="btn btn-ghost"     style="height:28px;font-size:11.5px;padding:0 10px" onclick="ipvSelectAll(false)"><i class="fas fa-square"></i> None</button>
+        <div style="flex:1"></div>
+        <div class="ipv-search-wrap">
+          <i class="fas fa-search"></i>
+          <input class="ipv-search" id="ipvSearch" placeholder="Filter rows…" oninput="ipvRender()">
+        </div>
+      </div>
+
+      <!-- Column chip toggles -->
+      <div class="ipv-col-chips" id="ipvColChips"></div>
+
+      <!-- Table -->
+      <div class="ipv-table-wrap">
+        <table class="ipv-table">
+          <thead id="ipvThead"></thead>
+          <tbody id="ipvTbody"></tbody>
+        </table>
+      </div>
+
+      <!-- Footer -->
+      <div class="ipv-footer">
+        <span class="ipv-footer-hint"><i class="fas fa-info-circle"></i>&nbsp; Click cells to edit &nbsp;·&nbsp; Toggle columns above &nbsp;·&nbsp; Yellow rows = existing record will be updated</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" onclick="ipvClose()"><i class="fas fa-times"></i> Cancel</button>
+          <button class="btn btn-primary"   id="ipvConfirmBtn" onclick="ipvConfirm()">
+            <i class="fas fa-file-import"></i> Confirm Import
+            <span id="ipvConfirmBadge" style="background:rgba(255,255,255,.25);padding:1px 8px;border-radius:10px;margin-left:5px;font-size:11px"></span>
+          </button>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -8811,7 +8884,7 @@ Asset Management System</textarea>
       event.target.value = '';
       showToast('Importing workshops…', 'info');
       try {
-        const rows = await readXlsx(file);
+        const rows = await (window.readXlsx||readXlsx)(file);
         let added = 0;
         const failedRows = [];
         for (let i = 0; i < rows.length; i++) {
@@ -8859,6 +8932,7 @@ Asset Management System</textarea>
       } catch(err) { showToast('Import failed: ' + err.message, 'error'); }
     }
 
+    window.importWorkshops = importWorkshops;
     function refreshRigFilterWithWorkshops() {
       // Keeps the assets-page Rig/Workshop filter dropdown in sync with WORKSHOPS
       const sel = document.getElementById('filterRig');
@@ -13064,7 +13138,7 @@ Instructions:
       function rerender(...fns) {
         fns.forEach(fn => { if (typeof window[fn] === 'function') window[fn](); });
       }
-      function rerenderAll() {
+      window.rerenderAll = function rerenderAll() {
         if (typeof filteredAssets      !== 'undefined') filteredAssets      = [...ASSETS];
         if (typeof filteredProjects    !== 'undefined') filteredProjects    = [...PROJECTS];
         if (typeof filteredInspections !== 'undefined') filteredInspections = [...INSPECTIONS];
@@ -13758,6 +13832,7 @@ Instructions:
       // ══════════════════════════════════════════════════════════════
 
       function readXlsx(file) {
+        if (window.__ipvReadOverride) { const d=window.__ipvReadOverride; return Promise.resolve(d); }
         return new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = e => {
@@ -13771,6 +13846,7 @@ Instructions:
           reader.readAsBinaryString(file);
         });
       }
+      window.readXlsx = readXlsx;
 
       window.importAssets = async function importAssets(event) {
         if (!canImport()) { showToast('Only Admins can import data.', 'error'); return; }
@@ -14486,7 +14562,607 @@ Instructions:
 
       
 
-            // ══════════════════════════════════
+      
+      // ══════════════════════════════════════════════════════════════════════
+      //  SMART IMPORT ENGINE v2 — Preview, Diff, Column Toggle, Inline Edit,
+      //  Progress Bar, Enhanced Results
+      // ══════════════════════════════════════════════════════════════════════
+
+      // ── Primary-key lookup per entity ──────────────────────────────────────
+      const __IPV_KEY_MAP = {
+        assets:       { arr: () => ASSETS,         pk: (r)=> r['Asset ID']||r['asset_id']||'',        label: 'Asset ID' },
+        contracts:    { arr: () => CONTRACTS,       pk: (r)=> r['Contract ID']||r['ID']||r['id']||'',  label: 'Contract ID' },
+        rigs:         { arr: () => RIGS,            pk: (r)=> r['Rig ID']||r['ID']||r['id']||'',       label: 'Rig ID' },
+        users:        { arr: () => USERS,           pk: (r)=> r['Email']||r['email']||'',              label: 'Email' },
+        bom:          { arr: () => BOM_ITEMS,       pk: (r)=> r['BOM ID']||r['ID']||r['id']||'',       label: 'BOM ID' },
+        transfers:    { arr: () => TRANSFERS,       pk: (r)=> r['Transfer ID']||r['ID']||r['id']||'',  label: 'Transfer ID' },
+        maintenance:  { arr: () => (typeof MAINT_SCHEDULES!=='undefined'?MAINT_SCHEDULES:[]), pk:(r)=>r['Schedule ID']||r['ID']||r['id']||'', label:'Schedule ID' },
+        certificates: { arr: () => CERTIFICATES,   pk: (r)=> r['Cert ID']||r['Certificate ID']||r['ID']||r['asset_id']||'', label:'Cert ID / Asset ID' },
+        workshops:    { arr: () => WORKSHOPS,       pk: (r)=> r['Workshop ID']||r['ID']||r['id']||'',  label: 'Workshop ID' },
+      };
+
+      // Normalised field names for diff display (payload key → display label)
+      const __IPV_FIELD_LABELS = {
+        asset_id:'Asset ID', workshop_id:'Workshop ID', workshop_name:'Name',
+        name:'Name', category:'Category', rig_name:'Rig', rig:'Rig', location:'Location',
+        status:'Status', serial:'Serial', notes:'Notes', last_inspection:'Last Inspection',
+        inspection_type:'Inspection Type', cert_link:'Cert Link',
+        scope_of_work:'Scope', start_date:'Start Date', end_date:'End Date',
+        technician:'Technician', contact:'Contact', assigned_rig:'Assigned Rig',
+        asset_name:'Asset Name', asset_serial:'Asset Serial',
+        value:'Value', start:'Start', end:'End',
+        type:'Type', depth:'Depth', hp:'HP',
+        email:'Email', role:'Role', dept:'Dept', color:'Color', initials:'Initials',
+        task:'Task', priority:'Priority', freq:'Frequency', next_due:'Next Due',
+        last_done:'Last Done', tech:'Technician', hours:'Hours', cost:'Cost', alert_days:'Alert Days',
+        cert_id:'Cert ID', validity_days:'Validity Days',
+        current_loc:'Current Loc', destination:'Destination', dest_rig:'Dest Rig',
+        requested_by:'Requested By', request_date:'Request Date', required_date:'Required Date',
+        reason:'Reason', instructions:'Instructions',
+      };
+
+      // ── State ───────────────────────────────────────────────────────────────
+      let __ipvState = {
+        rows: [],          // all rows from file
+        rowMeta: [],       // [{pk, isDup, existingRec, selected, action:'update'|'skip', rowData}]
+        cols: [],          // all column names
+        activeCols: new Set(),
+        filter: 'all',     // 'all'|'new'|'dup'
+        entityType: null,
+        importFnName: null,
+        fileName: '',
+      };
+
+      // ── File interception — replace inline onchange for all import inputs ──
+      const __IPV_INPUT_MAP = {
+        'importFile':           'assets',
+        'importFileContracts':  'contracts',
+        'importFileRigs':       'rigs',
+        'importFileUsers':      'users',
+        'importFileBom':        'bom',
+        'importFileTransfers':  'transfers',
+        'importFileMaint':      'maintenance',
+        'importFileCerts':      'certificates',
+        'importFileWorkshops':  'workshops',
+      };
+
+      function __ipvAttach() {
+        Object.entries(__IPV_INPUT_MAP).forEach(([inputId, type]) => {
+          const el = document.getElementById(inputId);
+          if (!el) return;
+          el.removeAttribute('onchange');
+          el.addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            e.target.value = '';
+            try {
+              const rows = await readXlsx(file);
+              if (!rows || rows.length === 0) { showToast('File is empty.','error'); return; }
+              __ipvOpen(rows, file.name, type);
+            } catch(err) { showToast('Cannot read file: '+err.message,'error'); }
+          });
+        });
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', __ipvAttach);
+      else setTimeout(__ipvAttach, 0);
+
+      // ── Open preview ────────────────────────────────────────────────────────
+      function __ipvOpen(rows, fileName, entityType) {
+        const keyMap = __IPV_KEY_MAP[entityType];
+        const cfg    = IMPORT_CONFIGS[entityType];
+
+        // Deduplicate rows in file by primary key (keep last occurrence)
+        const seenPKs = new Map();
+        rows.forEach((r,i) => { const pk = (keyMap.pk(r)||'').toString().trim(); if(pk) seenPKs.set(pk, i); });
+        const dedupedRows = rows.filter((r,i) => {
+          const pk = (keyMap.pk(r)||'').toString().trim();
+          return !pk || seenPKs.get(pk) === i; // keep last if duplicate in file
+        });
+
+        const cols = [...new Set(dedupedRows.flatMap(r => Object.keys(r)))];
+        const arr  = keyMap.arr();
+
+        // Required cols come first, then rest
+        const reqCols = (cfg?.required||[]).map(c=>c.col);
+        const sortedCols = [...reqCols.filter(c=>cols.includes(c)), ...cols.filter(c=>!reqCols.includes(c))];
+
+        const rowMeta = dedupedRows.map((r,i) => {
+          const pk = (keyMap.pk(r)||'').toString().trim();
+          // Find existing record
+          let existingRec = null;
+          if (pk && arr.length) {
+            if (entityType==='assets')       existingRec = arr.find(a=>a.assetId===pk||a.asset_id===pk);
+            else if (entityType==='contracts') existingRec = arr.find(a=>a.id===pk);
+            else if (entityType==='rigs')      existingRec = arr.find(a=>a.id===pk);
+            else if (entityType==='users')     existingRec = arr.find(a=>a.email===pk);
+            else if (entityType==='bom')       existingRec = arr.find(a=>a.id===pk);
+            else if (entityType==='transfers') existingRec = arr.find(a=>a.id===pk);
+            else if (entityType==='maintenance') existingRec = arr.find(a=>a.id===pk);
+            else if (entityType==='certificates') existingRec = arr.find(a=>(a.certId===pk||a.cert_id===pk));
+            else if (entityType==='workshops') existingRec = arr.find(a=>a.workshopId===pk||a.workshop_id===pk);
+          }
+          return {
+            pk, isDup: !!existingRec, existingRec,
+            selected: true,
+            action: existingRec ? 'update' : 'new',
+            rowData: {...r},   // mutable copy for inline edit
+            fileRowNum: i + 2,
+          };
+        });
+
+        __ipvState = { rows: dedupedRows, rowMeta, cols: sortedCols,
+          activeCols: new Set(sortedCols), filter: 'all',
+          entityType, importFnName: entityType, fileName };
+
+        // Build column chips
+        __ipvBuildColChips(cfg, sortedCols);
+
+        document.getElementById('ipvTitle').textContent = 'Review ' + (cfg?.label||entityType) + ' Import';
+        document.getElementById('ipvSubtitle').textContent =
+          fileName + '  ·  ' + dedupedRows.length + ' rows  ·  ' + sortedCols.length + ' columns';
+        document.getElementById('ipvSearch').value = '';
+        __ipvRenderStats();
+        __ipvRender();
+        document.getElementById('importPreviewOverlay').classList.add('open');
+      }
+      window.ipvClose = function() {
+        document.getElementById('importPreviewOverlay').classList.remove('open');
+        __ipvState = { rows:[], rowMeta:[], cols:[], activeCols:new Set(), filter:'all', entityType:null, importFnName:null, fileName:'' };
+      };
+
+      // ── Column chips ────────────────────────────────────────────────────────
+      function __ipvBuildColChips(cfg, cols) {
+        const reqSet = new Set((cfg?.required||[]).map(c=>c.col));
+        const wrap = document.getElementById('ipvColChips');
+        wrap.innerHTML = cols.map(col => {
+          const isReq = reqSet.has(col);
+          return `<span class="ipv-col-chip active ${isReq?'required':''}" data-col="${col.replace(/"/g,'&quot;')}" onclick="ipvToggleCol(this)" title="${isReq?'Required column':''}">`
+            + (isReq ? '<i class="fas fa-asterisk" style="font-size:9px;color:#B00"></i> ' : '')
+            + escIpv(col) + '</span>';
+        }).join('');
+      }
+      window.ipvToggleCol = function(chip) {
+        const col = chip.dataset.col;
+        if (__ipvState.activeCols.has(col)) {
+          __ipvState.activeCols.delete(col);
+          chip.classList.remove('active');
+        } else {
+          __ipvState.activeCols.add(col);
+          chip.classList.add('active');
+        }
+        __ipvRender();
+      };
+
+      // ── Filter toggle ───────────────────────────────────────────────────────
+      window.ipvSetFilter = function(f) {
+        __ipvState.filter = f;
+        ['All','New','Dup'].forEach(x => document.getElementById('ipvF'+x)?.classList.remove('active'));
+        document.getElementById('ipvF' + f.charAt(0).toUpperCase() + f.slice(1))?.classList.add('active');
+        if (f==='all') document.getElementById('ipvFAll').classList.add('active');
+        __ipvRender();
+      };
+
+      // ── Select all ─────────────────────────────────────────────────────────
+      window.ipvSelectAll = function(val) {
+        const visIdxs = __ipvGetVisibleIdxs();
+        visIdxs.forEach(i => __ipvState.rowMeta[i].selected = val);
+        __ipvRenderStats(); __ipvRender();
+      };
+      window.ipvToggleRow = function(i, val) {
+        __ipvState.rowMeta[i].selected = val;
+        __ipvRenderStats();
+        // update just the row checkbox without full re-render for perf
+        const row = document.querySelector(`#ipvTbody tr[data-ri="${i}"]`);
+        if (row) { row.classList.toggle('ipv-row-desel', !val); }
+        __ipvUpdateConfirmBadge();
+      };
+      window.ipvSetAction = function(i, action) {
+        __ipvState.rowMeta[i].action = action;
+        // Re-render just that row's badge
+        const badge = document.querySelector(`#ipvTbody tr[data-ri="${i}"] .ipv-row-badge`);
+        if (badge) {
+          badge.className = 'ipv-row-badge ' + (action==='update'?'update':'new');
+          badge.innerHTML = action==='update' ? '<i class="fas fa-edit"></i> UPDATE' : '<i class="fas fa-ban"></i> SKIP';
+        }
+      };
+
+      // ── Stats update ────────────────────────────────────────────────────────
+      function __ipvRenderStats() {
+        const newC = __ipvState.rowMeta.filter(m=>!m.isDup).length;
+        const dupC = __ipvState.rowMeta.filter(m=>m.isDup).length;
+        const selC = __ipvState.rowMeta.filter(m=>m.selected).length;
+        document.getElementById('ipvStatNew').textContent    = newC;
+        document.getElementById('ipvStatUpdate').textContent = dupC;
+        document.getElementById('ipvStatSel').textContent    = selC;
+        __ipvUpdateConfirmBadge();
+      }
+      function __ipvUpdateConfirmBadge() {
+        const selC = __ipvState.rowMeta.filter(m=>m.selected).length;
+        const cols = __ipvState.activeCols.size;
+        const badge = document.getElementById('ipvConfirmBadge');
+        if (badge) badge.textContent = selC + ' rows, ' + cols + ' cols';
+      }
+
+      // ── Get visible row indices ─────────────────────────────────────────────
+      function __ipvGetVisibleIdxs() {
+        const q = (document.getElementById('ipvSearch')?.value||'').toLowerCase().trim();
+        const f = __ipvState.filter;
+        return __ipvState.rowMeta.map((m,i)=>({m,i})).filter(({m,i}) => {
+          if (f==='new' && m.isDup) return false;
+          if (f==='dup' && !m.isDup) return false;
+          if (q) { const vals = Object.values(m.rowData).join(' ').toLowerCase(); if (!vals.includes(q)) return false; }
+          return true;
+        }).map(({i})=>i);
+      }
+
+      // ── Render table ────────────────────────────────────────────────────────
+      function __ipvRender() {
+        const { rowMeta, cols, activeCols } = __ipvState;
+        const visIdxs = __ipvGetVisibleIdxs();
+        const activeCols_ = cols.filter(c => activeCols.has(c));
+
+        // HEAD
+        const thead = document.getElementById('ipvThead');
+        const allSel = visIdxs.length > 0 && visIdxs.every(i=>rowMeta[i].selected);
+        thead.innerHTML = '<tr>'
+          + '<th><input type="checkbox" '+(allSel?'checked':'')+ ' onchange="ipvSelectAll(this.checked)" title="Select all visible"></th>'
+          + '<th style="min-width:90px">Status</th>'
+          + activeCols_.map(c => `<th>${escIpv(c)}</th>`).join('')
+          + '</tr>';
+
+        // BODY (cap at 2000 for performance)
+        const cap = 2000;
+        let html = '';
+        const slice = visIdxs.slice(0, cap);
+        slice.forEach(i => {
+          const m = rowMeta[i];
+          const rowClass = m.selected ? (m.isDup ? 'ipv-row-update' : 'ipv-row-new') : 'ipv-row-desel';
+          html += `<tr class="${rowClass}" data-ri="${i}">`;
+          html += `<td><input type="checkbox" ${m.selected?'checked':''} onchange="ipvToggleRow(${i},this.checked)"></td>`;
+          // Status cell — badge + action dropdown for dups
+          if (m.isDup) {
+            html += `<td style="min-width:90px">
+              <span class="ipv-row-badge update"><i class="fas fa-edit"></i> DUPLICATE</span><br>
+              <select style="font-size:11px;margin-top:3px;border:1px solid #DDD;border-radius:3px;padding:1px 4px" onchange="ipvSetAction(${i},this.value)">
+                <option value="update" ${m.action==='update'?'selected':''}>✏️ Update</option>
+                <option value="skip"   ${m.action==='skip'  ?'selected':''}>⏭ Skip</option>
+              </select>
+            </td>`;
+          } else {
+            html += `<td><span class="ipv-row-badge new"><i class="fas fa-plus"></i> NEW</span></td>`;
+          }
+          // Data cells
+          activeCols_.forEach(col => {
+            const newVal = (m.rowData[col] != null) ? String(m.rowData[col]) : '';
+            if (m.isDup && m.existingRec) {
+              // find matching value from existing record
+              const existObj = m.existingRec;
+              // Try to find existing value: check direct, snake_case, camelCase
+              const colSnake = col.toLowerCase().replace(/ /g,'_');
+              let oldVal = existObj[col] ?? existObj[colSnake] ?? existObj[col.replace(/ /g,'')] ?? '';
+              oldVal = (oldVal != null) ? String(oldVal) : '';
+              const changed = oldVal !== newVal && oldVal !== '';
+              if (changed) {
+                html += `<td><div class="ipv-diff-cell">
+                  <div class="ipv-diff-old">${escIpv(oldVal.length>50?oldVal.slice(0,48)+'…':oldVal)}</div>
+                  <input class="ipv-editable ipv-diff-new" value="${escIpvAttr(newVal)}" data-ri="${i}" data-col="${escIpvAttr(col)}" oninput="ipvEdit(this)">
+                </div></td>`;
+              } else {
+                html += `<td><input class="ipv-editable ipv-diff-same" value="${escIpvAttr(newVal)}" data-ri="${i}" data-col="${escIpvAttr(col)}" oninput="ipvEdit(this)"></td>`;
+              }
+            } else {
+              html += `<td><input class="ipv-editable" value="${escIpvAttr(newVal)}" data-ri="${i}" data-col="${escIpvAttr(col)}" oninput="ipvEdit(this)"></td>`;
+            }
+          });
+          html += '</tr>';
+        });
+        if (visIdxs.length > cap) html += `<tr><td colspan="${activeCols_.length+2}" style="text-align:center;padding:12px;color:#888;font-style:italic">Showing first ${cap} of ${visIdxs.length} rows</td></tr>`;
+        if (visIdxs.length === 0) html = `<tr><td colspan="${activeCols_.length+2}" style="text-align:center;padding:32px;color:#999"><i class="fas fa-inbox" style="font-size:24px;display:block;margin-bottom:8px;opacity:.4"></i>No rows match the current filter</td></tr>`;
+        document.getElementById('ipvTbody').innerHTML = html;
+        __ipvUpdateConfirmBadge();
+      }
+      window.ipvRender = __ipvRender; // expose for search oninput
+
+      // ── Inline edit ─────────────────────────────────────────────────────────
+      window.ipvEdit = function(input) {
+        const i   = parseInt(input.dataset.ri);
+        const col = input.dataset.col;
+        __ipvState.rowMeta[i].rowData[col] = input.value;
+      };
+
+      // ── Confirm — run import with progress bar ──────────────────────────────
+      window.ipvConfirm = async function() {
+        const { rowMeta, activeCols, entityType, fileName } = __ipvState;
+
+        const toProcess = rowMeta.filter(m => m.selected && !(m.isDup && m.action==='skip'));
+        if (toProcess.length === 0) { showToast('No rows selected for import.','warning'); return; }
+
+        // Build filtered row objects (only active columns)
+        const filteredRows = toProcess.map(m => {
+          const obj = {};
+          activeCols.forEach(col => { obj[col] = m.rowData[col] ?? ''; });
+          obj.__isDup    = m.isDup;
+          obj.__action   = m.action;
+          obj.__fileRow  = m.fileRowNum;
+          return obj;
+        });
+
+        ipvClose();
+        __ipvRunImport(entityType, filteredRows, fileName);
+      };
+
+      // ── Progress helpers ────────────────────────────────────────────────────
+      function __ipvShowProgress(title, total) {
+        document.getElementById('iprogTitle').textContent = title;
+        document.getElementById('iprogSub').textContent   = 'Starting…';
+        document.getElementById('iprogBar').style.width   = '0%';
+        document.getElementById('iprogCount').textContent = '';
+        document.getElementById('importProgressOverlay').classList.add('open');
+        return {
+          update(done, tot, msg) {
+            const pct = tot > 0 ? Math.round(done/tot*100) : 0;
+            document.getElementById('iprogBar').style.width  = pct + '%';
+            document.getElementById('iprogSub').textContent  = msg || '';
+            document.getElementById('iprogCount').textContent = `${done} / ${tot} rows`;
+          },
+          done() { document.getElementById('importProgressOverlay').classList.remove('open'); }
+        };
+      }
+
+      // ── Core import runner (replaces the per-entity functions' loops) ───────
+      async function __ipvRunImport(entityType, filteredRows, fileName) {
+        const cfg = IMPORT_CONFIGS[entityType];
+        const label = cfg?.label || entityType;
+        const prog  = __ipvShowProgress('Importing ' + label + '…', filteredRows.length);
+
+        let added = 0, updated = 0, skipped = 0;
+        const failedRows = [];
+
+        for (let i = 0; i < filteredRows.length; i++) {
+          const r = filteredRows[i];
+          const isDup   = r.__isDup;
+          const action  = r.__action;
+          const fileRow = r.__fileRow;
+          prog.update(i, filteredRows.length, `Processing row ${i+1} of ${filteredRows.length}…`);
+          // Small yield to let progress bar paint
+          if (i % 5 === 0) await new Promise(res => setTimeout(res, 0));
+
+          try {
+            if (entityType === 'assets') {
+              await __ipvDoAsset(r, isDup, action, fileRow, failedRows);
+              if (isDup && action==='update') updated++; else if (!isDup) added++; else skipped++;
+            } else if (entityType === 'contracts') {
+              await __ipvDoContract(r, isDup, action, fileRow, failedRows);
+              if (isDup && action==='update') updated++; else if (!isDup) added++; else skipped++;
+            } else if (entityType === 'rigs') {
+              await __ipvDoRig(r, isDup, action, fileRow, failedRows);
+              if (isDup && action==='update') updated++; else if (!isDup) added++; else skipped++;
+            } else if (entityType === 'users') {
+              await __ipvDoUser(r, isDup, action, fileRow, failedRows);
+              if (isDup && action==='update') updated++; else if (!isDup) added++; else skipped++;
+            } else if (entityType === 'bom') {
+              await __ipvDoBOM(r, isDup, action, fileRow, failedRows);
+              if (isDup && action==='update') updated++; else if (!isDup) added++; else skipped++;
+            } else if (entityType === 'transfers') {
+              await __ipvDoTransfer(r, isDup, action, fileRow, failedRows);
+              if (isDup && action==='update') updated++; else if (!isDup) added++; else skipped++;
+            } else if (entityType === 'maintenance') {
+              await __ipvDoMaint(r, isDup, action, fileRow, failedRows);
+              if (isDup && action==='update') updated++; else if (!isDup) added++; else skipped++;
+            } else if (entityType === 'certificates') {
+              await __ipvDoCert(r, isDup, action, fileRow, failedRows);
+              if (isDup && action==='update') updated++; else if (!isDup) added++; else skipped++;
+            } else if (entityType === 'workshops') {
+              await __ipvDoWorkshop(r, isDup, action, fileRow, failedRows);
+              if (isDup && action==='update') updated++; else if (!isDup) added++; else skipped++;
+            }
+          } catch(e) {
+            failedRows.push({ row: fileRow, id: '', reason: e.message||'Unknown error' });
+          }
+        }
+
+        prog.done();
+
+        // Re-render all relevant views
+        if (entityType==='assets')       { if(typeof applyFilters==='function') applyFilters(); }
+        if (entityType==='contracts')    { if(typeof applyContractFilters==='function') applyContractFilters(); }
+        if (entityType==='rigs')         { if(typeof renderRigs==='function') renderRigs(); }
+        if (entityType==='users')        { if(typeof renderUsers==='function') renderUsers(); }
+        if (entityType==='bom')          { if(typeof renderBOMSection==='function') renderBOMSection(); }
+        if (entityType==='transfers')    { if(typeof applyTransferFilters==='function') applyTransferFilters(); }
+        if (entityType==='maintenance')  { if(typeof applyMaintFilters==='function') applyMaintFilters(); }
+        if (entityType==='certificates') { if(typeof renderCertificates==='function') renderCertificates(); if(typeof updateCertKPIs==='function') updateCertKPIs(); }
+        if (entityType==='workshops')    { if(typeof renderWorkshops==='function') renderWorkshops(); if(typeof populateFormSelects==='function') populateFormSelects(); if(typeof refreshRigFilterWithWorkshops==='function') refreshRigFilterWithWorkshops(); }
+        if (typeof renderNotifications==='function') renderNotifications();
+
+        __ipvShowResults(label, fileName, added, updated, skipped, failedRows);
+      }
+
+      // ── Per-entity import helpers ────────────────────────────────────────────
+
+      async function __ipvDoAsset(r, isDup, action, fileRow, failedRows) {
+        const asset_id = (r['Asset ID']||r['asset_id']||'').toString().trim();
+        if (!asset_id) { failedRows.push({row:fileRow,id:'',reason:'Missing Asset ID'}); return; }
+        if (isDup && action==='skip') return;
+        const payload = {
+          asset_id,
+          name:            r['Name']||r['Asset Name']||'Imported Asset',
+          category:        r['Category']||'Other',
+          rig_name:        r['Rig']||r['Rig Name']||'',
+          location:        r['Location']||'',
+          status:          r['Status']||'Active',
+          serial:          r['Serial']||r['Serial Number']||'',
+          notes:           r['Notes']||'',
+          last_inspection: r['Last Inspection']||null,
+          inspection_type: r['Inspection Type']||'',
+          cert_link:       r['Cert Link']||r['Certificate Link']||'',
+        };
+        if (isDup) {
+          const res = await PUT(`/assets/${asset_id}`, payload);
+          const idx = ASSETS.findIndex(a=>a.assetId===asset_id);
+          if (idx>=0) ASSETS[idx] = normA(res.data||payload);
+        } else {
+          const res = await POST('/assets', payload);
+          ASSETS.push(normA(res.data||payload));
+        }
+      }
+
+      async function __ipvDoContract(r, isDup, action, fileRow, failedRows) {
+        const id = (r['Contract ID']||r['ID']||r['id']||'').toString().trim();
+        if (!id) { failedRows.push({row:fileRow,id:'',reason:'Missing Contract ID'}); return; }
+        if (isDup && action==='skip') return;
+        const payload = { id, rig:r['Rig']||'', value:Number(r['Value']||r['Value (USD)']||0)||0, start_date:r['Start Date']||null, end_date:r['End Date']||null, status:r['Status']||'Pending' };
+        if (isDup) { const res=await PUT(`/contracts/${id}`,payload); const idx=CONTRACTS.findIndex(c=>c.id===id); if(idx>=0) CONTRACTS[idx]=res.data; }
+        else { const res=await POST('/contracts',payload); CONTRACTS.push(res.data); }
+      }
+
+      async function __ipvDoRig(r, isDup, action, fileRow, failedRows) {
+        const id = (r['Rig ID']||r['ID']||r['id']||'').toString().trim();
+        if (!id) { failedRows.push({row:fileRow,id:'',reason:'Missing Rig ID'}); return; }
+        if (isDup && action==='skip') return;
+        const payload = { id, name:r['Rig Name']||r['Name']||id, type:r['Type']||'', location:r['Location']||'', depth:r['Depth']||'', hp:Number(r['HP']||0)||0, status:r['Status']||'Active' };
+        if (isDup) { const res=await PUT(`/rigs/${id}`,payload); const idx=RIGS.findIndex(g=>g.id===id); if(idx>=0) RIGS[idx]=res.data; }
+        else { const res=await POST('/rigs',payload); RIGS.push(res.data); }
+      }
+
+      async function __ipvDoUser(r, isDup, action, fileRow, failedRows) {
+        const email = (r['Email']||r['email']||'').toString().trim();
+        if (!email) { failedRows.push({row:fileRow,id:'',reason:'Missing Email'}); return; }
+        if (isDup && action==='skip') return;
+        const payload = { name:r['Name']||email, role:r['Role']||'Viewer', dept:r['Department']||r['Dept']||'', email, color:r['Color']||'#0070F2', initials:r['Initials']||'', active:r['Active']!==undefined?Boolean(r['Active']):true };
+        const pw = r['Password']||r['password']; if(pw) payload.password=pw;
+        if (isDup) { const existing=USERS.find(u=>u.email===email); const res=await PUT(`/users/${existing.id}`,payload); const idx=USERS.findIndex(u=>u.email===email); if(idx>=0) USERS[idx]=res.data; }
+        else { const res=await POST('/users',payload); USERS.push(res.data); }
+      }
+
+      async function __ipvDoBOM(r, isDup, action, fileRow, failedRows) {
+        const id=(r['BOM ID']||r['ID']||'').toString().trim(), asset_id=(r['Asset ID']||'').toString().trim();
+        if(!id){failedRows.push({row:fileRow,id:'',reason:'Missing BOM ID'});return;}
+        if(!asset_id){failedRows.push({row:fileRow,id,reason:'Missing Asset ID'});return;}
+        if (isDup && action==='skip') return;
+        const payload={id,asset_id,parent_id:r['Parent ID']||null,name:r['Name']||id,part_no:r['Part No']||r['Part Number']||'',type:r['Type']||'Serialized',serial:r['Serial']||'',manufacturer:r['Manufacturer']||'',qty:Number(r['Qty']||r['Quantity']||1)||1,uom:r['UOM']||'EA',unit_cost:Number(r['Unit Cost']||0)||0,lead_time:Number(r['Lead Time']||0)||0,status:r['Status']||'Active',notes:r['Notes']||''};
+        if(isDup){const res=await PUT(`/bom/${id}`,payload);const idx=BOM_ITEMS.findIndex(b=>b.id===id);if(idx>=0)BOM_ITEMS[idx]=res.data;}
+        else{const res=await POST('/bom',payload);BOM_ITEMS.push(res.data);}
+      }
+
+      async function __ipvDoTransfer(r, isDup, action, fileRow, failedRows) {
+        const id=(r['Transfer ID']||r['ID']||'').toString().trim(), asset_id=(r['Asset ID']||'').toString().trim();
+        if(!id){failedRows.push({row:fileRow,id:'',reason:'Missing Transfer ID'});return;}
+        if(!asset_id){failedRows.push({row:fileRow,id,reason:'Missing Asset ID'});return;}
+        if (isDup && action==='skip') return;
+        const payload={id,asset_id,asset_name:r['Asset Name']||'',current_loc:r['Current Location']||r['Current Loc']||'',destination:r['Destination']||'',dest_rig:r['Destination Rig']||r['Dest Rig']||'',priority:r['Priority']||'Normal',type:r['Type']||'Field to Field',requested_by:r['Requested By']||'',request_date:r['Request Date']||null,required_date:r['Required Date']||null,reason:r['Reason']||'',instructions:r['Instructions']||'',status:r['Status']||'Pending'};
+        if(isDup){const res=await PUT(`/transfers/${id}`,payload);const idx=TRANSFERS.findIndex(t=>t.id===id);if(idx>=0)TRANSFERS[idx]=res.data;}
+        else{const res=await POST('/transfers',payload);TRANSFERS.push(res.data);}
+      }
+
+      async function __ipvDoMaint(r, isDup, action, fileRow, failedRows) {
+        const id=(r['Schedule ID']||r['ID']||'').toString().trim(), asset_id=(r['Asset ID']||'').toString().trim(), next_due=(r['Next Due']||'').toString().trim();
+        if(!id){failedRows.push({row:fileRow,id:'',reason:'Missing Schedule ID'});return;}
+        if(!asset_id){failedRows.push({row:fileRow,id,reason:'Missing Asset ID'});return;}
+        if(!next_due){failedRows.push({row:fileRow,id,reason:'Missing Next Due date'});return;}
+        if (isDup && action==='skip') return;
+        const payload={id,asset_id,task:r['Task']||'Inspection',type:r['Type']||'Inspection',priority:r['Priority']||'Normal',freq:Number(r['Frequency']||r['Freq']||90)||90,last_done:r['Last Done']||null,next_due,tech:r['Technician']||r['Tech']||'',hours:Number(r['Hours']||0)||null,cost:Number(r['Cost']||0)||null,status:r['Status']||'Scheduled',alert_days:Number(r['Alert Days']||14)||14,notes:r['Notes']||''};
+        const arr = typeof MAINT_SCHEDULES!=='undefined'?MAINT_SCHEDULES:[];
+        if(isDup){const res=await PUT(`/maintenance/${id}`,payload);const idx=arr.findIndex(m=>m.id===id);if(idx>=0)arr[idx]=normM?normM(res.data):res.data;}
+        else{const res=await POST('/maintenance',payload);arr.push(normM?normM(res.data):res.data);}
+      }
+
+      async function __ipvDoCert(r, isDup, action, fileRow, failedRows) {
+        const asset_id=(r['Asset ID']||'').toString().trim(), inspection_type=(r['Inspection Type']||'').toString().trim();
+        if(!asset_id){failedRows.push({row:fileRow,id:'',reason:'Missing Asset ID'});return;}
+        if(!inspection_type){failedRows.push({row:fileRow,id:asset_id,reason:'Missing Inspection Type'});return;}
+        if (isDup && action==='skip') return;
+        const cert_id=(r['Cert ID']||r['Certificate ID']||r['ID']||'').toString().trim()||('CERT-'+Date.now().toString(36).toUpperCase()+'-'+Math.random().toString(36).slice(2,5).toUpperCase());
+        const payload={cert_id,asset_id,inspection_type,last_inspection:r['Last Inspection']||null,next_inspection:r['Next Inspection']||null,validity_days:Number(r['Validity Days']||365)||365,alert_days:Number(r['Alert Days']||30)||30,cert_link:r['Cert Link']||r['Certificate Link']||'',notes:r['Notes']||''};
+        if(isDup){const res=await PUT(`/certificates/${cert_id}`,payload);const idx=CERTIFICATES.findIndex(c=>c.certId===cert_id||c.cert_id===cert_id);if(idx>=0)CERTIFICATES[idx]=normC(res.data);}
+        else{const res=await POST('/certificates',payload);const nc=normC(res.data);const ia=ASSETS.find(a=>a.assetId===nc.assetId);if(ia){nc.name=nc.name||ia.name||'';nc.serial=(!nc.serial||nc.serial==='—')?(ia.serial||'—'):nc.serial;nc.rigName=nc.rigName||ia.rigName||'';}CERTIFICATES.push(nc);}
+      }
+
+      async function __ipvDoWorkshop(r, isDup, action, fileRow, failedRows) {
+        const workshopId=(r['Workshop ID']||r['ID']||'').toString().trim(), wsName=(r['Workshop Name']||r['Name']||'').toString().trim();
+        if(!workshopId){failedRows.push({row:fileRow,id:'',reason:'Missing Workshop ID'});return;}
+        if(!wsName){failedRows.push({row:fileRow,id:workshopId,reason:'Missing Workshop Name'});return;}
+        if (isDup && action==='skip') return;
+        const assetId=(r['Asset ID']||'').toString().trim(), asset=ASSETS.find(a=>a.assetId===assetId);
+        const payload={workshop_id:workshopId,workshop_name:wsName,location:r['Location']||asset?.location||'',assigned_rig:r['Assigned Rig']||r['Rig']||asset?.rigName||'',asset_id:assetId,asset_name:r['Asset Name']||asset?.name||'',asset_serial:r['Asset Serial']||r['Serial Number']||asset?.serial||'',scope_of_work:r['Scope of Work']||r['Scope']||'',start_date:r['Start Date']||null,end_date:r['End Date']||null,status:r['Status']||'Active',technician:r['Technician']||r['Supervisor']||'',contact:r['Contact']||'',notes:r['Notes']||''};
+        if(isDup){const res=typeof PUT!=='undefined'?await PUT(`/workshops/${workshopId}`,payload):{data:payload};const idx=WORKSHOPS.findIndex(w=>w.workshopId===workshopId);if(idx>=0)WORKSHOPS[idx]=normWS(res.data||payload);}
+        else{const res=typeof POST!=='undefined'?await POST('/workshops',payload):{data:payload};WORKSHOPS.push(normWS(res.data||payload));}
+      }
+
+      // ── Enhanced results modal ───────────────────────────────────────────────
+      function __ipvShowResults(label, fileName, added, updated, skipped, failedRows) {
+        const total = added + updated + skipped + failedRows.length;
+        const icon  = document.getElementById('importResultsIcon');
+        const title = document.getElementById('importResultsTitle');
+        if (failedRows.length === 0 && (added+updated) > 0) {
+          icon.className = 'fas fa-check-circle'; icon.style.color = 'var(--sap-success)';
+          title.textContent = 'Import Complete — All Rows Successful';
+        } else if (added+updated === 0 && failedRows.length > 0) {
+          icon.className = 'fas fa-times-circle'; icon.style.color = 'var(--sap-error)';
+          title.textContent = 'Import Failed — No Rows Imported';
+        } else {
+          icon.className = 'fas fa-exclamation-triangle'; icon.style.color = 'var(--sap-warning)';
+          title.textContent = 'Import Completed with Warnings';
+        }
+
+        const dlBtn = document.getElementById('importResultsDownloadBtn');
+        if (dlBtn) dlBtn.style.display = failedRows.length > 0 ? '' : 'none';
+        __importLastFailedRows = failedRows;
+
+        let html = `<div style="font-size:12.5px;color:var(--sap-text-muted);margin-bottom:14px">
+          <i class="fas fa-file-excel" style="color:var(--sap-success)"></i>
+          <strong>${escIpv(fileName)}</strong> — ${total} row(s) processed
+        </div>`;
+
+        // Four stat cards
+        html += `<div class="import-results-grid">
+          <div class="import-results-card added">
+            <div class="import-results-num">${added}</div>
+            <div class="import-results-lbl"><i class="fas fa-plus-circle"></i> New Records Added</div>
+          </div>
+          <div class="import-results-card updated">
+            <div class="import-results-num">${updated}</div>
+            <div class="import-results-lbl"><i class="fas fa-edit"></i> Records Updated</div>
+          </div>
+          <div class="import-results-card skipped">
+            <div class="import-results-num">${skipped}</div>
+            <div class="import-results-lbl"><i class="fas fa-forward"></i> Rows Skipped</div>
+          </div>
+          <div class="import-results-card failed">
+            <div class="import-results-num">${failedRows.length}</div>
+            <div class="import-results-lbl"><i class="fas fa-times-circle"></i> Failed / Errors</div>
+          </div>
+        </div>`;
+
+        if (failedRows.length === 0) {
+          html += `<div class="import-no-failures"><i class="fas fa-check-circle" style="color:var(--sap-success)"></i> All rows processed successfully — no errors detected.</div>`;
+        } else {
+          html += `<div class="import-section-label" style="margin:0 0 8px"><i class="fas fa-exclamation-triangle" style="color:#E9730C;margin-right:4px"></i>Failed Rows (${failedRows.length})</div>`;
+          html += `<div class="import-failed-wrap"><table class="import-failed-table"><thead><tr><th style="width:60px">Row #</th><th>Identifier</th><th>Reason</th></tr></thead><tbody>`;
+          for (const fr of failedRows) {
+            html += `<tr><td style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--sap-text-muted)">#${fr.row}</td><td style="font-weight:600">${fr.id||'—'}</td><td><span class="import-failed-reason"><i class="fas fa-exclamation-circle"></i> ${escIpv(fr.reason)}</span></td></tr>`;
+          }
+          html += `</tbody></table></div>`;
+        }
+
+        document.getElementById('importResultsBody').innerHTML = html;
+        document.getElementById('importResultsOverlay').classList.add('open');
+      }
+
+      // Expose to replace old showImportResults
+      window.showImportResults = function(label, fileName, added, failedRows) {
+        __ipvShowResults(label, fileName, added, 0, 0, failedRows||[]);
+      };
+
+      // ── Expose window.rerenderAll ─────────────────────────────────────────
+      window.rerenderAll = typeof rerenderAll === 'function' ? rerenderAll : function(){};
+
+      // ── HTML escape helpers ──────────────────────────────────────────────────
+      function escIpv(s)     { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+      function escIpvAttr(s) { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+
+      // ══════════════════════════════════
       //  MODAL HELPERS
       // ══════════════════════════════════
 
