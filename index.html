@@ -4010,32 +4010,12 @@
               <label class="filter-label">Rig</label>
               <select class="filter-select" id="certFilterRig" onchange="renderCertificates()">
                 <option value="">All Rigs</option>
-                <option value="Rig 1">Rig 1</option>
-                <option value="Rig 2">Rig 2</option>
-                <option value="Rig 3">Rig 3</option>
-                <option value="Rig 4">Rig 4</option>
-                <option value="Rig 5">Rig 5</option>
-                <option value="Rig 6">Rig 6</option>
-                <option value="Rig 7">Rig 7</option>
-                <option value="Rig 8">Rig 8</option>
-                <option value="Rig 9">Rig 9</option>
-                <option value="Rig 10">Rig 10</option>
-                <option value="Rig 11">Rig 11</option>
-                <option value="Rig 12">Rig 12</option>
-                <option value="Rig 13">Rig 13</option>
-                <option value="Rig 14">Rig 14</option>
               </select>
             </div>
             <div class="filter-group">
               <label class="filter-label">Inspection Type</label>
               <select class="filter-select" id="certFilterType" onchange="renderCertificates()">
                 <option value="">All Types</option>
-                <option>Cat III</option>
-                <option>Cat IV</option>
-                <option>Pressure Test</option>
-                <option>Calibration</option>
-                <option>Wall Thickness</option>
-                <option>Tubular Inspection DS1</option>
               </select>
             </div>
             <div class="filter-group">
@@ -7920,6 +7900,19 @@ Asset Management System</textarea>
       document.getElementById('section-' + id).classList.add('active');
       el.classList.add('active');
       closeAllPanels();
+      // Re-render the activated section so data is always fresh on tab switch
+      const tabRenders = {
+        assets:       () => { if (typeof applyFilters          === 'function') applyFilters(); },
+        projects:     () => { if (typeof applyProjectFilters   === 'function') applyProjectFilters(); },
+        inspections:  () => { if (typeof applyInspectionFilters=== 'function') applyInspectionFilters(); },
+        transfers:    () => { if (typeof renderTransfers       === 'function') renderTransfers(); },
+        maintenance:  () => { if (typeof renderMaintenance     === 'function') renderMaintenance(); },
+        certificates: () => { if (typeof renderCertificates   === 'function') renderCertificates(); },
+        workshops:    () => { if (typeof renderWorkshops       === 'function') renderWorkshops(); },
+        contracts:    () => { if (typeof renderContracts       === 'function') renderContracts(); },
+        rigs:         () => { if (typeof renderRigs            === 'function') renderRigs(); },
+      };
+      if (tabRenders[id]) tabRenders[id]();
     }
 
     // ══════════════════════════════════
@@ -10200,10 +10193,11 @@ Asset Management System</textarea>
       const fP = document.getElementById('trFilterPriority')?.value;
 
       const list = TRANSFERS.filter(t => {
-        const mq = !q || t.id.toLowerCase().includes(q) || t.assetName.toLowerCase().includes(q) ||
-          t.currentLoc.toLowerCase().includes(q) || t.destination.toLowerCase().includes(q);
+        const mq = !q || (t.id || '').toLowerCase().includes(q) || (t.assetName || '').toLowerCase().includes(q) ||
+          (t.currentLoc || '').toLowerCase().includes(q) || (t.destination || '').toLowerCase().includes(q) ||
+          (t.requestedBy || '').toLowerCase().includes(q);
         return mq && (!fS || t.status === fS) && (!fP || t.priority === fP);
-      }).sort((a, b) => b.id.localeCompare(a.id));
+      }).sort((a, b) => (b.id || '').localeCompare(a.id || ''));
 
       document.getElementById('trCount').textContent = `(${list.length})`;
 
@@ -11526,6 +11520,24 @@ Asset Management System</textarea>
       const typeF = document.getElementById('certFilterType')?.value || '';
       const statusF = document.getElementById('certFilterStatus')?.value || '';
       const locF = document.getElementById('certFilterLocation')?.value || '';
+
+      // Populate Rig dropdown dynamically from live data (replaces hardcoded Rig 1–14)
+      const rigSel = document.getElementById('certFilterRig');
+      if (rigSel) {
+        const cur = rigSel.value;
+        const rigs = [...new Set(CERTIFICATES.map(c => c.rigName).filter(Boolean))].sort();
+        rigSel.innerHTML = '<option value="">All Rigs</option>' +
+          rigs.map(r => `<option value="${r}"${r === cur ? ' selected' : ''}>${r}</option>`).join('');
+      }
+
+      // Populate Inspection Type dropdown dynamically
+      const typeSel = document.getElementById('certFilterType');
+      if (typeSel) {
+        const cur = typeSel.value;
+        const types = [...new Set(CERTIFICATES.map(c => c.inspectionType).filter(Boolean))].sort();
+        typeSel.innerHTML = '<option value="">All Types</option>' +
+          types.map(t => `<option value="${t}"${t === cur ? ' selected' : ''}>${t}</option>`).join('');
+      }
 
       // Populate location dropdown dynamically from CERTIFICATES (via enriched asset location)
       const locSel = document.getElementById('certFilterLocation');
@@ -13022,11 +13034,15 @@ Instructions:
         fns.forEach(fn => { if (typeof window[fn] === 'function') window[fn](); });
       }
       function rerenderAll() {
-        if (typeof filteredAssets     !== 'undefined') filteredAssets     = [...ASSETS];
-        if (typeof filteredProjects   !== 'undefined') filteredProjects   = [...PROJECTS];
+        if (typeof filteredAssets      !== 'undefined') filteredAssets      = [...ASSETS];
+        if (typeof filteredProjects    !== 'undefined') filteredProjects    = [...PROJECTS];
         if (typeof filteredInspections !== 'undefined') filteredInspections = [...INSPECTIONS];
+        // Call apply-filter functions (not raw renders) so filter state is respected
+        if (typeof applyFilters            === 'function') applyFilters();
+        if (typeof applyProjectFilters     === 'function') applyProjectFilters();
+        if (typeof applyInspectionFilters  === 'function') applyInspectionFilters();
         rerender(
-          'renderAssets', 'renderContracts', 'renderRigs', 'renderWorkshops', 'renderProjects', 'renderInspections', 'renderInspections',
+          'renderAssets', 'renderContracts', 'renderRigs', 'renderWorkshops',
           'renderUsers', 'renderTransfers', 'renderMaintenance', 'renderCertificates',
           'renderBOMSection', 'renderNotifications', 'updateKPIs', 'updateReportKPIs',
           'updateCertKPIs', 'updateMaintKPIs', 'updateTransferKPIs', 'checkMaintAlerts',
