@@ -33,8 +33,20 @@ export default {
 
 // ── Direct Supabase REST calls ────────────────────────────────────────────────
 
+// Module-level role context — set per request in router()
+let _reqRole = 'Admin';
+let _reqName = '';
+
 function authHeaders(key, extra={}) {
-  return { 'apikey':key, 'Authorization':`Bearer ${key}`, 'Content-Type':'application/json', ...extra };
+  return {
+    'apikey': key,
+    'Authorization': `Bearer ${key}`,
+    'Content-Type': 'application/json',
+    // Pass the role as a PostgreSQL session variable so RLS
+    // policy auth.app_role() can read it via current_setting()
+    'x-supabase-request-option': `db.request.jwt.claims=${JSON.stringify({ app_role: _reqRole, app_name: _reqName })}`,
+    ...extra
+  };
 }
 
 async function sbGet(base, key, table, { select='*', filters={}, order=null, limit=null, single=false }={}) {
@@ -92,11 +104,17 @@ async function parseRes(r, single) {
 
 async function router(path, method, url, request, SB, KEY, env={}) {
   const q    = url.searchParams;
-  const seg  = path.replace(/^\/(api\/)?/,'').split('/');
+  const seg  = path.replace(/^\/api\/?/,'').split('/');
   const res  = seg[0];
   const id   = seg[1];
   const act  = seg[2];
   const body = ['POST','PUT','PATCH'].includes(method) ? await request.json().catch(()=>({})) : {};
+
+  // Read role + name from the frontend request headers.
+  // Store in module-level vars so authHeaders() picks them up
+  // and Supabase can evaluate auth.app_role() in RLS policies.
+  _reqRole = request.headers.get('x-user-role') || 'Viewer';
+  _reqName = request.headers.get('x-user-name') || '';
 
   // ASSETS
   if (res==='assets') {
