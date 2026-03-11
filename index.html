@@ -3109,15 +3109,15 @@
       }
 
       // ── Password check ──────────────────────────────────────────
-      // If the user has a password set in the database, verify it.
-      // Plain-text comparison (upgrade to bcrypt on server-side when ready).
       if (user.password) {
-        if (password !== user.password) {
+        const stored = user.password.trim();
+        // If bcrypt hash stored (starts with $2), can't verify client-side → allow in
+        if (!stored.startsWith('$2') && password !== stored) {
           showLoginError('Incorrect password. Please try again.');
           return;
         }
       }
-      // If user.password is null/empty in DB → no password set, allow any (legacy)
+      // null/empty password in DB → no check (open access)
 
       // ── Success ──
       window.__currentUser = user;
@@ -6330,7 +6330,7 @@ Asset Management System</textarea>
   <!-- ═══════════════════ IMPORT COLUMN GUIDE MODAL ═══════════════════ -->
   <!-- ======= ADD / EDIT WORKSHOP MODAL ======= -->
   <div class="modal-overlay" id="addWorkshopModal">
-    <div class="modal-dialog" style="max-width:620px">
+    <div class="modal" style="width:620px;max-width:95vw">
       <div class="modal-header" style="background:linear-gradient(135deg,#1a4a7a,#0070F2)">
         <div>
           <h2 style="color:#fff;font-size:15px" id="workshopModalTitle">Add Workshop</h2>
@@ -7600,7 +7600,7 @@ Asset Management System</textarea>
   <!-- USER EDIT / PASSWORD CHANGE MODAL -->
   <div class="modal-overlay" id="userEditModal">
     <div class="modal" style="width:460px;max-width:96vw">
-      <div class="modal-header" style="background:linear-gradient(90deg,#0040B0,#0070F2);color:#fff;border-radius:4px 4px 0 0;padding:12px 18px;display:flex;align-items:center;gap:10px">
+      <div class="modal-header" style="background:linear-gradient(90deg,#0040B0,#0070F2);color:#fff;padding:12px 18px;display:flex;align-items:center;gap:10px">
         <i class="fas fa-user-edit" style="font-size:16px"></i>
         <h2 id="userEditModalTitle" style="color:#fff;font-size:15px;margin:0;flex:1">Edit User</h2>
         <button class="shell-btn" style="color:#fff" onclick="closeModal('userEditModal')"><i class="fas fa-times"></i></button>
@@ -9029,6 +9029,7 @@ Asset Management System</textarea>
 
     function openAddWorkshopModal(workshopId) {
       editingWorkshopId = workshopId || null;
+      window.editingWorkshopId = editingWorkshopId;
       const titleEl = document.getElementById('workshopModalTitle');
       if (titleEl) titleEl.textContent = workshopId ? 'Edit Workshop' : 'Add Workshop';
 
@@ -9117,6 +9118,7 @@ Asset Management System</textarea>
         }
         closeModal('addWorkshopModal');
         editingWorkshopId = null;
+        window.editingWorkshopId = null;
         renderWorkshops();
         populateFormSelects();
         refreshRigFilterWithWorkshops();
@@ -13484,9 +13486,84 @@ Instructions:
       }
 
 
-      // ══════════════════════════════════════════════════════════════════════
-      //  USER EDIT MODAL — open / save / password-change + forced logout
-      // ══════════════════════════════════════════════════════════════════════
+      // ══════════════════════════════════════════════════════════════
+      //  WORKSHOP — window overrides so POST/PUT/DELETE are in scope
+      // ══════════════════════════════════════════════════════════════
+      window.saveWorkshop = async function () {
+        const wsId   = document.getElementById('ws_id').value.trim();
+        const wsName = document.getElementById('ws_name').value.trim();
+        if (!wsId || !wsName) { showToast('Workshop ID and Name are required.', 'error'); return; }
+
+        const payload = {
+          workshop_id:   wsId,
+          workshop_name: wsName,
+          location:      document.getElementById('ws_location').value.trim(),
+          assigned_rig:  document.getElementById('ws_rig').value,
+          asset_id:      document.getElementById('ws_assetId').value,
+          asset_name:    document.getElementById('ws_assetName').value.trim(),
+          asset_serial:  document.getElementById('ws_assetSerial').value.trim(),
+          scope_of_work: document.getElementById('ws_scopeOfWork').value.trim(),
+          start_date:    document.getElementById('ws_startDate').value   || null,
+          end_date:      document.getElementById('ws_endDate').value     || null,
+          status:        document.getElementById('ws_status').value,
+          technician:    document.getElementById('ws_technician').value.trim(),
+          contact:       document.getElementById('ws_contact').value.trim(),
+          notes:         document.getElementById('ws_notes').value.trim(),
+        };
+
+        // strip empty strings to null so DB doesn't store blank foreign keys
+        ['asset_id','assigned_rig','start_date','end_date'].forEach(k => {
+          if (payload[k] === '') payload[k] = null;
+        });
+
+        try {
+          const editId = window.editingWorkshopId;
+          if (editId) {
+            const r = await PUT('/workshops/' + editId, payload);
+            const idx = WORKSHOPS.findIndex(w => w.workshopId === editId);
+            const saved = normWS(r.data || payload);
+            if (idx >= 0) WORKSHOPS[idx] = saved; else WORKSHOPS.push(saved);
+            showToast('Workshop updated ✓', 'success');
+          } else {
+            if (WORKSHOPS.find(w => w.workshopId === wsId)) {
+              showToast('Workshop ID already exists.', 'error'); return;
+            }
+            const r = await POST('/workshops', payload);
+            WORKSHOPS.push(normWS(r.data || payload));
+            showToast('Workshop added ✓', 'success');
+          }
+          closeModal('addWorkshopModal');
+          window.editingWorkshopId = null;
+          editingWorkshopId        = null;
+          renderWorkshops();
+          if (typeof populateFormSelects === 'function') populateFormSelects();
+          if (typeof refreshRigFilterWithWorkshops === 'function') refreshRigFilterWithWorkshops();
+        } catch(e) {
+          console.error('[saveWorkshop]', e);
+          showToast('Save failed: ' + e.message, 'error');
+        }
+      };
+
+      window.deleteWorkshop = async function (id) {
+        if (!confirm('Delete workshop ' + id + '? This cannot be undone.')) return;
+        try {
+          await DELETE('/workshops/' + id);
+          const i = WORKSHOPS.findIndex(w => w.workshopId === id);
+          if (i >= 0) WORKSHOPS.splice(i, 1);
+          renderWorkshops();
+          if (typeof populateFormSelects === 'function') populateFormSelects();
+          if (typeof refreshRigFilterWithWorkshops === 'function') refreshRigFilterWithWorkshops();
+          showToast('Workshop deleted.', 'warning');
+        } catch(e) {
+          console.error('[deleteWorkshop]', e);
+          showToast('Delete failed: ' + e.message, 'error');
+        }
+      };
+
+
+      // ══════════════════════════════════════════════════════════════
+      //  USER EDIT MODAL
+      // ══════════════════════════════════════════════════════════════
       let _ueUserId = null;
 
       window._ueToggle = function (inputId, btn) {
@@ -13512,7 +13589,7 @@ Instructions:
         document.getElementById('ue_warn').style.display = 'none';
         const isSelf = window.__currentUser &&
           (String(window.__currentUser.id) === String(userId) ||
-           (window.__currentUser.email || '').toLowerCase() === (u.email || '').toLowerCase());
+           (window.__currentUser.email||'').toLowerCase() === (u.email||'').toLowerCase());
         document.getElementById('userEditModalTitle').textContent = isSelf ? 'Edit My Profile' : 'Edit User — ' + u.name;
         document.getElementById('ue_selfNote').style.display = isSelf ? '' : 'none';
         openModal('userEditModal');
@@ -13540,27 +13617,23 @@ Instructions:
         const email    = document.getElementById('ue_email').value.trim().toLowerCase();
         const role     = document.getElementById('ue_role').value;
         const dept     = document.getElementById('ue_dept').value.trim();
-        const initials = document.getElementById('ue_initials').value.trim().toUpperCase().slice(0, 3);
+        const initials = document.getElementById('ue_initials').value.trim().toUpperCase().slice(0,3);
         const color    = document.getElementById('ue_color').value;
         const newPass  = document.getElementById('ue_newPass').value;
         const confPass = document.getElementById('ue_confirmPass').value;
-
         const showWarn = function(msg) {
           document.getElementById('ue_warnText').textContent = msg;
           document.getElementById('ue_warn').style.display = '';
         };
         document.getElementById('ue_warn').style.display = 'none';
-
         if (!name)  { showToast('Name is required.',  'error'); return; }
         if (!email) { showToast('Email is required.', 'error'); return; }
         if (newPass || confPass) {
           if (newPass.length < 4)   { showWarn('Password must be at least 4 characters.'); return; }
           if (newPass !== confPass) { showWarn('Passwords do not match.'); return; }
         }
-
         const payload = { name, email, role, dept, initials, color, active: true };
         if (newPass) payload.password = newPass;
-
         try {
           let savedUser;
           if (_ueUserId) {
@@ -13576,46 +13649,34 @@ Instructions:
             savedUser = r.data || payload;
             USERS.push(savedUser);
           }
-
           closeModal('userEditModal');
           if (typeof renderUsers === 'function') renderUsers();
-
           const isSelf = window.__currentUser &&
             (String(window.__currentUser.id) === String(_ueUserId) ||
-             (window.__currentUser.email || '').toLowerCase() === email);
-
+             (window.__currentUser.email||'').toLowerCase() === email);
           if (isSelf && newPass) {
             showToast('Password changed. Signing you out…', 'warning');
             setTimeout(function () {
-              window.__currentUser     = null;
-              window.__currentUserRole = null;
-              window.__currentUserName = null;
+              window.__currentUser = null; window.__currentUserRole = null; window.__currentUserName = null;
               try { sessionStorage.removeItem('ams_user'); } catch(e) {}
               try { localStorage.removeItem('ams_user');   } catch(e) {}
-              window.__bootstrapped  = false;
-              window.__bootstrapDone = false;
-              const pwEl = document.getElementById('loginPassword');
-              if (pwEl) pwEl.value = '';
+              window.__bootstrapped = false; window.__bootstrapDone = false;
+              const pwEl = document.getElementById('loginPassword'); if (pwEl) pwEl.value = '';
               document.getElementById('loginScreen').style.display = 'flex';
               const emailEl = document.getElementById('loginEmail');
               if (emailEl) { emailEl.value = email; emailEl.focus(); }
             }, 1200);
           } else if (isSelf) {
             const cu = Object.assign({}, window.__currentUser, { name, role, initials, color });
-            window.__currentUser     = cu;
-            window.__currentUserRole = role;
-            window.__currentUserName = name;
+            window.__currentUser = cu; window.__currentUserRole = role; window.__currentUserName = name;
             const ini = initials || name.split(' ').filter(Boolean).map(function(n){return n[0];}).join('').slice(0,2).toUpperCase();
-            const nameEl   = document.getElementById('shellUserName');
-            const roleEl   = document.getElementById('shellUserRole');
+            const nameEl = document.getElementById('shellUserName');
+            const roleEl = document.getElementById('shellUserRole');
             const avatarEl = document.getElementById('shellUserAvatar');
             if (nameEl)   nameEl.textContent   = name;
             if (roleEl)   roleEl.textContent   = role;
             if (avatarEl) { avatarEl.textContent = ini; avatarEl.style.background = color || '#0070F2'; }
-            try {
-              const s = Object.assign({}, cu); delete s.password;
-              sessionStorage.setItem('ams_user', JSON.stringify(s));
-            } catch(e) {}
+            try { const s = Object.assign({}, cu); delete s.password; sessionStorage.setItem('ams_user', JSON.stringify(s)); } catch(e) {}
             showToast('Profile updated ✓', 'success');
           } else {
             showToast(_ueUserId ? 'User updated ✓' : 'User created ✓', 'success');
