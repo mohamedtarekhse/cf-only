@@ -13489,7 +13489,6 @@ Instructions:
       // ══════════════════════════════════════════════════════════════════════
       let _ueUserId = null;
 
-      // Toggle password visibility
       window._ueToggle = function (inputId, btn) {
         const el = document.getElementById(inputId);
         if (!el) return;
@@ -13498,12 +13497,10 @@ Instructions:
         btn.innerHTML = show ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
       };
 
-      // Open modal for existing user
       window.openUserEdit = function (userId) {
         const u = USERS.find(x => String(x.id) === String(userId));
         if (!u) { showToast('User not found.', 'error'); return; }
         _ueUserId = userId;
-
         document.getElementById('ue_name').value     = u.name     || '';
         document.getElementById('ue_email').value    = u.email    || '';
         document.getElementById('ue_role').value     = u.role     || 'Viewer';
@@ -13513,23 +13510,20 @@ Instructions:
         document.getElementById('ue_newPass').value     = '';
         document.getElementById('ue_confirmPass').value = '';
         document.getElementById('ue_warn').style.display = 'none';
-
         const isSelf = window.__currentUser &&
           (String(window.__currentUser.id) === String(userId) ||
            (window.__currentUser.email || '').toLowerCase() === (u.email || '').toLowerCase());
         document.getElementById('userEditModalTitle').textContent = isSelf ? 'Edit My Profile' : 'Edit User — ' + u.name;
         document.getElementById('ue_selfNote').style.display = isSelf ? '' : 'none';
-
         openModal('userEditModal');
       };
 
-      // Wire Add User button → blank modal
       const _btnAddUser = document.getElementById('btnAddUser');
       if (_btnAddUser && !_btnAddUser._ueWired) {
         _btnAddUser._ueWired = true;
         _btnAddUser.addEventListener('click', function () {
           _ueUserId = null;
-          ['ue_name','ue_email','ue_dept','ue_initials','ue_newPass','ue_confirmPass'].forEach(id => {
+          ['ue_name','ue_email','ue_dept','ue_initials','ue_newPass','ue_confirmPass'].forEach(function(id) {
             const el = document.getElementById(id); if (el) el.value = '';
           });
           document.getElementById('ue_role').value  = 'Viewer';
@@ -13541,7 +13535,6 @@ Instructions:
         });
       }
 
-      // Save — handles create, edit, password change, self-logout
       window.saveUserEdit = async function () {
         const name     = document.getElementById('ue_name').value.trim();
         const email    = document.getElementById('ue_email').value.trim().toLowerCase();
@@ -13552,7 +13545,7 @@ Instructions:
         const newPass  = document.getElementById('ue_newPass').value;
         const confPass = document.getElementById('ue_confirmPass').value;
 
-        const showWarn = msg => {
+        const showWarn = function(msg) {
           document.getElementById('ue_warnText').textContent = msg;
           document.getElementById('ue_warn').style.display = '';
         };
@@ -13561,8 +13554,8 @@ Instructions:
         if (!name)  { showToast('Name is required.',  'error'); return; }
         if (!email) { showToast('Email is required.', 'error'); return; }
         if (newPass || confPass) {
-          if (newPass.length < 4)    { showWarn('Password must be at least 4 characters.'); return; }
-          if (newPass !== confPass)  { showWarn('Passwords do not match.'); return; }
+          if (newPass.length < 4)   { showWarn('Password must be at least 4 characters.'); return; }
+          if (newPass !== confPass) { showWarn('Passwords do not match.'); return; }
         }
 
         const payload = { name, email, role, dept, initials, color, active: true };
@@ -13573,10 +13566,10 @@ Instructions:
           if (_ueUserId) {
             const r = await PUT('/users/' + _ueUserId, payload);
             savedUser = r.data || payload;
-            const idx = USERS.findIndex(u => String(u.id) === String(_ueUserId));
+            const idx = USERS.findIndex(function(u) { return String(u.id) === String(_ueUserId); });
             if (idx >= 0) USERS[idx] = Object.assign({}, USERS[idx], savedUser);
           } else {
-            if (USERS.find(u => (u.email||'').toLowerCase() === email)) {
+            if (USERS.find(function(u) { return (u.email||'').toLowerCase() === email; })) {
               showToast('A user with that email already exists.', 'error'); return;
             }
             const r = await POST('/users', payload);
@@ -13587,13 +13580,11 @@ Instructions:
           closeModal('userEditModal');
           if (typeof renderUsers === 'function') renderUsers();
 
-          // Detect if editing own account
           const isSelf = window.__currentUser &&
             (String(window.__currentUser.id) === String(_ueUserId) ||
              (window.__currentUser.email || '').toLowerCase() === email);
 
           if (isSelf && newPass) {
-            // PASSWORD CHANGED on own account → force sign out
             showToast('Password changed. Signing you out…', 'warning');
             setTimeout(function () {
               window.__currentUser     = null;
@@ -13609,9 +13600,7 @@ Instructions:
               const emailEl = document.getElementById('loginEmail');
               if (emailEl) { emailEl.value = email; emailEl.focus(); }
             }, 1200);
-
           } else if (isSelf) {
-            // Profile-only change → refresh navbar immediately
             const cu = Object.assign({}, window.__currentUser, { name, role, initials, color });
             window.__currentUser     = cu;
             window.__currentUserRole = role;
@@ -13631,7 +13620,6 @@ Instructions:
           } else {
             showToast(_ueUserId ? 'User updated ✓' : 'User created ✓', 'success');
           }
-
         } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
       };
 
