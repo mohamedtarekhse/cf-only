@@ -3370,15 +3370,15 @@
       <button class="shell-btn" title="Settings">
         <i class="fas fa-cog"></i>
       </button>
-      <div class="user-avatar" onclick="toggleUserMenu()">AM</div>
+      <div class="user-avatar" id="shellUserAvatar" onclick="toggleUserMenu()">?</div>
     </div>
   </header>
 
   <!-- USER MENU -->
   <div class="user-menu" id="userMenu">
     <div class="user-info">
-      <div class="user-name">Ahmad Mohammed</div>
-      <div class="user-role">Asset Manager — Admin</div>
+      <div class="user-name" id="shellUserName">—</div>
+      <div class="user-role" id="shellUserRole">—</div>
     </div>
     <div class="user-menu-item"><i class="fas fa-user"></i> My Profile</div>
     <div class="user-menu-item"><i class="fas fa-users-cog"></i> Manage Users</div>
