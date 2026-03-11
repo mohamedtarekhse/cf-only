@@ -3370,15 +3370,15 @@
       <button class="shell-btn" title="Settings">
         <i class="fas fa-cog"></i>
       </button>
-      <div class="user-avatar" id="shellUserAvatar" onclick="toggleUserMenu()">?</div>
+      <div class="user-avatar" onclick="toggleUserMenu()">AM</div>
     </div>
   </header>
 
   <!-- USER MENU -->
   <div class="user-menu" id="userMenu">
     <div class="user-info">
-      <div class="user-name" id="shellUserName">Loading…</div>
-      <div class="user-role" id="shellUserRole">…</div>
+      <div class="user-name">Ahmad Mohammed</div>
+      <div class="user-role">Asset Manager — Admin</div>
     </div>
     <div class="user-menu-item"><i class="fas fa-user"></i> My Profile</div>
     <div class="user-menu-item"><i class="fas fa-users-cog"></i> Manage Users</div>
@@ -7596,82 +7596,6 @@ Asset Management System</textarea>
 
 </table>
 </td></tr></table>
-
-  <!-- USER EDIT / PASSWORD CHANGE MODAL -->
-  <div class="modal-overlay" id="userEditModal">
-    <div class="modal" style="width:460px;max-width:96vw">
-      <div class="modal-header" style="background:linear-gradient(90deg,#0040B0,#0070F2);color:#fff;border-radius:4px 4px 0 0;padding:12px 18px;display:flex;align-items:center;gap:10px">
-        <i class="fas fa-user-edit" style="font-size:16px"></i>
-        <h2 id="userEditModalTitle" style="color:#fff;font-size:15px;margin:0;flex:1">Edit User</h2>
-        <button class="shell-btn" style="color:#fff" onclick="closeModal('userEditModal')"><i class="fas fa-times"></i></button>
-      </div>
-      <div class="modal-body" style="padding:18px">
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Full Name <span style="color:var(--sap-error)">*</span></label>
-            <input class="form-input" id="ue_name" placeholder="Full name">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Email <span style="color:var(--sap-error)">*</span></label>
-            <input class="form-input" id="ue_email" type="email" placeholder="email@company.com">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Role</label>
-            <select class="form-select" id="ue_role">
-              <option>Admin</option><option>Manager</option><option>Supervisor</option>
-              <option>Technician</option><option>Viewer</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Department</label>
-            <input class="form-input" id="ue_dept" placeholder="e.g. Operations">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Initials</label>
-            <input class="form-input" id="ue_initials" placeholder="e.g. AM" maxlength="3">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Avatar Colour</label>
-            <input class="form-input" id="ue_color" type="color" value="#0070F2" style="height:36px;padding:2px 6px;cursor:pointer">
-          </div>
-        </div>
-        <div style="border-top:1px solid var(--sap-border);margin:14px 0 12px;display:flex;align-items:center;gap:8px">
-          <span style="font-size:12px;color:var(--sap-text-muted);white-space:nowrap">Change Password</span>
-          <div style="flex:1;height:1px;background:var(--sap-border)"></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">New Password</label>
-            <div style="position:relative">
-              <input class="form-input" id="ue_newPass" type="password" placeholder="Leave blank to keep current" style="padding-right:38px">
-              <button type="button" onclick="window._ueToggle('ue_newPass',this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--sap-text-muted)"><i class="fas fa-eye"></i></button>
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Confirm Password</label>
-            <div style="position:relative">
-              <input class="form-input" id="ue_confirmPass" type="password" placeholder="Repeat new password" style="padding-right:38px">
-              <button type="button" onclick="window._ueToggle('ue_confirmPass',this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--sap-text-muted)"><i class="fas fa-eye"></i></button>
-            </div>
-          </div>
-        </div>
-        <div id="ue_warn" style="display:none;background:#FFF3CD;border:1px solid #FFC107;border-radius:4px;padding:8px 12px;font-size:12px;color:#856404;margin-top:4px">
-          <i class="fas fa-exclamation-triangle"></i> <span id="ue_warnText"></span>
-        </div>
-        <div id="ue_selfNote" style="display:none;background:#e8f4fd;border:1px solid #b3d4ff;border-radius:4px;padding:8px 12px;font-size:12px;color:#0040B0;margin-top:8px">
-          <i class="fas fa-info-circle"></i> You are editing <strong>your own account</strong>. Changing your password will sign you out immediately.
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="closeModal('userEditModal')">Cancel</button>
-        <button class="btn btn-primary" onclick="window.saveUserEdit()"><i class="fas fa-save"></i> Save Changes</button>
-      </div>
-    </div>
-  </div>
 </body></html>`;
 
       await POST('/send-email', {
@@ -9620,8 +9544,8 @@ Asset Management System</textarea>
         <div style="font-size:12px;color:var(--sap-text-muted)">${u.role} · ${u.dept}</div>
         <div style="font-size:12px;margin-top:4px">${u.email}</div>
         <div style="margin-top:8px;display:flex;gap:6px">
-          <button class="btn btn-secondary" style="height:26px;font-size:11.5px" onclick="openUserEdit('${u.id}')"><i class="fas fa-edit"></i> Edit</button>
-          <button class="btn btn-ghost" style="height:26px;font-size:11.5px" onclick="openEmailModal()"><i class="fas fa-envelope"></i></button>
+          <button class="btn btn-secondary" style="height:26px;font-size:11.5px"><i class="fas fa-edit"></i> Edit</button>
+          <button class="btn btn-ghost" style="height:26px;font-size:11.5px"><i class="fas fa-envelope"></i></button>
         </div>
       </div>
     </div>`).join('');
@@ -13482,146 +13406,6 @@ Instructions:
           showToast('⚠ Database error: ' + e.message, 'error');
         }
       }
-
-
-      // ══════════════════════════════════════════════════════════════════════
-      //  USER EDIT MODAL — open / save / password-change + forced logout
-      // ══════════════════════════════════════════════════════════════════════
-      let _ueUserId = null;
-
-      window._ueToggle = function (inputId, btn) {
-        const el = document.getElementById(inputId);
-        if (!el) return;
-        const show = el.type === 'password';
-        el.type = show ? 'text' : 'password';
-        btn.innerHTML = show ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
-      };
-
-      window.openUserEdit = function (userId) {
-        const u = USERS.find(x => String(x.id) === String(userId));
-        if (!u) { showToast('User not found.', 'error'); return; }
-        _ueUserId = userId;
-        document.getElementById('ue_name').value     = u.name     || '';
-        document.getElementById('ue_email').value    = u.email    || '';
-        document.getElementById('ue_role').value     = u.role     || 'Viewer';
-        document.getElementById('ue_dept').value     = u.dept     || '';
-        document.getElementById('ue_initials').value = u.initials || '';
-        document.getElementById('ue_color').value    = u.color    || '#0070F2';
-        document.getElementById('ue_newPass').value     = '';
-        document.getElementById('ue_confirmPass').value = '';
-        document.getElementById('ue_warn').style.display = 'none';
-        const isSelf = window.__currentUser &&
-          (String(window.__currentUser.id) === String(userId) ||
-           (window.__currentUser.email || '').toLowerCase() === (u.email || '').toLowerCase());
-        document.getElementById('userEditModalTitle').textContent = isSelf ? 'Edit My Profile' : 'Edit User — ' + u.name;
-        document.getElementById('ue_selfNote').style.display = isSelf ? '' : 'none';
-        openModal('userEditModal');
-      };
-
-      const _btnAddUser = document.getElementById('btnAddUser');
-      if (_btnAddUser && !_btnAddUser._ueWired) {
-        _btnAddUser._ueWired = true;
-        _btnAddUser.addEventListener('click', function () {
-          _ueUserId = null;
-          ['ue_name','ue_email','ue_dept','ue_initials','ue_newPass','ue_confirmPass'].forEach(function(id) {
-            const el = document.getElementById(id); if (el) el.value = '';
-          });
-          document.getElementById('ue_role').value  = 'Viewer';
-          document.getElementById('ue_color').value = '#0070F2';
-          document.getElementById('userEditModalTitle').textContent = 'Add New User';
-          document.getElementById('ue_selfNote').style.display = 'none';
-          document.getElementById('ue_warn').style.display     = 'none';
-          openModal('userEditModal');
-        });
-      }
-
-      window.saveUserEdit = async function () {
-        const name     = document.getElementById('ue_name').value.trim();
-        const email    = document.getElementById('ue_email').value.trim().toLowerCase();
-        const role     = document.getElementById('ue_role').value;
-        const dept     = document.getElementById('ue_dept').value.trim();
-        const initials = document.getElementById('ue_initials').value.trim().toUpperCase().slice(0, 3);
-        const color    = document.getElementById('ue_color').value;
-        const newPass  = document.getElementById('ue_newPass').value;
-        const confPass = document.getElementById('ue_confirmPass').value;
-
-        const showWarn = function(msg) {
-          document.getElementById('ue_warnText').textContent = msg;
-          document.getElementById('ue_warn').style.display = '';
-        };
-        document.getElementById('ue_warn').style.display = 'none';
-
-        if (!name)  { showToast('Name is required.',  'error'); return; }
-        if (!email) { showToast('Email is required.', 'error'); return; }
-        if (newPass || confPass) {
-          if (newPass.length < 4)   { showWarn('Password must be at least 4 characters.'); return; }
-          if (newPass !== confPass) { showWarn('Passwords do not match.'); return; }
-        }
-
-        const payload = { name, email, role, dept, initials, color, active: true };
-        if (newPass) payload.password = newPass;
-
-        try {
-          let savedUser;
-          if (_ueUserId) {
-            const r = await PUT('/users/' + _ueUserId, payload);
-            savedUser = r.data || payload;
-            const idx = USERS.findIndex(function(u) { return String(u.id) === String(_ueUserId); });
-            if (idx >= 0) USERS[idx] = Object.assign({}, USERS[idx], savedUser);
-          } else {
-            if (USERS.find(function(u) { return (u.email||'').toLowerCase() === email; })) {
-              showToast('A user with that email already exists.', 'error'); return;
-            }
-            const r = await POST('/users', payload);
-            savedUser = r.data || payload;
-            USERS.push(savedUser);
-          }
-
-          closeModal('userEditModal');
-          if (typeof renderUsers === 'function') renderUsers();
-
-          const isSelf = window.__currentUser &&
-            (String(window.__currentUser.id) === String(_ueUserId) ||
-             (window.__currentUser.email || '').toLowerCase() === email);
-
-          if (isSelf && newPass) {
-            showToast('Password changed. Signing you out…', 'warning');
-            setTimeout(function () {
-              window.__currentUser     = null;
-              window.__currentUserRole = null;
-              window.__currentUserName = null;
-              try { sessionStorage.removeItem('ams_user'); } catch(e) {}
-              try { localStorage.removeItem('ams_user');   } catch(e) {}
-              window.__bootstrapped  = false;
-              window.__bootstrapDone = false;
-              const pwEl = document.getElementById('loginPassword');
-              if (pwEl) pwEl.value = '';
-              document.getElementById('loginScreen').style.display = 'flex';
-              const emailEl = document.getElementById('loginEmail');
-              if (emailEl) { emailEl.value = email; emailEl.focus(); }
-            }, 1200);
-          } else if (isSelf) {
-            const cu = Object.assign({}, window.__currentUser, { name, role, initials, color });
-            window.__currentUser     = cu;
-            window.__currentUserRole = role;
-            window.__currentUserName = name;
-            const ini = initials || name.split(' ').filter(Boolean).map(function(n){return n[0];}).join('').slice(0,2).toUpperCase();
-            const nameEl   = document.getElementById('shellUserName');
-            const roleEl   = document.getElementById('shellUserRole');
-            const avatarEl = document.getElementById('shellUserAvatar');
-            if (nameEl)   nameEl.textContent   = name;
-            if (roleEl)   roleEl.textContent   = role;
-            if (avatarEl) { avatarEl.textContent = ini; avatarEl.style.background = color || '#0070F2'; }
-            try {
-              const s = Object.assign({}, cu); delete s.password;
-              sessionStorage.setItem('ams_user', JSON.stringify(s));
-            } catch(e) {}
-            showToast('Profile updated ✓', 'success');
-          } else {
-            showToast(_ueUserId ? 'User updated ✓' : 'User created ✓', 'success');
-          }
-        } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
-      };
 
       // Expose so shell-bar Refresh button can call it
       window.bootstrap = bootstrap;
