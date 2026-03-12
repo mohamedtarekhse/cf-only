@@ -3,8 +3,13 @@
  * Calls Supabase REST API with explicit fetch() — no custom query builder.
  *
  * Cloudflare Pages → Settings → Environment Variables:
- *   SUPABASE_URL              = https://tetbgjfltggmejqwntez.supabase.co
- *   SUPABASE_SERVICE_ROLE_KEY = sb_publishable_uSHDoMEafLUF1FzAQCVn0Q_JBKTd1Br
+ *   SUPABASE_URL
+ *   SUPABASE_SERVICE_ROLE_KEY
+ *   RESEND_API_KEY            (required for /api/send-email)
+ *   APP_API_KEY               (optional extra API guard)
+ *   JWT_SECRET                (required for /api auth tokens)
+ *   JWT_EXPIRES_SEC           (optional, defaults to 28800 = 8h)
+ *   CORS_ALLOW_ORIGIN         (optional, defaults to '*')
  */
 
 export default {
@@ -13,10 +18,18 @@ export default {
     const path = url.pathname;
     const method = request.method;
 
+    _corsAllowOrigin = env.CORS_ALLOW_ORIGIN || '*';
     if (method === 'OPTIONS') return respond(null, 204);
     if (path === '/health') return respond({ status:'ok', service:'Asset Management (Cloudflare Worker)', ts:new Date().toISOString() });
 
     if (path.startsWith('/api')) {
+      // Optional hardening: require a shared API key when APP_API_KEY is configured.
+      if (env.APP_API_KEY) {
+        const reqKey = request.headers.get('x-api-key') || '';
+        if (reqKey !== env.APP_API_KEY) return respond({ success:false, error:'Unauthorized' }, 401);
+      }
+      if (!env.JWT_SECRET)
+        return respond({ success:false, error:'JWT_SECRET is not configured in Cloudflare Pages environment variables.' }, 500);
       if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY)
         return respond({ success:false, error:'Supabase secrets not configured in Cloudflare Pages environment variables.' }, 500);
       try {
@@ -27,7 +40,8 @@ export default {
       }
     }
 
-    return env.ASSETS.fetch(request);
+    const staticRes = await env.ASSETS.fetch(request);
+    return withSecurityHeaders(staticRes);
   }
 };
 
@@ -36,6 +50,67 @@ export default {
 // Module-level role context — set per request in router()
 let _reqRole = 'Admin';
 let _reqName = '';
+let _reqUserId = '';
+let _reqEmail = '';
+let _corsAllowOrigin = '*';
+const _allowedRoles = new Set(['Admin','Editor','Viewer','Asset Manager','Operations Manager','Drilling Manager','Superintendent']);
+
+function b64urlEncodeBytes(bytes) {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+function b64urlEncodeText(text) {
+  return b64urlEncodeBytes(new TextEncoder().encode(text));
+}
+function b64urlDecodeBytes(input) {
+  const padded = input.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((input.length + 3) % 4);
+  const binary = atob(padded);
+  const out = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+  return out;
+}
+function timingSafeEqual(a, b) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+async function hmacSha256Base64Url(input, secret) {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name:'HMAC', hash:'SHA-256' },
+    false,
+    ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(input));
+  return b64urlEncodeBytes(new Uint8Array(sig));
+}
+async function signJwt(claims, secret, expiresSec=28800) {
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg:'HS256', typ:'JWT' };
+  const payload = { ...claims, iat: now, exp: now + Math.max(60, Number(expiresSec) || 28800) };
+  const encodedHeader = b64urlEncodeText(JSON.stringify(header));
+  const encodedPayload = b64urlEncodeText(JSON.stringify(payload));
+  const signingInput = `${encodedHeader}.${encodedPayload}`;
+  const signature = await hmacSha256Base64Url(signingInput, secret);
+  return `${signingInput}.${signature}`;
+}
+async function verifyJwt(token, secret) {
+  const parts = String(token || '').split('.');
+  if (parts.length !== 3) throw new Error('Malformed token');
+  const [encodedHeader, encodedPayload, signature] = parts;
+  const header = JSON.parse(new TextDecoder().decode(b64urlDecodeBytes(encodedHeader)));
+  if (header.alg !== 'HS256') throw new Error('Unsupported token algorithm');
+  const signingInput = `${encodedHeader}.${encodedPayload}`;
+  const expectedSig = await hmacSha256Base64Url(signingInput, secret);
+  if (!timingSafeEqual(signature, expectedSig)) throw new Error('Invalid token signature');
+  const payload = JSON.parse(new TextDecoder().decode(b64urlDecodeBytes(encodedPayload)));
+  const now = Math.floor(Date.now() / 1000);
+  if (typeof payload.exp !== 'number' || payload.exp <= now) throw new Error('Token expired');
+  return payload;
+}
 
 function authHeaders(key, extra={}) {
   return {
@@ -110,11 +185,69 @@ async function router(path, method, url, request, SB, KEY, env={}) {
   const act  = seg[2];
   const body = ['POST','PUT','PATCH'].includes(method) ? await request.json().catch(()=>({})) : {};
 
-  // Read role + name from the frontend request headers.
-  // Store in module-level vars so authHeaders() picks them up
-  // and Supabase can evaluate auth.app_role() in RLS policies.
-  _reqRole = request.headers.get('x-user-role') || 'Viewer';
-  _reqName = request.headers.get('x-user-name') || '';
+  // Never trust role headers from clients. Derive request identity from bearer token.
+  const isAuthLogin = res === 'auth' && id === 'login' && method === 'POST';
+  if (!isAuthLogin) {
+    const authz = request.headers.get('authorization') || '';
+    const m = authz.match(/^Bearer\s+(.+)$/i);
+    if (!m) return respond({ success:false, error:'Missing bearer token' }, 401);
+    let claims;
+    try {
+      claims = await verifyJwt(m[1], env.JWT_SECRET || '');
+    } catch (_) {
+      return respond({ success:false, error:'Invalid or expired token' }, 401);
+    }
+    _reqRole = _allowedRoles.has(String(claims.role || '')) ? String(claims.role) : 'Viewer';
+    _reqName = String(claims.name || '');
+    _reqUserId = String(claims.sub || '');
+    _reqEmail = String(claims.email || '');
+  } else {
+    _reqRole = 'Viewer';
+    _reqName = '';
+    _reqUserId = '';
+    _reqEmail = '';
+  }
+
+  // AUTH (server-side password check; never expose password field to client)
+  if (res === 'auth' && id === 'login' && method === 'POST') {
+    const email = String(body.email || '').trim().toLowerCase();
+    const password = String(body.password || '');
+    if (!email || !password) return respond({ success:false, error:'email and password required' }, 400);
+
+    const { data:user, error } = await sbGet(SB, KEY, 'app_users', {
+      select: 'id,name,role,dept,email,color,initials,password,active',
+      filters: { email: 'eq.' + email },
+      single: true
+    });
+    if (error || !user) return respond({ success:false, error:'Invalid credentials' }, 401);
+    if (user.active === false) return respond({ success:false, error:'Account is deactivated' }, 403);
+
+    const stored = String(user.password || '').trim();
+    if (!stored) return respond({ success:false, error:'Account has no password configured' }, 403);
+    if (stored.startsWith('$2')) {
+      // bcrypt verification is intentionally not done client-side.
+      // If bcrypt users exist, enable server-side bcrypt verification here.
+      return respond({ success:false, error:'Password verifier unavailable for this account type' }, 501);
+    }
+    if (password !== stored) return respond({ success:false, error:'Invalid credentials' }, 401);
+
+    const normalizedRole = _allowedRoles.has(String(user.role || '')) ? String(user.role) : 'Viewer';
+    const safeUser = { ...user, role: normalizedRole };
+    delete safeUser.password;
+    const token = await signJwt(
+      { sub: safeUser.id, email: safeUser.email || '', name: safeUser.name || '', role: safeUser.role || 'Viewer' },
+      env.JWT_SECRET || '',
+      Number(env.JWT_EXPIRES_SEC || 28800)
+    );
+    return respond({ success:true, data: { token, user: safeUser } });
+  }
+
+  if (res === 'auth' && id === 'me' && method === 'GET') {
+    return respond({
+      success:true,
+      data: { id: _reqUserId || null, email: _reqEmail || null, name: _reqName || null, role: _reqRole || 'Viewer' }
+    });
+  }
 
   // ASSETS
   if (res==='assets') {
@@ -258,7 +391,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
 
   // USERS
   if (res==='users') {
-    if(method==='GET')    return ok(await sbGet(SB,KEY,'app_users',{select:'id,name,role,dept,email,color,initials,password,active',order:'name.asc'}));
+    if(method==='GET')    return ok(await sbGet(SB,KEY,'app_users',{select:'id,name,role,dept,email,color,initials,active',order:'name.asc'}));
     if(method==='POST')   return ok(await sbPost(SB,KEY,'app_users',body));
     if(method==='PUT')  { const {id:_,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'app_users',{id:`eq.${id}`},u)); }
     if(method==='DELETE'){const r=await sbDelete(SB,KEY,'app_users',{id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
@@ -335,7 +468,8 @@ async function router(path, method, url, request, SB, KEY, env={}) {
   // SEND EMAIL (via Resend)
   if (res === 'send-email') {
     if (method !== 'POST') return respond({ success:false, error:'POST only' }, 405);
-    const RESEND_KEY = env.RESEND_API_KEY || 're_N2Xokoux_21WeXMSYAbdSz9mnMd5avo5e';
+    const RESEND_KEY = env.RESEND_API_KEY;
+    if (!RESEND_KEY) return respond({ success:false, error:'RESEND_API_KEY not configured' }, 500);
     const { to, subject, html, text, from_name } = body;
     if (!to || !subject || (!html && !text)) return respond({ success:false, error:'Missing to/subject/html' }, 400);
     const recipients = Array.isArray(to) ? to : to.split(/[;,]/).map(s=>s.trim()).filter(Boolean);
@@ -439,8 +573,38 @@ function err500(e) { return respond({success:false, error:e?.message||String(e)}
 function respond(body, status=200) {
   return new Response(JSON.stringify(body), { status, headers:{
     'Content-Type':'application/json',
-    'Access-Control-Allow-Origin':'*',
+    'Access-Control-Allow-Origin': _corsAllowOrigin,
     'Access-Control-Allow-Methods':'GET,POST,PUT,PATCH,DELETE,OPTIONS',
-    'Access-Control-Allow-Headers':'Content-Type,x-api-key,x-user-role,x-user-name',
+    'Access-Control-Allow-Headers':'Content-Type,Authorization,x-api-key',
+    'X-Content-Type-Options':'nosniff',
+    'X-Frame-Options':'DENY',
+    'Referrer-Policy':'strict-origin-when-cross-origin',
+    'Permissions-Policy':'camera=(), microphone=(), geolocation=()',
   }});
 }
+
+
+function withSecurityHeaders(response) {
+  const h = new Headers(response.headers);
+  h.set('X-Content-Type-Options', 'nosniff');
+  h.set('X-Frame-Options', 'DENY');
+  h.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  h.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  h.set('Cross-Origin-Opener-Policy', 'same-origin');
+  h.set('Cross-Origin-Resource-Policy', 'same-origin');
+  h.set('Content-Security-Policy',
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; " +
+    "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; " +
+    "img-src 'self' data: blob:; " +
+    "connect-src 'self' https://api.anthropic.com https://generativelanguage.googleapis.com https://api.openai.com https://openrouter.ai; " +
+    "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self';");
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers: h });
+}
+
+
+
+
+
+

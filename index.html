@@ -3070,6 +3070,35 @@
   }
 
   // ── doLogin() ────────────────────────────────────────────────────────────────
+  function decodeJwtPayload(token) {
+    try {
+      const part = String(token || '').split('.')[1] || '';
+      const padded = part.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((part.length + 3) % 4);
+      const bin = atob(padded);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const json = new TextDecoder().decode(bytes);
+      return JSON.parse(json);
+    } catch (_) {
+      return null;
+    }
+  }
+  function isJwtExpired(token) {
+    const payload = decodeJwtPayload(token);
+    if (!payload || typeof payload.exp !== 'number') return true;
+    return payload.exp <= Math.floor(Date.now() / 1000);
+  }
+  function clearAuthSession() {
+    window.__currentUser = null;
+    window.__currentUserRole = null;
+    window.__currentUserName = null;
+    window.__authToken = null;
+    try { sessionStorage.removeItem('ams_user'); } catch (e) { }
+    try { localStorage.removeItem('ams_user'); } catch (e) { }
+    try { sessionStorage.removeItem('ams_token'); } catch (e) { }
+    try { localStorage.removeItem('ams_token'); } catch (e) { }
+  }
+
   async function doLogin() {
     const email = document.getElementById('loginEmail').value.trim().toLowerCase();
     const password = document.getElementById('loginPassword').value;
@@ -3081,88 +3110,81 @@
     if (!email) { showLoginError('Please enter your email address.'); return; }
     if (!password) { showLoginError('Please enter your password.'); return; }
 
-    // Loading state
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in…';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in...';
     btn.disabled = true;
 
     try {
-      // Check against app_users table via the API
-      const res = await fetch(window.__API_CONFIG__.baseUrl + '/users');
+      const apiCfg = window.__API_CONFIG__ || {};
+      const baseUrl = apiCfg.baseUrl || '/api';
+      const apiHeaders = { 'Content-Type': 'application/json' };
+      if (apiCfg.apiKey) apiHeaders['x-api-key'] = apiCfg.apiKey;
+
+      const res = await fetch(baseUrl + '/auth/login', {
+        method: 'POST',
+        headers: apiHeaders,
+        body: JSON.stringify({ email, password })
+      });
+
       const rawText = await res.text();
       let json;
       try { json = JSON.parse(rawText); } catch (_) {
         console.error('[Login] Non-JSON response:', res.status, rawText.slice(0, 200));
-        throw new Error('Server returned status ' + res.status + ' — check Cloudflare Worker logs.');
+        throw new Error('Server returned status ' + res.status + ' - check Cloudflare Worker logs.');
       }
-      if (!json.success) throw new Error(json.error || 'Could not reach server');
 
-      const users = json.data || [];
-      const user = users.find(u => (u.email || '').toLowerCase() === email);
-
-      if (!user) {
-        showLoginError('No account found with that email address.');
-        return;
-      }
-      if (!user.active) {
-        showLoginError('This account has been deactivated. Contact your administrator.');
+      if (!res.ok || !json.success) {
+        showLoginError(json.error || 'Invalid credentials.');
         return;
       }
 
-      // ── Password check ──────────────────────────────────────────
-      // If the user has a password set in the database, verify it.
-      // Plain-text comparison (upgrade to bcrypt on server-side when ready).
-      if (user.password) {
-        const stored = user.password.trim();
-        if (!stored.startsWith('$2') && password !== stored) {
-          showLoginError('Incorrect password. Please try again.');
-          return;
-        }
+      const data = json.data || {};
+      const token = data.token || '';
+      const user = data.user || {};
+      if (!token || !user || !user.email) {
+        showLoginError('Login response missing token/user.');
+        return;
       }
-      // null/empty → no check
 
-      // ── Success ──
+      window.__authToken = token;
       window.__currentUser = user;
       window.__currentUserRole = user.role;
       window.__currentUserName = user.name;
 
-      // Update the top-right user display in the shell
       const nameEl = document.getElementById('shellUserName');
       const roleEl = document.getElementById('shellUserRole');
       const avatarEl = document.getElementById('shellUserAvatar');
-      if (nameEl) nameEl.textContent = user.name;
-      if (roleEl) roleEl.textContent = user.role;
+      if (nameEl) nameEl.textContent = user.name || '';
+      if (roleEl) roleEl.textContent = user.role || '';
       if (avatarEl) {
         const initials = user.initials
           ? user.initials.toUpperCase().slice(0, 2)
-          : user.name.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase();
+          : (user.name || '').split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase();
         avatarEl.textContent = initials;
         avatarEl.style.background = user.color || '#0070F2';
       }
 
-      // Hide login screen
       document.getElementById('loginScreen').style.display = 'none';
 
-      // Save session — strip password before storing for basic security
-      const { password: _pw, ...sessionUser } = user;
-      try { localStorage.setItem('ams_user', JSON.stringify(sessionUser)); } catch (e) { }
-      try { sessionStorage.setItem('ams_user', JSON.stringify(sessionUser)); } catch (e) { }
+      try { localStorage.setItem('ams_user', JSON.stringify(user)); } catch (e) { }
+      try { sessionStorage.setItem('ams_user', JSON.stringify(user)); } catch (e) { }
+      try { localStorage.setItem('ams_token', token); } catch (e) { }
+      try { sessionStorage.setItem('ams_token', token); } catch (e) { }
       window.__sessionRestored = true;
 
-      // Toast in the main app
       if (typeof showToast === 'function') {
-        showToast('Welcome back, ' + user.name.split(' ')[0] + ' ✓', 'success');
+        const first = (user.name || 'User').split(' ')[0] || 'User';
+        showToast('Welcome back, ' + first + ' ✓', 'success');
       }
 
     } catch (e) {
       console.error('[Login]', e);
-      showLoginError(e.message || 'Unknown error — check browser console (F12).');
+      showLoginError(e.message || 'Unknown error - check browser console (F12).');
     } finally {
       btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
       btn.disabled = false;
     }
   }
-
-  function showLoginError(msg) {
+function showLoginError(msg) {
     const el = document.getElementById('loginError');
     el.textContent = msg;
     el.style.display = 'block';
@@ -3172,50 +3194,38 @@
     el.style.animation = 'shake .4s ease';
   }
 
-  // ── logout() — works for any button that calls logout() ──────────────────────
   function logout() {
     if (!confirm('Sign out of Asset Management System?')) return;
 
-    window.__currentUser = null;
-    window.__currentUserRole = null;
-    window.__currentUserName = null;
-
-    try { sessionStorage.removeItem('ams_user'); } catch (e) { }
-    try { localStorage.removeItem('ams_user'); } catch (e) { }
-    // Reset bootstrap flags so next login triggers full bootstrap
+    clearAuthSession();
     window.__bootstrapped = false;
     window.__bootstrapDone = false;
 
-    // Clear password field for security
     const pwEl = document.getElementById('loginPassword');
     if (pwEl) pwEl.value = '';
 
-    // Show login screen
     document.getElementById('loginScreen').style.display = 'flex';
 
-    // Reset email field focus
     setTimeout(() => {
       const emailEl = document.getElementById('loginEmail');
       if (emailEl) emailEl.focus();
     }, 100);
   }
 
-  // ── Auto-restore session on page load ────────────────────────────────────────
   (function restoreSession() {
     try {
       const raw = localStorage.getItem('ams_user') || sessionStorage.getItem('ams_user');
-      if (!raw) return;
+      const token = localStorage.getItem('ams_token') || sessionStorage.getItem('ams_token');
+      if (!raw || !token || isJwtExpired(token)) { clearAuthSession(); return; }
       const user = JSON.parse(raw);
-      if (!user || !user.email) return;
+      if (!user || !user.email) { clearAuthSession(); return; }
 
-      // Set globals IMMEDIATELY (script runs before <body>) so __sessionRestored
-      // is true by the time the bottom IIFE checks it.
+      window.__authToken = token;
       window.__currentUser = user;
       window.__currentUserRole = user.role;
       window.__currentUserName = user.name;
       window.__sessionRestored = true;
 
-      // Defer all DOM work until the body/loginScreen actually exist
       function applySessionUI() {
         const ls = document.getElementById('loginScreen');
         if (ls) ls.style.display = 'none';
@@ -3241,7 +3251,7 @@
       }
 
     } catch (e) {
-      try { localStorage.removeItem('ams_user'); sessionStorage.removeItem('ams_user'); } catch (_) { }
+      clearAuthSession();
     }
   })();
 
@@ -8787,45 +8797,6 @@ Asset Management System</textarea>
       openModal('addAssetModal');
     }
 
-    function saveAsset() {
-      const assetId = document.getElementById('f_assetId').value.trim();
-      const name = document.getElementById('f_name').value.trim();
-      if (!assetId || !name) { showToast('Please fill required fields.', 'error'); return; }
-      const data = {
-        assetId, name,
-        category: document.getElementById('f_category').value,
-        status: document.getElementById('f_status').value,
-
-        rigName: document.getElementById('f_rig').value,
-        location: document.getElementById('f_location').value,
-
-        serial: document.getElementById('f_serial').value,
-        notes: document.getElementById('f_notes').value,
-        lastInspection: document.getElementById('f_lastInspection').value,
-        inspectionType: document.getElementById('f_inspectionType').value,
-        certLink: document.getElementById('f_certLink').value,
-      };
-      if (editingAssetId) {
-        const idx = ASSETS.findIndex(a => a.assetId === editingAssetId);
-        if (idx >= 0) ASSETS[idx] = data;
-        showToast('Asset updated successfully.', 'success');
-      } else {
-        ASSETS.push(data);
-        showToast('Asset created successfully.', 'success');
-      }
-      closeModal('addAssetModal');
-      applyFilters();
-    }
-
-    function deleteAsset(id, silent) {
-      if (!silent && !confirm('Delete asset ' + id + '?')) return;
-      ASSETS = ASSETS.filter(a => a.assetId !== id);
-      filteredAssets = filteredAssets.filter(a => a.assetId !== id);
-      _selectedAssets.delete(id);
-      renderAssets();
-      if (!silent) showToast('Asset ' + id + ' deleted.', 'warning');
-    }
-
     // ══════════════════════════════════
     //  POPULATE SELECTS
     // ══════════════════════════════════
@@ -9481,35 +9452,6 @@ Asset Management System</textarea>
       openModal('addRigModal');
     }
 
-    window.saveRigEntry = async function () {
-      const name = document.getElementById('rig_name').value.trim();
-      if (!name) { showToast('Rig Name is required.', 'error'); return; }
-      const payload = {
-        name, type: document.getElementById('rig_type').value,
-
-        location: document.getElementById('rig_location').value.trim(),
-        depth: document.getElementById('rig_depth').value || null,
-        hp: parseInt(document.getElementById('rig_hp').value) || null,
-        status: document.getElementById('rig_status').value,
-        notes: document.getElementById('rig_notes').value.trim(),
-      };
-      try {
-        if (rigEditId) {
-          const res = await PUT(`/rigs/${rigEditId}`, { id: rigEditId, ...payload });
-          const idx = RIGS.findIndex(r => r.id === rigEditId);
-          if (idx >= 0) RIGS[idx] = { ...RIGS[idx], ...res.data };
-          showToast('Rig updated ✓', 'success');
-        } else {
-          const res = await POST('/rigs', payload);
-          RIGS.push(res.data);
-          showToast('Rig added ✓', 'success');
-        }
-        closeModal('addRigModal');
-        renderRigs();
-        if (typeof populateFormSelects === 'function') populateFormSelects();
-      } catch (e) { showToast('Save failed: ' + e.message, 'error'); }
-    };
-
     // ══════════════════════════════════
     //  ADD / EDIT CONTRACT MODAL
     // ══════════════════════════════════
@@ -9544,35 +9486,6 @@ Asset Management System</textarea>
       }
       openModal('addContractModal');
     }
-
-    window.saveContractEntry = async function () {
-      const id = document.getElementById('contract_id').value.trim();
-
-      if (!id) { showToast('Contract ID is required.', 'error'); return; }
-
-      const payload = {
-        id, rig: document.getElementById('contract_rig').value,
-        value: parseFloat(document.getElementById('contract_value').value) || 0,
-        start_date: document.getElementById('contract_start').value || null,
-        end_date: document.getElementById('contract_end').value || null,
-        status: document.getElementById('contract_status_field').value,
-        notes: document.getElementById('contract_notes').value.trim(),
-      };
-      try {
-        if (contractEditId) {
-          const res = await PUT(`/contracts/${contractEditId}`, payload);
-          const idx = CONTRACTS.findIndex(c => c.id === contractEditId);
-          if (idx >= 0) CONTRACTS[idx] = { ...CONTRACTS[idx], ...res.data };
-          showToast('Contract updated ✓', 'success');
-        } else {
-          const res = await POST('/contracts', payload);
-          CONTRACTS.push(res.data);
-          showToast('Contract added ✓', 'success');
-        }
-        closeModal('addContractModal');
-        applyContractFilters();
-      } catch (e) { showToast('Save failed: ' + e.message, 'error'); }
-    };
 
     // ══════════════════════════════════
     //  RENDER USERS
@@ -9612,7 +9525,6 @@ Asset Management System</textarea>
       badge.style.display = unread ? '' : 'none';
     }
     function markRead(i) { NOTIFICATIONS[i].read = true; renderNotifications(); }
-    function markAllRead() { NOTIFICATIONS.forEach(n => n.read = true); renderNotifications(); }
     function toggleNotif() {
       const p = document.getElementById('notifPanel');
       p.classList.toggle('open');
@@ -9878,69 +9790,7 @@ Asset Management System</textarea>
     }
 
     // ── Save BOM item ─────────────────────────────────────────────
-    function saveBomItem() {
-      const assetId = document.getElementById('bom_assetId').value;
-      const name = document.getElementById('bom_name').value.trim();
-      const type = document.getElementById('bom_type').value;
-      const qty = parseFloat(document.getElementById('bom_qty').value) || 0;
-
-      if (!assetId || !name) { showToast('Asset and Component Name are required.', 'error'); return; }
-      if (qty <= 0) { showToast('Quantity must be greater than 0.', 'error'); return; }
-
-      const isBulk = type === 'Bulk';
-      const data = {
-        assetId,
-        parentId: document.getElementById('bom_parentId').value || null,
-        name,
-        partNo: document.getElementById('bom_partNo').value.trim() || null,
-        type,
-        serial: isBulk ? null : (document.getElementById('bom_serial').value.trim() || null),
-        manufacturer: document.getElementById('bom_manufacturer').value.trim() || null,
-        qty,
-        uom: document.getElementById('bom_uom').value,
-        leadTime: parseInt(document.getElementById('bom_leadTime').value) || 0,
-        status: document.getElementById('bom_status').value,
-        notes: document.getElementById('bom_notes').value.trim() || null,
-      };
-
-      if (editingBomId) {
-        const idx = BOM_ITEMS.findIndex(b => b.id === editingBomId);
-        if (idx >= 0) { BOM_ITEMS[idx] = { ...BOM_ITEMS[idx], ...data }; }
-        showToast('BOM component updated.', 'success');
-      } else {
-        const newId = 'BOM-' + String(Date.now()).slice(-6);
-        BOM_ITEMS.push({ id: newId, ...data });
-        showToast('BOM component added.', 'success');
-      }
-
-      closeModal('bomModal');
-      renderBOMSection();
-      if (currentAsset) renderPopupBOM(currentAsset.assetId);
-      populateBomSelects();
-    }
-
     // ── Delete BOM item (and its children) ───────────────────────
-    function deleteBomItem(id) {
-      const item = BOM_ITEMS.find(b => b.id === id);
-      const children = BOM_ITEMS.filter(b => b.parentId === id);
-      const childMsg = children.length ? ` This will also delete ${children.length} child component(s).` : '';
-      if (!confirm(`Delete "${item?.name}"?${childMsg}`)) return;
-
-      // Recursively collect all descendant IDs
-      function collectIds(pid) {
-        const ids = [pid];
-        BOM_ITEMS.filter(b => b.parentId === pid).forEach(c => ids.push(...collectIds(c.id)));
-        return ids;
-      }
-      const toDelete = collectIds(id);
-      BOM_ITEMS = BOM_ITEMS.filter(b => !toDelete.includes(b.id));
-
-      showToast(`Deleted "${item?.name}" and ${toDelete.length - 1} sub-component(s).`, 'warning');
-      renderBOMSection();
-      if (currentAsset) renderPopupBOM(currentAsset.assetId);
-      populateBomSelects();
-    }
-
     // ── Build tree structure ──────────────────────────────────────
     function buildBomTree(items, parentId = null) {
       return items
@@ -10485,49 +10335,6 @@ Asset Management System</textarea>
     }
 
     // ── SUBMIT TRANSFER REQUEST ────────────────────────────────
-    function submitTransferRequest() {
-      const assetId = document.getElementById('tr_asset').value;
-      const destination = document.getElementById('tr_destination').value.trim();
-      const reason = document.getElementById('tr_reason').value.trim();
-
-      if (!assetId) { showToast('Please select an asset.', 'error'); return; }
-      if (!destination) { showToast('Please enter a destination location.', 'error'); return; }
-      if (!reason) { showToast('Please provide a reason for the transfer.', 'error'); return; }
-
-      const asset = ASSETS.find(x => x.assetId === assetId);
-
-      const newTransfer = {
-        id: 'TR-' + String(TRANSFERS.length + 1).padStart(3, '0'),
-        assetId, assetName: asset ? asset.name : assetId,
-        currentLoc: document.getElementById('tr_currentLoc').value,
-        destination,
-        destRig: document.getElementById('tr_destRig').value || null,
-        priority: document.getElementById('tr_priority').value,
-        type: document.getElementById('tr_type').value,
-        requestedBy: document.getElementById('tr_requestedBy').value,
-        requestDate: new Date().toISOString().slice(0, 10),
-        requiredDate: document.getElementById('tr_requiredDate').value || null,
-        reason,
-        instructions: document.getElementById('tr_instructions').value,
-        status: 'Pending',
-        suptApproval: { by: null, role: 'Superintendent',     date: null, action: null, comment: null },
-        opsApproval:  { by: null, role: 'Drilling Manager',   date: null, action: null, comment: null },
-        mgrApproval:  { by: null, role: 'Operations Manager', date: null, action: null, comment: null },
-      };
-
-      TRANSFERS.push(newTransfer);
-      closeModal('transferRequestModal');
-      renderTransfers();
-      updateTransferKPIs();
-      // Navigate to Transfers tab
-      const transfersTab = document.querySelector(".nav-tab[onclick*=\"'transfers'\"]");
-      if (transfersTab) switchTab('transfers', transfersTab);
-      showToast(`Transfer request ${newTransfer.id} submitted successfully. Awaiting Superintendent approval.`, 'success');
-
-      // Add notification
-      addNotification('info', 'exchange-alt', 'Transfer Request Submitted', `${newTransfer.assetName} → ${destination}`, 'Just now');
-    }
-
     // ── RENDER TRANSFERS TABLE ─────────────────────────────────
     function renderTransfers() {
       const q = (document.getElementById('trSearch')?.value || '').toLowerCase();
@@ -10746,67 +10553,6 @@ Asset Management System</textarea>
     }
 
     // ── PROCESS APPROVAL DECISION ──────────────────────────────
-    function processApproval(decision) {
-      const comment = document.getElementById('approvalComment').value.trim();
-      if (!comment) { showToast('Please enter your decision comments before proceeding.', 'error'); return; }
-
-      const t = TRANSFERS.find(x => x.id === currentTransferId);
-      if (!t) return;
-
-      const today = new Date().toISOString().slice(0, 10);
-      const approverName = window.__currentUserName || USERS.find(u => u.email === window.__currentUser?.email)?.name || 'Current User';
-
-      if (currentApproverRole === 'supt') {
-        t.suptApproval = { by: approverName, role: 'Superintendent', date: today, action: decision, comment };
-        if (decision === 'approve') {
-          t.status = 'Supt Approved';
-          showToast(`TR ${t.id}: Superintendent approved. Now pending Drilling Manager review.`, 'success');
-          addNotification('info', 'hard-hat', 'Awaiting Drilling Manager', `Transfer ${t.id} for ${t.assetName} needs Drilling Manager review`, today);
-        } else if (decision === 'reject') {
-          t.status = 'Rejected';
-          showToast(`TR ${t.id}: Rejected by Superintendent.`, 'warning');
-        } else {
-          t.status = 'On Hold';
-          showToast(`TR ${t.id}: Put on hold by Superintendent.`, 'info');
-        }
-      } else if (currentApproverRole === 'drilling') {
-        t.opsApproval = { by: approverName, role: 'Drilling Manager', date: today, action: decision, comment };
-        if (decision === 'approve') {
-          t.status = 'Drilling Approved';
-          showToast(`TR ${t.id}: Drilling Manager approved. Now pending Operations Manager final approval.`, 'success');
-          addNotification('info', 'user-tie', 'Awaiting Operations Manager', `Transfer ${t.id} for ${t.assetName} needs Operations Manager approval`, today);
-        } else if (decision === 'reject') {
-          t.status = 'Rejected';
-          showToast(`TR ${t.id}: Rejected by Drilling Manager.`, 'warning');
-        } else {
-          t.status = 'On Hold';
-          showToast(`TR ${t.id}: Put on hold by Drilling Manager.`, 'info');
-        }
-      } else {
-        t.mgrApproval = { by: approverName, role: 'Operations Manager', date: today, action: decision, comment };
-        if (decision === 'approve') {
-          t.status = 'Completed';
-          const asset = ASSETS.find(a => a.assetId === t.assetId);
-          if (asset) {
-            asset.location = t.destination;
-            if (t.destRig) asset.rigName = t.destRig;
-          }
-          applyFilters();
-          showToast(`✓ Transfer ${t.id} FULLY APPROVED by Operations Manager. Asset location updated to "${t.destination}".`, 'success');
-          addNotification('success', 'check-double', 'Transfer Completed', `${t.assetName} transferred to ${t.destination}`, today);
-        } else if (decision === 'reject') {
-          t.status = 'Rejected';
-          showToast(`TR ${t.id}: Final approval rejected by Operations Manager.`, 'warning');
-        } else {
-          t.status = 'On Hold';
-          showToast(`TR ${t.id}: Put on hold pending further review.`, 'info');
-        }
-      }
-
-      closeModal('transferApprovalModal');
-      renderTransfers();
-    }
-
     // ── CANCEL TRANSFER ────────────────────────────────────────
     function cancelTransfer(id) {
       if (!confirm(`Cancel transfer request ${id}? This action cannot be undone.`)) return;
@@ -11428,62 +11174,6 @@ Asset Management System</textarea>
     document.getElementById('m_nextDue').addEventListener('input', updateDueDaysLabel);
 
     // ── SAVE SCHEDULE ─────────────────────────────────────────────
-    function saveMaint() {
-      const assetId = (document.getElementById('m_asset').value || '').trim();
-      const task = document.getElementById('m_task').value.trim();
-      let nextDue = (document.getElementById('m_nextDue').value || '').trim();
-      if (!nextDue) {
-        const ld = document.getElementById('m_lastDone').value;
-        const fv = document.getElementById('m_freq').value;
-        const fd = fv === 'custom' ? (parseInt(document.getElementById('m_customFreq').value) || 0) : (parseInt(fv) || 0);
-        if (ld && fd > 0) {
-          const nd = new Date(ld); nd.setDate(nd.getDate() + fd);
-          nextDue = nd.toISOString().slice(0, 10);
-          document.getElementById('m_nextDue').value = nextDue;
-          updateDueDaysLabel();
-        }
-      }
-      const missing = [];
-      if (!assetId) missing.push('asset');
-      if (!task) missing.push('task');
-      if (!nextDue) missing.push('next due date');
-      if (missing.length) { showToast('Please fill: ' + missing.join(', ') + '.', 'error'); return; }
-
-      const freqVal = document.getElementById('m_freq').value;
-      const freq = freqVal === 'custom' ? parseInt(document.getElementById('m_customFreq').value) || 30 : parseInt(freqVal) || 30;
-      const alertDays = parseInt(document.querySelector('input[name="m_alertDays"]:checked')?.value || '14');
-
-      const data = {
-        id: editingMaintId || ('PM-' + String(MAINT_SCHEDULES.length + 1).padStart(3, '0')),
-        assetId, task,
-        type: document.getElementById('m_type').value,
-        priority: document.getElementById('m_priority').value,
-        freq,
-        lastDone: document.getElementById('m_lastDone').value || null,
-        nextDue,
-        tech: document.getElementById('m_tech').value,
-        hours: parseFloat(document.getElementById('m_hours').value) || null,
-        cost: parseFloat(document.getElementById('m_cost').value) || null,
-        status: document.getElementById('m_status').value,
-        alertDays,
-        notes: document.getElementById('m_notes').value,
-        logs: editingMaintId ? (MAINT_SCHEDULES.find(m => m.id === editingMaintId)?.logs || []) : [],
-      };
-
-      if (editingMaintId) {
-        const idx = MAINT_SCHEDULES.findIndex(m => m.id === editingMaintId);
-        if (idx >= 0) MAINT_SCHEDULES[idx] = data;
-        showToast('Maintenance schedule updated.', 'success');
-      } else {
-        MAINT_SCHEDULES.push(data);
-        showToast(`Schedule ${data.id} created.`, 'success');
-      }
-      closeModal('maintModal');
-      renderMaintenance();
-      updateMaintKPIs();
-      checkMaintAlerts();
-    }
-
     // ── OPEN LOG COMPLETION MODAL ─────────────────────────────────
     function openMaintLogModal(maintId) {
       logTargetMaintId = maintId;
@@ -11526,40 +11216,6 @@ Asset Management System</textarea>
     document.getElementById('ml_date')?.addEventListener('input', recalcMaintLogNextDue);
 
     // ── SAVE LOG / MARK COMPLETE ──────────────────────────────────
-    function saveMaintLog() {
-      const completionDate = document.getElementById('ml_date').value;
-      const by = document.getElementById('ml_by').value.trim();
-      if (!completionDate || !by) { showToast('Completion date and technician name are required.', 'error'); return; }
-
-      const logEntry = {
-        date: completionDate,
-        by,
-        hours: parseFloat(document.getElementById('ml_hours').value) || null,
-        cost: parseFloat(document.getElementById('ml_cost').value) || null,
-        parts: document.getElementById('ml_parts').value,
-        notes: document.getElementById('ml_notes').value,
-      };
-
-      if (logTargetMaintId) {
-        const idx = MAINT_SCHEDULES.findIndex(m => m.id === logTargetMaintId);
-        if (idx >= 0) {
-          const m = MAINT_SCHEDULES[idx];
-          if (!m.logs) m.logs = [];
-          m.logs.unshift(logEntry);
-          m.lastDone = completionDate;
-          m.nextDue = document.getElementById('ml_nextDue').value || m.nextDue;
-          m.status = 'Scheduled'; // reset to scheduled with new next due
-          const asset = ASSETS.find(a => a.assetId === m.assetId);
-          showToast(`✓ ${m.task} marked complete. Next due: ${m.nextDue}`, 'success');
-          addNotification('success', 'check-circle', 'Maintenance Completed', `${m.task} on ${asset?.name || m.assetId} completed by ${by}`, today());
-        }
-      }
-      closeModal('maintLogModal');
-      renderMaintenance();
-      updateMaintKPIs();
-      checkMaintAlerts();
-    }
-
     // ── VIEW HISTORY ──────────────────────────────────────────────
     function openMaintHistory(maintId) {
       const m = MAINT_SCHEDULES.find(x => x.id === maintId);
@@ -11614,15 +11270,6 @@ Asset Management System</textarea>
     }
 
     // ── DELETE ────────────────────────────────────────────────────
-    function deleteMaint(id) {
-      const m = MAINT_SCHEDULES.find(x => x.id === id);
-      if (!confirm(`Delete maintenance schedule "${m?.task}"?`)) return;
-      MAINT_SCHEDULES = MAINT_SCHEDULES.filter(x => x.id !== id);
-      renderMaintenance();
-      updateMaintKPIs();
-      showToast('Schedule deleted.', 'warning');
-    }
-
     // ── CLEAR FILTERS ─────────────────────────────────────────────
     function clearMaintFilters() {
       ['mSearch', 'mFilterStatus', 'mFilterType', 'mFilterAsset', 'mFilterPriority', 'mFilterRig'].forEach(id => {
@@ -12069,56 +11716,6 @@ Asset Management System</textarea>
       openModal('addCertModal');
     }
 
-    function saveCertificate() {
-      const assetId = document.getElementById('cert_asset').value;
-      const type = document.getElementById('cert_type').value;
-      if (!assetId || !type) { showToast('Please select an asset and inspection type.', 'error'); return; }
-      const validity = document.getElementById('cert_validity').value === 'custom'
-        ? parseInt(document.getElementById('cert_customDays').value) || 365
-        : parseInt(document.getElementById('cert_validity').value);
-      const a = ASSETS.find(x => x.assetId === assetId);
-      const data = {
-        certId: editingCertId || ('CERT-' + String(CERTIFICATES.length + 1).padStart(3, '0')),
-        assetId,
-        name: a?.name || '',
-        serial: a?.serial || '—',
-        rigName: a?.rigName || '',
-        location: a?.location || '',
-        category: a?.category || '',
-        inspectionType: type,
-        lastInspection: document.getElementById('cert_lastDate').value,
-        nextInspection: document.getElementById('cert_nextDate').value,
-        validityDays: validity,
-        alertDays: parseInt(document.getElementById('cert_alertDays').value) || 30,
-        certLink: document.getElementById('cert_link').value,
-        notes: document.getElementById('cert_notes').value,
-      };
-      // Also update the asset record
-      const ai = ASSETS.findIndex(x => x.assetId === assetId);
-      if (ai >= 0) {
-        ASSETS[ai].lastInspection = data.lastInspection;
-        ASSETS[ai].inspectionType = data.inspectionType;
-        ASSETS[ai].certLink = data.certLink;
-      }
-      if (editingCertId) {
-        const idx = CERTIFICATES.findIndex(c => c.certId === editingCertId);
-        if (idx >= 0) CERTIFICATES[idx] = data;
-        showToast('Certificate updated.', 'success');
-      } else {
-        CERTIFICATES.push(data);
-        showToast('Certificate saved.', 'success');
-      }
-      closeModal('addCertModal');
-      renderCertificates();
-    }
-
-    function deleteCert(certId) {
-      if (!confirm('Delete this certificate record?')) return;
-      CERTIFICATES = CERTIFICATES.filter(c => c.certId !== certId);
-      renderCertificates();
-      showToast('Certificate deleted.', 'warning');
-    }
-
     function getFilteredCertificates() {
       if (!CERTIFICATES.length) initCertificates();
       const q = (document.getElementById('certSearch')?.value || '').toLowerCase();
@@ -12263,6 +11860,7 @@ Asset Management System</textarea>
     let chatOpen = false;
     let chatTyping = false;
     let chatProvider = localStorage.getItem('ams_chat_provider') || 'anthropic'; // 'anthropic' | 'gemini'
+    const CHAT_EXTERNAL_PROVIDERS_ENABLED = false;
 
     // ── Key management ───────────────────────────────────────────────
     const ANTHROPIC_KEY_STORE = 'ams_anthropic_key';
@@ -13304,17 +12902,22 @@ Instructions:
       //  CORE HTTP HELPER
       // ══════════════════════════════════════════════════════════════════════════
       async function api(path, opts = {}) {
+        const token = window.__authToken || '';
+        if (!token) throw new Error('Not authenticated. Please sign in.');
         const res = await fetch(BASE + path, {
           ...opts,
           headers: {
             'Content-Type': 'application/json',
             'x-api-key': API_KEY,
-            'x-user-role': (window.__currentUserRole || 'Viewer'),
-            'x-user-name': (window.__currentUserName || ''),
+            'Authorization': 'Bearer ' + token,
             ...(opts.headers || {}),
           },
         });
         const json = await res.json();
+        if (res.status === 401) {
+          clearAuthSession();
+          throw new Error('Session expired. Please sign in again.');
+        }
         if (!res.ok || !json.success) throw new Error(json.error || `HTTP ${res.status}`);
         return json;
       }
@@ -13605,8 +13208,7 @@ Instructions:
           if (isSelf&&newPass) {
             showToast('Password changed. Signing you out…','warning');
             setTimeout(function(){
-              window.__currentUser=null; window.__currentUserRole=null; window.__currentUserName=null;
-              try{sessionStorage.removeItem('ams_user');}catch(e){} try{localStorage.removeItem('ams_user');}catch(e){}
+              clearAuthSession();
               window.__bootstrapped=false; window.__bootstrapDone=false;
               const pwEl=document.getElementById('loginPassword'); if(pwEl) pwEl.value='';
               document.getElementById('loginScreen').style.display='flex';
@@ -13619,7 +13221,7 @@ Instructions:
             const nameEl=document.getElementById('shellUserName'), roleEl=document.getElementById('shellUserRole'), avatarEl=document.getElementById('shellUserAvatar');
             if(nameEl) nameEl.textContent=name; if(roleEl) roleEl.textContent=role;
             if(avatarEl){avatarEl.textContent=ini; avatarEl.style.background=color||'#0070F2';}
-            try{const s=Object.assign({},cu);delete s.password;sessionStorage.setItem('ams_user',JSON.stringify(s));}catch(e){}
+            try{const s=Object.assign({},cu);delete s.password;sessionStorage.setItem('ams_user',JSON.stringify(s));localStorage.setItem('ams_user',JSON.stringify(s));}catch(e){}
             showToast('Profile updated ✓','success');
           } else { showToast(_ueUserId?'User updated ✓':'User created ✓','success'); }
         } catch(e){showToast('Save failed: '+e.message,'error');}
@@ -14905,76 +14507,6 @@ Instructions:
         closeImportGuide();
       };
 
-      window.showImportResults = function showImportResults(label, fileName, added, failedRows) {
-        __importLastFailedRows = failedRows || [];
-        const totalRows = added + failedRows.length;
-
-        const icon = document.getElementById('importResultsIcon');
-        const title = document.getElementById('importResultsTitle');
-        if (failedRows.length === 0) {
-          icon.className = 'fas fa-check-circle';
-          icon.style.color = 'var(--sap-success)';
-          title.textContent = 'Import Complete — All Rows Successful';
-        } else if (added === 0) {
-          icon.className = 'fas fa-times-circle';
-          icon.style.color = 'var(--sap-error)';
-          title.textContent = 'Import Failed — No Rows Imported';
-        } else {
-          icon.className = 'fas fa-exclamation-triangle';
-          icon.style.color = 'var(--sap-warning)';
-          title.textContent = 'Import Completed with Warnings';
-        }
-
-        const dlBtn = document.getElementById('importResultsDownloadBtn');
-        dlBtn.style.display = failedRows.length > 0 ? '' : 'none';
-
-        let html = `<div style="font-size:12.5px;color:var(--sap-text-muted);margin-bottom:12px">
-          <i class="fas fa-file-excel" style="color:var(--sap-success)"></i>
-          <strong>${fileName}</strong> — ${totalRows} row(s) processed
-        </div>`;
-
-        // Summary cards
-        html += `<div class="import-summary-bar">
-          <div class="import-stat-card success">
-            <div class="import-stat-num">${added}</div>
-            <div class="import-stat-label"><i class="fas fa-check-circle"></i> Imported Successfully</div>
-          </div>
-          <div class="import-stat-card failed">
-            <div class="import-stat-num">${failedRows.length}</div>
-            <div class="import-stat-label"><i class="fas fa-times-circle"></i> Failed / Skipped</div>
-          </div>
-          <div class="import-stat-card skipped">
-            <div class="import-stat-num">${totalRows}</div>
-            <div class="import-stat-label"><i class="fas fa-table"></i> Total Rows</div>
-          </div>
-        </div>`;
-
-        if (failedRows.length === 0) {
-          html += `<div class="import-no-failures"><i class="fas fa-party-horn" style="color:var(--sap-success)"></i>
-            <i class="fas fa-check-circle" style="color:var(--sap-success)"></i>
-            All ${added} rows were imported successfully — no failures detected.</div>`;
-        } else {
-          html += `<div class="import-section-label" style="margin:0 0 8px"><i class="fas fa-exclamation-triangle" style="color:#E9730C;margin-right:4px"></i>Failed / Skipped Rows (${failedRows.length})</div>`;
-          html += `<div class="import-failed-wrap"><table class="import-failed-table">
-            <thead><tr>
-              <th style="width:60px">Row #</th>
-              <th>Identifier</th>
-              <th>Reason / Error</th>
-            </tr></thead><tbody>`;
-          for (const fr of failedRows) {
-            html += `<tr>
-              <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--sap-text-muted)">#${fr.row}</td>
-              <td style="font-weight:600">${fr.id || '<em style="color:#aaa;font-weight:400">—</em>'}</td>
-              <td><span class="import-failed-reason"><i class="fas fa-exclamation-circle"></i> ${fr.reason}</span></td>
-            </tr>`;
-          }
-          html += `</tbody></table></div>`;
-        }
-
-        document.getElementById('importResultsBody').innerHTML = html;
-        document.getElementById('importResultsOverlay').classList.add('open');
-      };
-
       window.closeImportResults = function closeImportResults() {
         document.getElementById('importResultsOverlay').classList.remove('open');
         __importLastFailedRows = [];
@@ -15527,6 +15059,14 @@ Instructions:
 </body>
 
 </html>
+
+
+
+
+
+
+
+
 
 
 
