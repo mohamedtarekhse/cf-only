@@ -11390,6 +11390,8 @@ Asset Management System</textarea>
         // default nextDue = 30 days from today
         const nd = new Date(); nd.setDate(nd.getDate() + 30);
         document.getElementById('m_nextDue').value = nd.toISOString().slice(0, 10);
+        // reduce accidental validation errors on fresh forms
+        if (ASSETS.length && !asel.value) asel.value = ASSETS[0].assetId;
       }
       updateDueDaysLabel();
       openModal('maintModal');
@@ -11427,10 +11429,25 @@ Asset Management System</textarea>
 
     // ── SAVE SCHEDULE ─────────────────────────────────────────────
     function saveMaint() {
-      const assetId = document.getElementById('m_asset').value;
+      const assetId = (document.getElementById('m_asset').value || '').trim();
       const task = document.getElementById('m_task').value.trim();
-      const nextDue = document.getElementById('m_nextDue').value;
-      if (!assetId || !task || !nextDue) { showToast('Asset, task name and next due date are required.', 'error'); return; }
+      let nextDue = (document.getElementById('m_nextDue').value || '').trim();
+      if (!nextDue) {
+        const ld = document.getElementById('m_lastDone').value;
+        const fv = document.getElementById('m_freq').value;
+        const fd = fv === 'custom' ? (parseInt(document.getElementById('m_customFreq').value) || 0) : (parseInt(fv) || 0);
+        if (ld && fd > 0) {
+          const nd = new Date(ld); nd.setDate(nd.getDate() + fd);
+          nextDue = nd.toISOString().slice(0, 10);
+          document.getElementById('m_nextDue').value = nextDue;
+          updateDueDaysLabel();
+        }
+      }
+      const missing = [];
+      if (!assetId) missing.push('asset');
+      if (!task) missing.push('task');
+      if (!nextDue) missing.push('next due date');
+      if (missing.length) { showToast('Please fill: ' + missing.join(', ') + '.', 'error'); return; }
 
       const freqVal = document.getElementById('m_freq').value;
       const freq = freqVal === 'custom' ? parseInt(document.getElementById('m_customFreq').value) || 30 : parseInt(freqVal) || 30;
@@ -13735,10 +13752,25 @@ Instructions:
       //  OVERRIDE: saveMaint()  — create / update maintenance schedule
       // ══════════════════════════════════════════════════════════════════════════
       window.saveMaint = async function () {
-        const assetId = document.getElementById('m_asset').value;
+        const assetId = (document.getElementById('m_asset').value || '').trim();
         const task = document.getElementById('m_task').value.trim();
-        const nextDue = document.getElementById('m_nextDue').value;
-        if (!assetId || !task || !nextDue) { showToast('Asset, task and next due date are required.', 'error'); return; }
+        let nextDue = (document.getElementById('m_nextDue').value || '').trim();
+        if (!nextDue) {
+          const ld = document.getElementById('m_lastDone').value;
+          const fv = document.getElementById('m_freq').value;
+          const fd = fv === 'custom' ? (parseInt(document.getElementById('m_customFreq').value) || 0) : (parseInt(fv) || 0);
+          if (ld && fd > 0) {
+            const nd = new Date(ld); nd.setDate(nd.getDate() + fd);
+            nextDue = nd.toISOString().slice(0, 10);
+            document.getElementById('m_nextDue').value = nextDue;
+            updateDueDaysLabel();
+          }
+        }
+        const missing = [];
+        if (!assetId) missing.push('asset');
+        if (!task) missing.push('task');
+        if (!nextDue) missing.push('next due date');
+        if (missing.length) { showToast('Please fill: ' + missing.join(', ') + '.', 'error'); return; }
 
         const freqVal = document.getElementById('m_freq').value;
         const freq = freqVal === 'custom' ? parseInt(document.getElementById('m_customFreq').value) || 30 : parseInt(freqVal) || 30;
@@ -15495,6 +15527,9 @@ Instructions:
 </body>
 
 </html>
+
+
+
 
 
 
