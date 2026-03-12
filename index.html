@@ -11170,7 +11170,7 @@ Asset Management System</textarea>
       const list = MAINT_SCHEDULES.map(m => ({ ...m, _liveStatus: getMaintStatus(m) }))
         .filter(m => {
           const asset = ASSETS.find(a => a.assetId === m.assetId);
-          const mq = !q || m.task.toLowerCase().includes(q) ||
+          const mq = !q || (m.task || '').toLowerCase().includes(q) ||
             m.assetId.toLowerCase().includes(q) ||
             (asset?.name || '').toLowerCase().includes(q) ||
             (m.tech || '').toLowerCase().includes(q);
@@ -11487,7 +11487,7 @@ Asset Management System</textarea>
 
       // Auto-calc next due
       if (m) {
-        const nd = new Date(); nd.setDate(nd.getDate() + (m.freq || 30));
+        const nd = new Date(document.getElementById('ml_date').value || today()); nd.setDate(nd.getDate() + (m.freq || 30));
         document.getElementById('ml_nextDue').value = nd.toISOString().slice(0, 10);
       } else {
         document.getElementById('ml_nextDue').value = '';
@@ -11495,6 +11495,18 @@ Asset Management System</textarea>
 
       openModal('maintLogModal');
     }
+
+    function recalcMaintLogNextDue() {
+      const m = logTargetMaintId ? MAINT_SCHEDULES.find(x => x.id === logTargetMaintId) : null;
+      const completionDate = document.getElementById('ml_date')?.value;
+      if (!m || !completionDate) return;
+      const nd = new Date(completionDate);
+      nd.setDate(nd.getDate() + (m.freq || 30));
+      const nextDueEl = document.getElementById('ml_nextDue');
+      if (nextDueEl) nextDueEl.value = nd.toISOString().slice(0, 10);
+    }
+
+    document.getElementById('ml_date')?.addEventListener('input', recalcMaintLogNextDue);
 
     // ── SAVE LOG / MARK COMPLETE ──────────────────────────────────
     function saveMaintLog() {
@@ -11615,7 +11627,7 @@ Asset Management System</textarea>
       return MAINT_SCHEDULES.map(m => ({ ...m, _liveStatus: getMaintStatus(m) }))
         .filter(m => {
           const asset = ASSETS.find(a => a.assetId === m.assetId);
-          const mq = !q || m.task.toLowerCase().includes(q) || m.assetId.toLowerCase().includes(q) ||
+          const mq = !q || (m.task || '').toLowerCase().includes(q) || m.assetId.toLowerCase().includes(q) ||
             (asset?.name || '').toLowerCase().includes(q) || (m.tech || '').toLowerCase().includes(q);
           return mq && (!fS || m._liveStatus === fS) && (!fT || m.type === fT) &&
             (!fA || m.assetId === fA) && (!fP || m.priority === fP) &&
@@ -13316,7 +13328,18 @@ Instructions:
         };
       }
       function normM(m) {
-        return { ...m, lastDone: m.last_done, nextDue: m.next_due, alertDays: m.alert_days, logs: [] };
+        if (!m) return {};
+        return {
+          ...m,
+          assetId:   m.asset_id   || m.assetId   || '',
+          lastDone:  m.last_done  || m.lastDone  || null,
+          nextDue:   m.next_due   || m.nextDue   || null,
+          alertDays: m.alert_days || m.alertDays || 14,
+          freq:      Number(m.freq || 0) || 30,
+          hours:     m.hours != null ? Number(m.hours) : null,
+          cost:      m.cost  != null ? Number(m.cost)  : null,
+          logs:      Array.isArray(m.logs) ? m.logs : [],
+        };
       }
       function normT(t) {
         const assetId = t.asset_id || t.assetId || '';
@@ -14532,19 +14555,19 @@ Instructions:
               notes: r['Notes'] || '',
             };
             try {
-              const existing = MAINTENANCE.find(m => m.id === id);
+              const existing = MAINT_SCHEDULES.find(m => m.id === id);
               if (existing) {
                 const res = await PUT(`/maintenance/${id}`, payload);
-                const idx = MAINTENANCE.findIndex(m => m.id === id);
-                if (idx >= 0) MAINTENANCE[idx] = res.data;
+                const idx = MAINT_SCHEDULES.findIndex(m => m.id === id);
+                if (idx >= 0) MAINT_SCHEDULES[idx] = normM(res.data);
               } else {
                 const res = await POST('/maintenance', payload);
-                MAINTENANCE.push(res.data);
+                MAINT_SCHEDULES.push(normM(res.data));
               }
               added++;
             } catch (e) { failedRows.push({ row: i + 2, id, reason: e.message || 'API error' }); }
           }
-          applyMaintFilters();
+          rerender('renderMaintenance', 'updateMaintKPIs', 'checkMaintAlerts');
           showImportResults('Maintenance Schedules', file.name, added, failedRows);
         } catch (err) { showToast('Import failed: ' + err.message, 'error'); }
       }
@@ -15472,3 +15495,6 @@ Instructions:
 </body>
 
 </html>
+
+
+
