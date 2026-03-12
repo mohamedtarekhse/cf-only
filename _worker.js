@@ -210,26 +210,65 @@ async function router(path, method, url, request, SB, KEY, env={}) {
 
   // AUTH (server-side password check; never expose password field to client)
   if (res === 'auth' && id === 'login' && method === 'POST') {
-    const email = String(body.email || '').trim().toLowerCase();
+    const identifierRaw = String(body.email || body.identifier || '').trim();
+    const email = identifierRaw.toLowerCase();
     const password = String(body.password || '');
-    if (!email || !password) return respond({ success:false, error:'email and password required' }, 400);
+    if (!identifierRaw || !password) return respond({ success:false, error:'email and password required' }, 400);
 
-    let { data:user, error } = await sbGet(SB, KEY, 'app_users', {
-      select: 'id,name,role,dept,email,color,initials,password,active',
-      filters: { email: 'eq.' + email },
-      single: true
-    });
-    // Legacy compatibility: some rows may store mixed-case emails.
-    if (!user && !error) {
-      const fallback = await sbGet(SB, KEY, 'app_users', {
-        select: 'id,name,role,dept,email,color,initials,password,active',
-        filters: { email: 'ilike.' + email },
+    let user = null;
+    let error = null;
+    const userSelect = 'id,name,role,dept,email,color,initials,password,active';
+
+    for (const table of ['app_users', 'users']) {
+      const exact = await sbGet(SB, KEY, table, {
+        select: userSelect,
+        filters: { email: 'eq.' + email },
         single: true
       });
-      user = fallback.data;
-      error = fallback.error;
+      if (!exact.error && exact.data) {
+        user = exact.data;
+        break;
+      }
+
+      // Legacy compatibility: mixed-case or padded emails.
+      const fuzzy = await sbGet(SB, KEY, table, {
+        select: userSelect,
+        filters: { email: 'ilike.*' + email + '*' },
+        order: 'email.asc',
+        limit: 50
+      });
+      if (fuzzy.error) {
+        error = fuzzy.error;
+        continue;
+      }
+
+      const rows = Array.isArray(fuzzy.data) ? fuzzy.data : [];
+      const match = rows.find(r => String(r?.email || '').trim().toLowerCase() === email);
+      if (match) {
+        user = match;
+        break;
+      }
     }
-    if (error || !user) return respond({ success:false, error:'Invalid credentials' }, 401);
+
+    if (!user) {
+      for (const table of ['app_users', 'users']) {
+        const byName = await sbGet(SB, KEY, table, {
+          select: userSelect,
+          filters: { name: 'ilike.*' + identifierRaw + '*' },
+          order: 'name.asc',
+          limit: 50
+        });
+        if (byName.error) continue;
+        const rows = Array.isArray(byName.data) ? byName.data : [];
+        const match = rows.find(r => String(r?.name || '').trim().toLowerCase() === identifierRaw.toLowerCase());
+        if (match) {
+          user = match;
+          break;
+        }
+      }
+    }
+
+    if (!user) return respond({ success:false, error:'Invalid credentials' }, 401);
     if (user.active === false) return respond({ success:false, error:'Account is deactivated' }, 403);
 
     const stored = String(user.password || '').trim();
@@ -612,6 +651,7 @@ function withSecurityHeaders(response) {
     "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self';");
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers: h });
 }
+
 
 
 
