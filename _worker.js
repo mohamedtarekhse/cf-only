@@ -214,11 +214,21 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     const password = String(body.password || '');
     if (!email || !password) return respond({ success:false, error:'email and password required' }, 400);
 
-    const { data:user, error } = await sbGet(SB, KEY, 'app_users', {
+    let { data:user, error } = await sbGet(SB, KEY, 'app_users', {
       select: 'id,name,role,dept,email,color,initials,password,active',
       filters: { email: 'eq.' + email },
       single: true
     });
+    // Legacy compatibility: some rows may store mixed-case emails.
+    if (!user && !error) {
+      const fallback = await sbGet(SB, KEY, 'app_users', {
+        select: 'id,name,role,dept,email,color,initials,password,active',
+        filters: { email: 'ilike.' + email },
+        single: true
+      });
+      user = fallback.data;
+      error = fallback.error;
+    }
     if (error || !user) return respond({ success:false, error:'Invalid credentials' }, 401);
     if (user.active === false) return respond({ success:false, error:'Account is deactivated' }, 403);
 
