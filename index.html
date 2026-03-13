@@ -3212,7 +3212,7 @@ function showLoginError(msg) {
     }, 100);
   }
 
-  (function restoreSession() {
+  (async function restoreSession() {
     try {
       const raw = localStorage.getItem('ams_user') || sessionStorage.getItem('ams_user');
       const token = localStorage.getItem('ams_token') || sessionStorage.getItem('ams_token');
@@ -3224,6 +3224,41 @@ function showLoginError(msg) {
       window.__currentUser = user;
       window.__currentUserRole = user.role;
       window.__currentUserName = user.name;
+
+      const apiCfg = window.__API_CONFIG__ || {};
+      const baseUrl = (apiCfg.baseUrl || '/api').replace(/\/$/, '');
+      const headers = { 'Authorization': 'Bearer ' + token };
+      if (apiCfg.apiKey) headers['x-api-key'] = apiCfg.apiKey;
+
+      const meRes = await fetch(baseUrl + '/auth/me', { method: 'GET', headers });
+      const meJson = await meRes.json().catch(() => ({}));
+      if (meRes.status === 403 && meJson && meJson.code === 'ACCOUNT_DISABLED') {
+        clearAuthSession();
+        return;
+      }
+      if (!meRes.ok || !meJson.success) {
+        clearAuthSession();
+        return;
+      }
+
+      const me = meJson.data || {};
+      const allowedRoles = new Set(['Admin','Manager','Superintendent','Drilling Manager','Asset Manager','Maintenance Manager','Project Manager','Engineer','Assistant','Viewer']);
+      if (me.role && !allowedRoles.has(me.role)) {
+        clearAuthSession();
+        return;
+      }
+      if (me.active === false) {
+        clearAuthSession();
+        return;
+      }
+
+      if (me.name) window.__currentUserName = me.name;
+      if (me.role) window.__currentUserRole = me.role;
+      window.__currentUser = Object.assign({}, user, {
+        name: me.name || user.name,
+        role: me.role || user.role,
+        active: me.active !== false
+      });
       window.__sessionRestored = true;
 
       function applySessionUI() {
@@ -3233,14 +3268,18 @@ function showLoginError(msg) {
         const nameEl = document.getElementById('shellUserName');
         const roleEl = document.getElementById('shellUserRole');
         const avatarEl = document.getElementById('shellUserAvatar');
-        if (nameEl) nameEl.textContent = user.name;
-        if (roleEl) roleEl.textContent = user.role;
+        const safeName = window.__currentUser?.name || user.name || '';
+        const safeRole = window.__currentUser?.role || user.role || '';
+        const safeInitials = window.__currentUser?.initials || user.initials || '';
+        const safeColor = window.__currentUser?.color || user.color || '#0070F2';
+        if (nameEl) nameEl.textContent = safeName;
+        if (roleEl) roleEl.textContent = safeRole;
         if (avatarEl) {
-          const ini = user.initials
-            ? user.initials.toUpperCase().slice(0, 2)
-            : user.name.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase();
+          const ini = safeInitials
+            ? safeInitials.toUpperCase().slice(0, 2)
+            : safeName.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase();
           avatarEl.textContent = ini;
-          avatarEl.style.background = user.color || '#0070F2';
+          avatarEl.style.background = safeColor;
         }
       }
 
@@ -12964,9 +13003,19 @@ Instructions:
             ...(opts.headers || {}),
           },
         });
-        const json = await res.json();
-        if (res.status === 401) {
+        const json = await res.json().catch(() => ({}));
+        const disabled = res.status === 403 && json && json.code === 'ACCOUNT_DISABLED';
+        const invalidRole = res.status === 403 && json && json.code === 'INVALID_ROLE';
+        if (res.status === 401 || disabled || invalidRole) {
           clearAuthSession();
+          const ls = document.getElementById('loginScreen');
+          if (ls) ls.style.display = 'flex';
+          if (disabled) {
+            throw new Error('Your account has been disabled. Please contact an administrator.');
+          }
+          if (invalidRole) {
+            throw new Error('Your account role is not valid. Please contact an administrator.');
+          }
           throw new Error('Session expired. Please sign in again.');
         }
         if (!res.ok || !json.success) throw new Error(json.error || `HTTP ${res.status}`);
@@ -15129,6 +15178,9 @@ Instructions:
 </body>
 
 </html>
+
+
+
 
 
 

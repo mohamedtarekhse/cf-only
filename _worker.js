@@ -48,10 +48,6 @@ export default {
 // ── Direct Supabase REST calls ────────────────────────────────────────────────
 
 // Module-level role context — set per request in router()
-let _reqRole = 'Admin';
-let _reqName = '';
-let _reqUserId = '';
-let _reqEmail = '';
 let _corsAllowOrigin = '*';
 const _allowedRoles = new Set(['Admin','Manager','Superintendent','Drilling Manager','Asset Manager','Maintenance Manager','Project Manager','Engineer','Assistant','Viewer']);
 const BCRYPT_COST = 10;
@@ -113,14 +109,14 @@ async function verifyJwt(token, secret) {
   return payload;
 }
 
-function authHeaders(key, extra={}) {
+function authHeaders(key, extra={}, ctx=null) {
   return {
     'apikey': key,
     'Authorization': `Bearer ${key}`,
     'Content-Type': 'application/json',
     // Pass the role as a PostgreSQL session variable so RLS
     // policy public.app_role() can read it via current_setting()
-    'x-supabase-request-option': `db.request.jwt.claims=${JSON.stringify({ app_role: _reqRole, app_name: _reqName })}`,
+    'x-supabase-request-option': `db.request.jwt.claims=${JSON.stringify({ app_role: String(ctx?.reqRole || 'Viewer'), app_name: String(ctx?.reqName || '') })}`,
     ...extra
   };
 }
@@ -138,56 +134,56 @@ function bypassHeaders(key, extra={}) {
   };
 }
 
-async function sbGet(base, key, table, { select='*', filters={}, order=null, limit=null, single=false, bypass=false }={}) {
+async function sbGetCore(base, key, table, { select='*', filters={}, order=null, limit=null, single=false, bypass=false }={}, ctx=null) {
   const u = new URL(`${base}/rest/v1/${table}`);
   u.searchParams.set('select', select);
   for (const [k,v] of Object.entries(filters)) u.searchParams.append(k, v);
   if (order) u.searchParams.set('order', order);
   if (limit) u.searchParams.set('limit', String(limit));
-  const h = bypass ? bypassHeaders(key) : authHeaders(key);
+  const h = bypass ? bypassHeaders(key) : authHeaders(key, {}, ctx);
   if (single) h['Accept'] = 'application/vnd.pgjson';
   const r = await fetch(u.toString(), { headers:h });
   return parseRes(r, single);
 }
 
-async function sbPost(base, key, table, body) {
+async function sbPostCore(base, key, table, body, ctx=null) {
   const u = new URL(`${base}/rest/v1/${table}`);
   u.searchParams.set('select', '*');
-  const r = await fetch(u.toString(), { method:'POST', headers:authHeaders(key,{'Prefer':'return=representation'}), body:JSON.stringify(body) });
+  const r = await fetch(u.toString(), { method:'POST', headers:authHeaders(key,{'Prefer':'return=representation'}, ctx), body:JSON.stringify(body) });
   return parseRes(r, true);
 }
 
-async function sbPatch(base, key, table, filters, body) {
+async function sbPatchCore(base, key, table, filters, body, ctx=null) {
   const u = new URL(`${base}/rest/v1/${table}`);
   u.searchParams.set('select', '*');
   for (const [k,v] of Object.entries(filters)) u.searchParams.append(k, v);
-  const r = await fetch(u.toString(), { method:'PATCH', headers:authHeaders(key,{'Prefer':'return=representation'}), body:JSON.stringify(body) });
+  const r = await fetch(u.toString(), { method:'PATCH', headers:authHeaders(key,{'Prefer':'return=representation'}, ctx), body:JSON.stringify(body) });
   return parseRes(r, true);
 }
 
-async function sbRpc(base, key, fnName, args={}) {
+async function sbRpcCore(base, key, fnName, args={}, ctx=null) {
   const u = new URL(`${base}/rest/v1/rpc/${fnName}`);
   const r = await fetch(u.toString(), {
     method:'POST',
-    headers:authHeaders(key, {'Prefer':'return=representation'}),
+    headers:authHeaders(key, {'Prefer':'return=representation'}, ctx),
     body:JSON.stringify(args)
   });
   return parseRes(r, true);
 }
 
-async function sbDelete(base, key, table, filters) {
+async function sbDeleteCore(base, key, table, filters, ctx=null) {
   const u = new URL(`${base}/rest/v1/${table}`);
   for (const [k,v] of Object.entries(filters)) u.searchParams.append(k, v);
-  const r = await fetch(u.toString(), { method:'DELETE', headers:authHeaders(key,{'Prefer':'return=minimal'}) });
+  const r = await fetch(u.toString(), { method:'DELETE', headers:authHeaders(key,{'Prefer':'return=minimal'}, ctx) });
   if (r.ok || r.status===204) return { error:null };
   const t = await r.text(); let m; try{m=JSON.parse(t)?.message}catch(_){m=t}
   return { error:{ message:`${r.status}: ${m}` } };
 }
 
-async function sbCount(base, key, table) {
+async function sbCountCore(base, key, table, ctx=null) {
   const u = new URL(`${base}/rest/v1/${table}`);
   u.searchParams.set('select','*'); u.searchParams.set('limit','0');
-  const r = await fetch(u.toString(), { headers:authHeaders(key,{'Prefer':'count=exact'}) });
+  const r = await fetch(u.toString(), { headers:authHeaders(key,{'Prefer':'count=exact'}, ctx) });
   return parseInt((r.headers.get('content-range')||'0/0').split('/')[1])||0;
 }
 
@@ -199,19 +195,19 @@ async function parseRes(r, single) {
   return { data: data??[], error:null };
 }
 
-async function hashPassword(base, key, plain, cost=BCRYPT_COST) {
+async function hashPassword(base, key, plain, cost=BCRYPT_COST, ctx=null) {
   const raw = String(plain || '');
   if (!raw) throw new Error('Password is required');
   const safeCost = Math.max(4, Math.min(12, Number(cost) || BCRYPT_COST));
-  const { data, error } = await sbRpc(base, key, 'app_hash_password', {
+  const { data, error } = await sbRpcCore(base, key, 'app_hash_password', {
     plain_password: raw,
     cost_factor: safeCost
-  });
+  }, ctx);
   if (error || !data) throw new Error(error?.message || 'Password hashing failed');
   return String(data);
 }
 
-async function verifyPassword(base, key, plain, stored) {
+async function verifyPassword(base, key, plain, stored, ctx=null) {
   const input = String(plain || '');
   const hash  = String(stored || '').trim();
   if (!hash) return false;
@@ -219,10 +215,10 @@ async function verifyPassword(base, key, plain, stored) {
   // Bcrypt hash — try via Supabase RPC (requires 032_auth_password_bcrypt.sql run)
   if (hash.startsWith('$2')) {
     try {
-      const { data, error } = await sbRpc(base, key, 'app_verify_password', {
+      const { data, error } = await sbRpcCore(base, key, 'app_verify_password', {
         plain_password: input,
         stored_hash: hash
-      });
+      }, ctx);
       if (error) {
         // RPC not deployed yet — cannot verify bcrypt client-side; deny with clear message
         console.error('[verifyPassword] RPC error:', error.message,
@@ -241,10 +237,33 @@ async function verifyPassword(base, key, plain, stored) {
 }
 
 // ── Permission guard helper ──────────────────────────────────────────────────
-function forbidden(action) {
-  return respond({ success:false, error:`Forbidden — your role (${_reqRole}) cannot ${action}` }, 403);
+function forbidden(ctx, action) {
+  return respond({ success:false, error:`Forbidden ? your role (${ctx?.reqRole || 'Viewer'}) cannot ${action}` }, 403);
 }
 
+async function resolveRequestUserStatus(base, key, ctx) {
+  const email = String(ctx?.reqEmail || '').trim().toLowerCase();
+  const userId = String(ctx?.reqUserId || '').trim();
+  const tables = ['app_users', 'users'];
+  const lookups = [];
+  if (userId) lookups.push({ key: 'id', value: userId });
+  if (email) lookups.push({ key: 'email', value: email });
+
+  for (const table of tables) {
+    for (const lookup of lookups) {
+      const r = await sbGetCore(base, key, table, {
+        select: 'id,email,active',
+        filters: { [lookup.key]: `eq.${lookup.value}` },
+        single: true,
+        bypass: true
+      }, ctx);
+      if (!r.error && r.data) {
+        return { user: r.data, source: table, error: null };
+      }
+    }
+  }
+  return { user: null, source: null, error: null };
+}
 // ── Router ────────────────────────────────────────────────────────────────────
 
 async function router(path, method, url, request, SB, KEY, env={}) {
@@ -254,6 +273,14 @@ async function router(path, method, url, request, SB, KEY, env={}) {
   const id   = seg[1];
   const act  = seg[2];
   const body = ['POST','PUT','PATCH'].includes(method) ? await request.json().catch(()=>({})) : {};
+
+  const ctx = { reqRole:'Viewer', reqName:'', reqUserId:'', reqEmail:'', reqActive:true };
+  const sbGet = (base, key, table, opts={}) => sbGetCore(base, key, table, opts, ctx);
+  const sbPost = (base, key, table, payload) => sbPostCore(base, key, table, payload, ctx);
+  const sbPatch = (base, key, table, filters, payload) => sbPatchCore(base, key, table, filters, payload, ctx);
+  const sbRpc = (base, key, fnName, args={}) => sbRpcCore(base, key, fnName, args, ctx);
+  const sbDelete = (base, key, table, filters) => sbDeleteCore(base, key, table, filters, ctx);
+  const sbCount = (base, key, table) => sbCountCore(base, key, table, ctx);
 
   // Never trust role headers from clients. Derive request identity from bearer token.
   const isAuthLogin = res === 'auth' && id === 'login' && method === 'POST';
@@ -267,15 +294,31 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     } catch (_) {
       return respond({ success:false, error:'Invalid or expired token' }, 401);
     }
-    _reqRole = _allowedRoles.has(String(claims.role || '')) ? String(claims.role) : 'Viewer';
-    _reqName = String(claims.name || '');
-    _reqUserId = String(claims.sub || '');
-    _reqEmail = String(claims.email || '');
+    const claimRole = String(claims.role || '');
+    if (!_allowedRoles.has(claimRole)) return respond({ success:false, code:'INVALID_ROLE', error:'Invalid role in token' }, 403);
+    ctx.reqRole = claimRole;
+    ctx.reqName = String(claims.name || '');
+    ctx.reqUserId = String(claims.sub || '');
+    ctx.reqEmail = String(claims.email || '');
+
+    // Enforce active status on every authenticated request (immediate revoke).
+    const status = await resolveRequestUserStatus(SB, KEY, ctx);
+    if (status.error) {
+      return respond({ success:false, error:'Unable to validate account status.' }, 500);
+    }
+    if (!status.user) {
+      return respond({ success:false, error:'Account not found.' }, 401);
+    }
+    if (status.user.active === false) {
+      return respond({ success:false, code:'ACCOUNT_DISABLED', error:'Account is deactivated' }, 403);
+    }
+    ctx.reqActive = status.user.active !== false;
   } else {
-    _reqRole = 'Viewer';
-    _reqName = '';
-    _reqUserId = '';
-    _reqEmail = '';
+    ctx.reqRole = 'Viewer';
+    ctx.reqName = '';
+    ctx.reqUserId = '';
+    ctx.reqEmail = '';
+    ctx.reqActive = true;
   }
 
   // ── Per-request permission flags ─────────────────────────────────────────
@@ -288,7 +331,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
   //   Maintenance/Project Manager → view only
   // Engineer           → edit + view (no add/delete)
   // Assistant          → edit + delete + view (delete flagged)
-  const R = _reqRole;
+  const R = ctx.reqRole;
   const MANAGER_TIER = ['Manager','Superintendent','Drilling Manager','Asset Manager','Maintenance Manager','Project Manager'];
   const perm = {
     canView:    true,
@@ -306,12 +349,12 @@ async function router(path, method, url, request, SB, KEY, env={}) {
   // ── Global method-level permission guards ────────────────────────────────
   // Must run after perm is built and after res/id/act are declared.
   if (res !== 'auth' && method !== 'GET' && method !== 'OPTIONS') {
-    if (method === 'POST'   && !perm.canAdd)    return forbidden('create records');
-    if (method === 'DELETE' && !perm.canDelete) return forbidden('delete records');
-    if ((method === 'PUT' || method === 'PATCH') && !perm.canEdit) return forbidden('edit records');
+    if (method === 'POST'   && !perm.canAdd)    return forbidden(ctx, 'create records');
+    if (method === 'DELETE' && !perm.canDelete) return forbidden(ctx, 'delete records');
+    if ((method === 'PUT' || method === 'PATCH') && !perm.canEdit) return forbidden(ctx, 'edit records');
   }
   // Transfer approve endpoint requires canApprove (stage check is inside the handler)
-  if (res === 'transfers' && act === 'approve' && !perm.canApprove) return forbidden('approve transfers');
+  if (res === 'transfers' && act === 'approve' && !perm.canApprove) return forbidden(ctx, 'approve transfers');
 
   // AUTH (server-side password check; never expose password field to client)
   if (res === 'auth' && id === 'login' && method === 'POST') {
@@ -330,7 +373,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
         filters: { email: 'eq.' + email },
         single: true,
         bypass: true
-      });
+      }, ctx);
       if (!exact.error && exact.data) {
         user = exact.data;
         userSource = table;
@@ -344,7 +387,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
         order: 'email.asc',
         limit: 50,
         bypass: true
-      });
+      }, ctx);
       if (fuzzy.error) {
         continue;
       }
@@ -366,7 +409,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
           order: 'name.asc',
           limit: 50,
           bypass: true
-        });
+        }, ctx);
         if (byName.error) continue;
         const rows = Array.isArray(byName.data) ? byName.data : [];
         const match = rows.find(r => String(r?.name || '').trim().toLowerCase() === identifierRaw.toLowerCase());
@@ -379,13 +422,13 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     }
 
     if (!user) return respond({ success:false, error:'Invalid credentials' }, 401);
-    if (user.active === false) return respond({ success:false, error:'Account is deactivated' }, 403);
+    if (user.active === false) return respond({ success:false, code:'ACCOUNT_DISABLED', error:'Account is deactivated' }, 403);
 
     const stored = String(user.password || '').trim();
     if (stored) {
       // Has a stored password — verify it
       let valid = false;
-      try { valid = await verifyPassword(SB, KEY, password, stored); }
+      try { valid = await verifyPassword(SB, KEY, password, stored, ctx); }
       catch (e) { console.error('[login] verifyPassword threw:', e?.message || e); }
       if (!valid) {
         const isHash = stored.startsWith('$2');
@@ -396,7 +439,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       // Lazy-upgrade plaintext → bcrypt on first successful login
       if (!stored.startsWith('$2')) {
         try {
-          const upgradedHash = await hashPassword(SB, KEY, password, BCRYPT_COST);
+          const upgradedHash = await hashPassword(SB, KEY, password, BCRYPT_COST, ctx);
           await sbPatch(SB, KEY, userSource, { id: `eq.${user.id}` }, { password: upgradedHash });
         } catch (e) {
           console.warn('Password lazy-upgrade failed for user', user?.id, e?.message || e);
@@ -407,7 +450,8 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       console.warn('[login] User', user?.email, 'has no password set — open login allowed');
     }
 
-    const normalizedRole = _allowedRoles.has(String(user.role || '')) ? String(user.role) : 'Viewer';
+    const normalizedRole = String(user.role || '');
+    if (!_allowedRoles.has(normalizedRole)) return respond({ success:false, code:'INVALID_ROLE', error:'User role is not allowed' }, 403);
     const safeUser = { ...user, role: normalizedRole };
     delete safeUser.password;
     const token = await signJwt(
@@ -473,7 +517,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
   if (res === 'auth' && id === 'me' && method === 'GET') {
     return respond({
       success:true,
-      data: { id: _reqUserId || null, email: _reqEmail || null, name: _reqName || null, role: _reqRole || 'Viewer' }
+      data: { id: ctx.reqUserId || null, email: ctx.reqEmail || null, name: ctx.reqName || null, role: ctx.reqRole || 'Viewer', active: ctx.reqActive !== false }
     });
   }
 
@@ -586,9 +630,9 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       const {role,action:decision,comment,approved_by}=body;
       if(!role||!decision||!comment) return respond({success:false,error:'role, action and comment required'},400);
       // Enforce per-stage role: only the correct roles can approve each stage
-      if(role==='supt'     && !perm.canApproveStage1) return forbidden('approve Stage 1 (requires Superintendent, Manager, or Admin)');
-      if(role==='drilling' && !perm.canApproveStage2) return forbidden('approve Stage 2 (requires Drilling Manager, Manager, or Admin)');
-      if(role==='ops'      && !perm.canApproveStage3) return forbidden('approve Stage 3 (requires Asset Manager, Manager, or Admin)');
+      if(role==='supt'     && !perm.canApproveStage1) return forbidden(ctx, 'approve Stage 1 (requires Superintendent, Manager, or Admin)');
+      if(role==='drilling' && !perm.canApproveStage2) return forbidden(ctx, 'approve Stage 2 (requires Drilling Manager, Manager, or Admin)');
+      if(role==='ops'      && !perm.canApproveStage3) return forbidden(ctx, 'approve Stage 3 (requires Asset Manager, Manager, or Admin)');
       const today=new Date().toISOString().slice(0,10);
       let patch={};
       if(role==='supt'){
@@ -626,10 +670,10 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       return ok(await sbGet(SB,KEY,'app_users',{select:'id,name,role,dept,email,color,initials,active',order:'name.asc'}));
     }
     if(method==='POST'&&id&&act==='reset-password') {
-      if (_reqRole !== 'Admin') return respond({ success:false, error:'Forbidden' }, 403);
+      if (ctx.reqRole !== 'Admin') return respond({ success:false, error:'Forbidden' }, 403);
       const newPassword = String(body.new_password || '').trim();
       if (newPassword.length < 4) return respond({ success:false, error:'new_password must be at least 4 characters' }, 400);
-      const hashed = await hashPassword(SB, KEY, newPassword, BCRYPT_COST);
+      const hashed = await hashPassword(SB, KEY, newPassword, BCRYPT_COST, ctx);
       const r = await sbPatch(SB, KEY, 'app_users', { id:`eq.${id}` }, { password: hashed });
       if (r?.error) return err500(r.error);
       return respond({ success:true, data:{ id, password_updated:true } });
@@ -637,7 +681,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     if(method==='POST') {
       const payload = { ...body };
       if (typeof payload.password === 'string' && payload.password.trim()) {
-        payload.password = await hashPassword(SB, KEY, payload.password, BCRYPT_COST);
+        payload.password = await hashPassword(SB, KEY, payload.password, BCRYPT_COST, ctx);
       } else {
         delete payload.password;
       }
@@ -648,7 +692,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     if(method==='PUT')  {
       const {id:_,created_at,updated_at,...u}=body;
       if (typeof u.password === 'string') {
-        if (u.password.trim()) u.password = await hashPassword(SB, KEY, u.password, BCRYPT_COST);
+        if (u.password.trim()) u.password = await hashPassword(SB, KEY, u.password, BCRYPT_COST, ctx);
         else delete u.password;
       }
       const r = await sbPatch(SB,KEY,'app_users',{id:`eq.${id}`},u);
@@ -863,6 +907,11 @@ function withSecurityHeaders(response) {
     "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self';");
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers: h });
 }
+
+
+
+
+
 
 
 
