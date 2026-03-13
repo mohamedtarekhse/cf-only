@@ -222,13 +222,21 @@ async function verifyPassword(base, auth, plain, stored, ctx=null) {
         stored_hash: hash
       }, { bypass:true }, ctx);
       if (error) {
-        console.error('[verifyPassword] RPC error:', error.message,
+        const msg = String(error.message || '');
+        console.error('[verifyPassword] RPC error:', msg,
           '- run 032_auth_password_bcrypt.sql in Supabase to enable bcrypt verification');
+        if (/app_verify_password|schema cache|function/i.test(msg)) {
+          throw new Error('PASSWORD_VERIFICATION_NOT_CONFIGURED');
+        }
         return false;
       }
       return data === true;
     } catch (e) {
-      console.error('[verifyPassword] RPC exception:', e?.message || e);
+      const msg = String(e?.message || e || '');
+      console.error('[verifyPassword] RPC exception:', msg);
+      if (msg === 'PASSWORD_VERIFICATION_NOT_CONFIGURED' || /app_verify_password|schema cache|function/i.test(msg)) {
+        throw new Error('PASSWORD_VERIFICATION_NOT_CONFIGURED');
+      }
       return false;
     }
   }
@@ -240,23 +248,52 @@ function forbidden(ctx, action) {
 }
 
 async function resolveRequestUserStatus(base, auth, ctx) {
-  const email = String(ctx?.reqEmail || '').trim().toLowerCase();
+  const rawEmail = String(ctx?.reqEmail || '').trim();
+  const email = rawEmail.toLowerCase();
   const userId = String(ctx?.reqUserId || '').trim();
   const tables = ['app_users'];
-  const lookups = [];
-  if (userId) lookups.push({ key: 'id', value: userId });
-  if (email) lookups.push({ key: 'email', value: email });
 
   for (const table of tables) {
-    for (const lookup of lookups) {
-      const r = await sbGetCore(base, auth, table, {
+    if (userId) {
+      const byId = await sbGetCore(base, auth, table, {
         select: 'id,email,active',
-        filters: { [lookup.key]: `eq.${lookup.value}` },
+        filters: { id: `eq.${userId}` },
         single: true,
         bypass: true
       }, ctx);
-      if (!r.error && r.data) {
-        return { user: r.data, source: table, error: null };
+      if (!byId.error && byId.data) {
+        return { user: byId.data, source: table, error: null };
+      }
+    }
+
+    if (rawEmail) {
+      const exactVariants = [...new Set([rawEmail, email].filter(Boolean))];
+      for (const candidate of exactVariants) {
+        const exact = await sbGetCore(base, auth, table, {
+          select: 'id,email,active',
+          filters: { email: `eq.${candidate}` },
+          single: true,
+          bypass: true
+        }, ctx);
+        if (!exact.error && exact.data) {
+          return { user: exact.data, source: table, error: null };
+        }
+      }
+
+      const fuzzy = await sbGetCore(base, auth, table, {
+        select: 'id,email,active',
+        filters: { email: `ilike.*${email}*` },
+        order: 'email.asc',
+        limit: 25,
+        bypass: true
+      }, ctx);
+      if (fuzzy.error) {
+        return { user: null, source: null, error: fuzzy.error };
+      }
+      const rows = Array.isArray(fuzzy.data) ? fuzzy.data : [];
+      const match = rows.find(r => String(r?.email || '').trim().toLowerCase() === email);
+      if (match) {
+        return { user: match, source: table, error: null };
       }
     }
   }
@@ -439,7 +476,17 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       // Has a stored password ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â verify it
       let valid = false;
       try { valid = await verifyPassword(SB, dbAuth, password, stored, ctx); }
-      catch (e) { console.error('[login] verifyPassword threw:', e?.message || e); }
+      catch (e) {
+        const msg = String(e?.message || e || '');
+        console.error('[login] verifyPassword threw:', msg);
+        if (msg === 'PASSWORD_VERIFICATION_NOT_CONFIGURED') {
+          return respond({
+            success:false,
+            code:'PASSWORD_VERIFICATION_NOT_CONFIGURED',
+            error:'Password verification is not configured in Supabase. Run the bcrypt password SQL fix.'
+          }, 500);
+        }
+      }
       if (!valid) {
         const isHash = stored.startsWith('$2');
         const hint = isHash ? ' (bcrypt ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ensure 032_auth_password_bcrypt.sql is deployed)' : '';
