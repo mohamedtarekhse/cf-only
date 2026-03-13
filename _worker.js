@@ -23,11 +23,12 @@ export default {
     if (path === '/health') return respond({ status:'ok', service:'Asset Management (Cloudflare Worker)', ts:new Date().toISOString() });
 
     if (path.startsWith('/api')) {
+      const isLoginRequest = path === '/api/auth/login' && method === 'POST';
       if (!env.JWT_SECRET)
         return respond({ success:false, error:'JWT_SECRET is not configured in Cloudflare Pages environment variables.' }, 500);
       if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY)
         return respond({ success:false, error:'Supabase secrets not configured in Cloudflare Pages environment variables.' }, 500);
-      if (!env.SUPABASE_ANON_KEY && !env.SUPABASE_PUBLISHABLE_KEY)
+      if (!isLoginRequest && !env.SUPABASE_ANON_KEY && !env.SUPABASE_PUBLISHABLE_KEY)
         return respond({ success:false, error:'SUPABASE_ANON_KEY (or SUPABASE_PUBLISHABLE_KEY) is not configured in Cloudflare Pages environment variables.' }, 500);
       try {
         return await router(path, method, url, request, env.SUPABASE_URL.replace(/\/$/,''), env.SUPABASE_SERVICE_ROLE_KEY, env);
