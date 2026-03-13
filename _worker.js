@@ -1031,22 +1031,30 @@ async function router(path, method, url, request, SB, KEY, env={}) {
   }
   // USERS
   if (res==='users') {
-    if(method==='GET') {
-      return ok(await sbGetBypass(SB,KEY,'app_users',{select:'id,name,role,dept,email,color,initials,active,client_id',filters:scopedFilters({}),order:'name.asc',bypass:true}));
+    if (method==='GET' && !id) {
+      if (ctx.reqRole === 'Admin') {
+        return ok(await sbGetBypass(SB,KEY,'app_users',{select:'id,name,role,dept,email,color,initials,active,client_id',order:'name.asc',bypass:true}));
+      }
+      return ok(await sbGetBypass(SB,KEY,'app_users',{select:'id,name,role,dept,email,color,initials,active,client_id',filters:{id:`eq.${ctx.reqUserId}`},single:false,bypass:true}));
+    }
+    if (method==='GET' && id) {
+      if (ctx.reqRole !== 'Admin' && String(id) !== String(ctx.reqUserId)) return forbidden(ctx, 'view other user accounts');
+      return ok(await sbGetBypass(SB,KEY,'app_users',{select:'id,name,role,dept,email,color,initials,active,client_id',filters:{id:`eq.${id}`},single:true,bypass:true}));
     }
     if(method==='POST'&&id&&act==='reset-password') {
       if (ctx.reqRole !== 'Admin') return respond({ success:false, error:'Forbidden' }, 403);
       const newPassword = String(body.new_password || '').trim();
       if (newPassword.length < 4) return respond({ success:false, error:'new_password must be at least 4 characters' }, 400);
       const hashed = await hashPassword(SB, dbAuth, newPassword, BCRYPT_COST, ctx);
-      let r = await sbPatch(SB, KEY, 'app_users', scopedFilters({ id:`eq.${id}` }), { password: hashed, password_changed_at: nowIso() });
+      let r = await sbPatch(SB, KEY, 'app_users', { id:`eq.${id}` }, { password: hashed, password_changed_at: nowIso() });
       if (r?.error && isMissingColumnError(r.error)) {
-        r = await sbPatch(SB, KEY, 'app_users', scopedFilters({ id:`eq.${id}` }), { password: hashed });
+        r = await sbPatch(SB, KEY, 'app_users', { id:`eq.${id}` }, { password: hashed });
       }
       if (r?.error) return err500(r.error);
       return respond({ success:true, data:{ id, password_updated:true, session_revoked:true } });
     }
     if(method==='POST') {
+      if (ctx.reqRole !== 'Admin') return forbidden(ctx, 'create user accounts');
       const payload = applyClientPayload({ ...body }, body.client_id || currentClientId());
       const hadPassword = typeof payload.password === 'string' && payload.password.trim();
       if (hadPassword) {
@@ -1063,28 +1071,43 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       if (r?.data) delete r.data.password;
       return ok(r);
     }
-    if(method==='PUT')  {
-      const {id:_,created_at,updated_at,...u}=body;
-      const hadPassword = typeof u.password === 'string' && u.password.trim();
-      if (typeof u.password === 'string') {
-        if (hadPassword) {
-          u.password = await hashPassword(SB, dbAuth, u.password, BCRYPT_COST, ctx);
-          u.password_changed_at = nowIso();
-        } else {
-          delete u.password;
-        }
+    if(method==='PUT' || method==='PATCH')  {
+      const isSelf = String(id) === String(ctx.reqUserId);
+      if (ctx.reqRole !== 'Admin' && !isSelf) return forbidden(ctx, 'edit other user accounts');
+      const {id:_,created_at,updated_at,...raw}=body;
+      const u = { ...raw };
+      if (ctx.reqRole !== 'Admin') {
+        delete u.role;
+        delete u.active;
+        delete u.client_id;
       }
       const payload = applyClientPayload(u, u.client_id || currentClientId());
-      let r = await sbPatch(SB,KEY,'app_users',scopedFilters({id:`eq.${id}`}),payload);
+      const hadPassword = typeof payload.password === 'string' && payload.password.trim();
+      if (typeof payload.password === 'string') {
+        if (hadPassword) {
+          payload.password = await hashPassword(SB, dbAuth, payload.password, BCRYPT_COST, ctx);
+          payload.password_changed_at = nowIso();
+        } else {
+          delete payload.password;
+        }
+      }
+      let r = await sbPatch(SB,KEY,'app_users',{id:`eq.${id}`},payload);
       if (r?.error && hadPassword && isMissingColumnError(r.error)) {
         delete payload.password_changed_at;
-        r = await sbPatch(SB,KEY,'app_users',scopedFilters({id:`eq.${id}`}),payload);
+        r = await sbPatch(SB,KEY,'app_users',{id:`eq.${id}`},payload);
       }
       if (r?.data) delete r.data.password;
       return ok(r);
     }
-    if(method==='DELETE'){const r=await sbDelete(SB,KEY,'app_users',scopedFilters({id:`eq.${id}`}));if(r.error)return err500(r.error);return ok({deleted:id});}
+    if(method==='DELETE'){
+      if (ctx.reqRole !== 'Admin') return forbidden(ctx, 'delete user accounts');
+      if (String(id) === String(ctx.reqUserId)) return respond({ success:false, error:'Admin cannot delete the currently signed-in account.' }, 400);
+      const r=await sbDelete(SB,KEY,'app_users',{id:`eq.${id}`});
+      if(r.error)return err500(r.error);
+      return ok({deleted:id});
+    }
   }
+
 
 
   // INSPECTIONS

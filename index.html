@@ -3941,8 +3941,15 @@ function showLoginError(msg) {
     <!-- ======= USERS ======= -->
     <div class="section" id="section-users">
       <div class="content">
+        <div class="card" id="clientAdminCard">
+          <div class="card-header">
+            <span class="card-title">Clients Dashboard</span>
+            <button id="btnAddClient" class="btn btn-primary"><i class="fas fa-building"></i> Add Client</button>
+          </div>
+          <div class="user-grid" style="padding:16px" id="clientGrid"></div>
+        </div>
         <div class="card">
-          <div class="card-header"><span class="card-title">System Users</span><button id="btnAddUser"
+          <div class="card-header"><span class="card-title">Client &amp; User Management</span><button id="btnAddUser"
               class="btn btn-primary"><i class="fas fa-plus"></i> Add User</button>
             <button class="btn btn-secondary" id="btnImportUsers" onclick="openImportGuide('users')"><i
                 class="fas fa-upload"></i> Import</button>
@@ -7663,6 +7670,33 @@ Asset Management System</textarea>
 </table>
 </td></tr></table>
 
+  <!-- CLIENT MANAGEMENT MODAL -->
+  <div class="modal-overlay" id="clientModal">
+    <div class="modal" style="width:460px;max-width:96vw">
+      <div class="modal-header" style="background:linear-gradient(90deg,#0A6ED1,#107E3E);color:#fff;padding:12px 18px;display:flex;align-items:center;gap:10px">
+        <i class="fas fa-building" style="font-size:16px"></i>
+        <h2 id="clientModalTitle" style="color:#fff;font-size:15px;margin:0;flex:1">Add Client</h2>
+        <button class="shell-btn" style="color:#fff" onclick="closeModal('clientModal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body" style="padding:18px">
+        <input type="hidden" id="client_editId">
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Client Name <span style="color:var(--sap-error)">*</span></label><input class="form-input" id="client_name" placeholder="Client name"></div>
+          <div class="form-group"><label class="form-label">Code</label><input class="form-input" id="client_code" placeholder="Optional short code"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Status</label><select class="form-select" id="client_active"><option value="true">Active</option><option value="false">Inactive</option></select></div>
+          <div class="form-group"></div>
+        </div>
+        <div id="client_warn" style="display:none;background:#FFF3CD;border:1px solid #FFC107;border-radius:4px;padding:8px 12px;font-size:12px;color:#856404;margin-top:4px"><i class="fas fa-exclamation-triangle"></i> <span id="client_warnText"></span></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('clientModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="window.saveClient()"><i class="fas fa-save"></i> Save Client</button>
+      </div>
+    </div>
+  </div>
+
   <!-- USER EDIT / PASSWORD CHANGE MODAL -->
   <div class="modal-overlay" id="userEditModal">
     <div class="modal" style="width:460px;max-width:96vw">
@@ -7677,7 +7711,7 @@ Asset Management System</textarea>
           <div class="form-group"><label class="form-label">Email <span style="color:var(--sap-error)">*</span></label><input class="form-input" id="ue_email" type="email" placeholder="email@company.com"></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label class="form-label">Role</label><select class="form-select" id="ue_role"><option value="Admin">Admin - Full Access</option><optgroup label="Manager Tier (Approve &amp; View)"><option value="Manager">Manager - General</option><option value="Superintendent">Superintendent - Stage 1 Approval</option><option value="Drilling Manager">Drilling Manager - Stage 2 Approval</option><option value="Asset Manager">Asset Manager - Stage 3 Approval</option><option value="Maintenance Manager">Maintenance Manager</option><option value="Project Manager">Project Manager</option></optgroup><option value="Engineer">Engineer - Edit &amp; View</option><option value="Assistant">Assistant - Edit &amp; Delete (with approval)</option></select></div>
+          <div class="form-group"><label class="form-label">Role</label><select class="form-select" id="ue_role"><option value="Admin">Admin - Full Access</option><optgroup label="Manager Tier (Approve &amp; View)"><option value="Manager">Manager - General</option><option value="Superintendent">Superintendent - Stage 1 Approval</option><option value="Drilling Manager">Drilling Manager - Stage 2 Approval</option><option value="Asset Manager">Asset Manager - Stage 3 Approval</option><option value="Maintenance Manager">Maintenance Manager</option><option value="Project Manager">Project Manager</option></optgroup><option value="Engineer">Engineer - Edit &amp; View</option><option value="Assistant">Assistant - Edit &amp; Delete (with approval)</option><option value="Viewer">Viewer - Read Only</option></select></div>
           <div class="form-group"><label class="form-label">Department</label><input class="form-input" id="ue_dept" placeholder="e.g. Operations"></div>
         </div>
         <div class="form-row">
@@ -9558,25 +9592,128 @@ This cannot be undone.`)) return;
     // ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
 
     // ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
-    function renderUsers() {
-      const meId = String((window.__currentUser && window.__currentUser.id) || '');
-      const canAdminReset = (typeof isAdmin === 'function') ? isAdmin() : false;
-      document.getElementById('userGrid').innerHTML = USERS.map(u => {
-        const canResetThisUser = canAdminReset && String(u.id || '') !== meId;
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    }
+
+    function clientNameById(clientId) {
+      if (!clientId) return 'Unassigned Client';
+      return CLIENTS.find(c => String(c.id) === String(clientId))?.name || 'Unassigned Client';
+    }
+
+    function clientMetrics(clientId) {
+      const users = USERS.filter(u => String(u.client_id || '') === String(clientId || ''));
+      const rigs = RIGS.filter(r => String(r.client_id || '') === String(clientId || ''));
+      const certs = CERTIFICATES.filter(c => String(c.client_id || '') === String(clientId || ''));
+      return { users: users.length, rigs: rigs.length, certs: certs.length };
+    }
+
+    function renderClientsDashboard() {
+      const card = document.getElementById('clientAdminCard');
+      const grid = document.getElementById('clientGrid');
+      if (!card || !grid) return;
+      if (!isAdmin()) {
+        card.style.display = 'none';
+        grid.innerHTML = '';
+        return;
+      }
+      card.style.display = '';
+      if (!CLIENTS.length) {
+        grid.innerHTML = '<div style="padding:12px;color:var(--sap-text-muted)">No clients found yet. Add your first client to start grouping users, rigs, and certificates.</div>';
+        return;
+      }
+      grid.innerHTML = CLIENTS.map(client => {
+        const stats = clientMetrics(client.id);
+        const userCountLabel = stats.users === 1 ? 'user' : 'users';
+        const rigCountLabel = stats.rigs === 1 ? 'rig' : 'rigs';
+        const certCountLabel = stats.certs === 1 ? 'certificate' : 'certificates';
         return `
-    <div class="user-card">
-      <div class="user-avatar-lg" style="background:${u.color || '#0070F2'};color:#fff">${u.initials ? u.initials.toUpperCase().slice(0, 2) : u.name.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase()}</div>
+    <div class="user-card" style="min-width:280px">
       <div>
-        <div style="font-weight:600;font-size:14px">${u.name}</div>
-        <div style="font-size:12px;color:var(--sap-text-muted)">${u.role} | ${u.dept}</div>
-        <div style="font-size:12px;margin-top:4px">${u.email}</div>
-        <div style="margin-top:8px;display:flex;gap:6px">
-          <button class="btn btn-secondary" style="height:26px;font-size:11.5px" onclick="openUserEdit('${u.id}')"><i class="fas fa-edit"></i> Edit</button>
-          ${canResetThisUser ? `<button class="btn btn-ghost" style="height:26px;font-size:11.5px" onclick="resetUserPassword('${u.id}')"><i class="fas fa-key"></i> Reset</button>` : ''}
-          <button class="btn btn-ghost" style="height:26px;font-size:11.5px" onclick="openEmailModal()"><i class="fas fa-envelope"></i></button>
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+          <div>
+            <div style="font-weight:700;font-size:15px">${escapeHtml(client.name || 'Unnamed Client')}</div>
+            <div style="font-size:12px;color:var(--sap-text-muted);margin-top:4px">Code: ${escapeHtml(client.code || '-')}</div>
+          </div>
+          <span style="padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;background:${client.active === false ? '#FDECEA' : '#EAF7EE'};color:${client.active === false ? '#BB0000' : '#107E3E'}">${client.active === false ? 'Inactive' : 'Active'}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px">
+          <div style="background:#F7F9FA;border:1px solid var(--sap-border);border-radius:10px;padding:10px 12px">
+            <div style="font-size:18px;font-weight:700">${stats.users}</div>
+            <div style="font-size:11px;color:var(--sap-text-muted)">${userCountLabel}</div>
+          </div>
+          <div style="background:#F7F9FA;border:1px solid var(--sap-border);border-radius:10px;padding:10px 12px">
+            <div style="font-size:18px;font-weight:700">${stats.rigs}</div>
+            <div style="font-size:11px;color:var(--sap-text-muted)">${rigCountLabel}</div>
+          </div>
+          <div style="background:#F7F9FA;border:1px solid var(--sap-border);border-radius:10px;padding:10px 12px">
+            <div style="font-size:18px;font-weight:700">${stats.certs}</div>
+            <div style="font-size:11px;color:var(--sap-text-muted)">${certCountLabel}</div>
+          </div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-secondary" style="height:30px;font-size:11.5px" onclick="openClientModal('${client.id}')"><i class="fas fa-edit"></i> Edit</button>
+          <button class="btn btn-ghost" style="height:30px;font-size:11.5px;color:var(--sap-error)" onclick="deleteClient('${client.id}')"><i class="fas fa-trash"></i> Delete</button>
         </div>
       </div>
     </div>`;
+      }).join('');
+    }
+
+    function renderUsers() {
+      renderClientsDashboard();
+      const grid = document.getElementById('userGrid');
+      if (!grid) return;
+      const meId = String((window.__currentUser && window.__currentUser.id) || '');
+      const admin = (typeof isAdmin === 'function') ? isAdmin() : false;
+      const sections = (admin ? CLIENTS.slice() : (currentClientId() ? [{ id: currentClientId(), name: clientNameById(currentClientId()) }] : [])).map(client => ({
+        client,
+        users: USERS.filter(u => String(u.client_id || '') === String(client.id || ''))
+      }));
+      if (!sections.length && USERS.length) {
+        sections.push({ client: { id: '', name: 'Unassigned Client' }, users: USERS.filter(u => !u.client_id) });
+      }
+      if (!sections.length) {
+        grid.innerHTML = '<div style="padding:12px;color:var(--sap-text-muted)">No user accounts found.</div>';
+        return;
+      }
+      grid.innerHTML = sections.map(({ client, users }) => {
+        const cards = users.length ? users.map(u => {
+          const canResetThisUser = admin && String(u.id || '') !== meId;
+          const canDeleteThisUser = admin && String(u.id || '') !== meId;
+          const initials = (u.initials ? u.initials.toUpperCase().slice(0, 2) : String(u.name || '').split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase()) || 'US';
+          const activeTone = u.active === false ? { bg: '#FDECEA', fg: '#BB0000', label: 'Inactive' } : { bg: '#EAF7EE', fg: '#107E3E', label: 'Active' };
+          return `
+            <div class="user-card">
+              <div class="user-avatar-lg" style="background:${escapeHtml(u.color || '#0070F2')};color:#fff">${escapeHtml(initials)}</div>
+              <div style="min-width:0;flex:1">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+                  <div>
+                    <div style="font-weight:600;font-size:14px">${escapeHtml(u.name || 'Unnamed User')}</div>
+                    <div style="font-size:12px;color:var(--sap-text-muted);margin-top:4px">${escapeHtml(u.role || 'Viewer')} | ${escapeHtml(u.dept || 'No department')}</div>
+                  </div>
+                  <span style="padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700;background:${activeTone.bg};color:${activeTone.fg}">${activeTone.label}</span>
+                </div>
+                <div style="font-size:12px;margin-top:6px;word-break:break-word">${escapeHtml(u.email || '')}</div>
+                <div style="font-size:11px;color:var(--sap-text-muted);margin-top:6px">Client: ${escapeHtml(client.name || clientNameById(u.client_id))}</div>
+                <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
+                  <button class="btn btn-secondary" style="height:28px;font-size:11.5px" onclick="openUserEdit('${u.id}')"><i class="fas fa-edit"></i> Edit</button>
+                  ${canResetThisUser ? `<button class="btn btn-ghost" style="height:28px;font-size:11.5px" onclick="resetUserPassword('${u.id}')"><i class="fas fa-key"></i> Reset</button>` : ''}
+                  ${canDeleteThisUser ? `<button class="btn btn-ghost" style="height:28px;font-size:11.5px;color:var(--sap-error)" onclick="deleteUserAccount('${u.id}')"><i class="fas fa-user-times"></i> Delete</button>` : ''}
+                </div>
+              </div>
+            </div>`;
+        }).join('') : '<div style="padding:12px;color:var(--sap-text-muted)">No users assigned to this client yet.</div>';
+        return `
+          <div style="margin-bottom:20px">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;padding:0 4px">
+              <div>
+                <div style="font-weight:700;font-size:15px">${escapeHtml(client.name || 'Unassigned Client')}</div>
+                <div style="font-size:12px;color:var(--sap-text-muted)">${users.length} user${users.length === 1 ? '' : 's'}</div>
+              </div>
+            </div>
+            <div class="user-grid">${cards}</div>
+          </div>`;
       }).join('');
     }
     //  NOTIFICATIONS
@@ -12048,11 +12185,14 @@ This cannot be undone.`)) return;
       // Add/New buttons: Admin only
       [
         'btnNewAsset', 'btnNewContract', 'btnNewRig',
-        'btnAddUser', 'btnAddBOM', 'btnNewSchedule', 'btnNewCert'
+        'btnAddUser', 'btnAddClient', 'btnAddBOM', 'btnNewSchedule', 'btnNewCert'
       ].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = canAdd() ? '' : 'none';
       });
+
+      const clientAdminCard = document.getElementById('clientAdminCard');
+      if (clientAdminCard) clientAdminCard.style.display = isAdmin() ? '' : 'none';
 
       const newTransferBtn = document.getElementById('btnNewTransfer');
       if (newTransferBtn) newTransferBtn.style.display = canAddTransfer() ? '' : 'none';
@@ -13480,6 +13620,81 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
           showToast('Reset failed: ' + (e.message || e), 'error');
         }
       };
+      window.openClientModal = function (clientId) {
+        if (!isAdmin()) { showToast('Only Admin can manage clients.', 'error'); return; }
+        const client = CLIENTS.find(c => String(c.id) === String(clientId));
+        document.getElementById('client_editId').value = client?.id || '';
+        document.getElementById('client_name').value = client?.name || '';
+        document.getElementById('client_code').value = client?.code || '';
+        document.getElementById('client_active').value = client?.active === false ? 'false' : 'true';
+        document.getElementById('client_warn').style.display = 'none';
+        document.getElementById('clientModalTitle').textContent = client ? 'Edit Client - ' + (client.name || 'Client') : 'Add Client';
+        openModal('clientModal');
+      };
+      window.saveClient = async function () {
+        if (!isAdmin()) { showToast('Only Admin can manage clients.', 'error'); return; }
+        const clientId = document.getElementById('client_editId').value.trim();
+        const name = document.getElementById('client_name').value.trim();
+        const code = document.getElementById('client_code').value.trim();
+        const active = document.getElementById('client_active').value === 'true';
+        if (!name) {
+          document.getElementById('client_warnText').textContent = 'Client name is required.';
+          document.getElementById('client_warn').style.display = '';
+          return;
+        }
+        const payload = { name, code: code || null, active };
+        try {
+          if (clientId) {
+            await PUT('/clients/' + clientId, { id: clientId, ...payload });
+          } else {
+            await POST('/clients', payload);
+          }
+          closeModal('clientModal');
+          await bootstrap();
+          showToast(clientId ? 'Client updated.' : 'Client created.', 'success');
+        } catch (e) {
+          document.getElementById('client_warnText').textContent = e.message || String(e);
+          document.getElementById('client_warn').style.display = '';
+        }
+      };
+      window.deleteClient = async function (clientId) {
+        if (!isAdmin()) { showToast('Only Admin can delete clients.', 'error'); return; }
+        const client = CLIENTS.find(c => String(c.id) === String(clientId));
+        if (!client) return;
+        const linkedUsers = USERS.filter(u => String(u.client_id || '') === String(clientId)).length;
+        const linkedRigs = RIGS.filter(r => String(r.client_id || '') === String(clientId)).length;
+        if (!confirm(`Delete client "${client.name}"?
+
+This will affect ${linkedUsers} user(s) and ${linkedRigs} rig(s) linked to it.`)) return;
+        try {
+          await DELETE('/clients/' + clientId);
+          await bootstrap();
+          showToast('Client deleted.', 'success');
+        } catch (e) {
+          showToast('Delete failed: ' + (e.message || e), 'error');
+        }
+      };
+      window.deleteUserAccount = async function (userId) {
+        if (!isAdmin()) { showToast('Only Admin can delete user accounts.', 'error'); return; }
+        const user = USERS.find(u => String(u.id) === String(userId));
+        if (!user) return;
+        if (!confirm(`Delete account for ${user.name || user.email}? This cannot be undone.`)) return;
+        try {
+          await DELETE('/users/' + userId);
+          const idx = USERS.findIndex(u => String(u.id) === String(userId));
+          if (idx >= 0) USERS.splice(idx, 1);
+          renderUsers();
+          showToast('User account deleted.', 'success');
+        } catch (e) {
+          showToast('Delete failed: ' + (e.message || e), 'error');
+        }
+      };
+      const _btnAddClient = document.getElementById('btnAddClient');
+      if (_btnAddClient && !_btnAddClient._clientWired) {
+        _btnAddClient._clientWired = true;
+        _btnAddClient.addEventListener('click', function () { window.openClientModal(); });
+      }
+
       const _btnAddUser = document.getElementById('btnAddUser');
       if (_btnAddUser && !_btnAddUser._ueWired) {
         _btnAddUser._ueWired = true;
