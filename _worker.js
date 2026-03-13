@@ -1,12 +1,12 @@
 /**
- * _worker.js — Cloudflare Pages Worker
- * Calls Supabase REST API with explicit fetch() — no custom query builder.
+ * _worker.js ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Cloudflare Pages Worker
+ * Calls Supabase REST API with explicit fetch() ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â no custom query builder.
  *
- * Cloudflare Pages → Settings → Environment Variables:
+ * Cloudflare Pages ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ Settings ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ Environment Variables:
  *   SUPABASE_URL
  *   SUPABASE_SERVICE_ROLE_KEY
  *   RESEND_API_KEY            (required for /api/send-email)
- *   APP_API_KEY               (optional extra API guard)
+ *   SUPABASE_ANON_KEY         (or SUPABASE_PUBLISHABLE_KEY for browser/RLS traffic)
  *   JWT_SECRET                (required for /api auth tokens)
  *   JWT_EXPIRES_SEC           (optional, defaults to 28800 = 8h)
  *   CORS_ALLOW_ORIGIN         (optional, defaults to '*')
@@ -23,13 +23,12 @@ export default {
     if (path === '/health') return respond({ status:'ok', service:'Asset Management (Cloudflare Worker)', ts:new Date().toISOString() });
 
     if (path.startsWith('/api')) {
-      // NOTE: APP_API_KEY guard removed — JWT Bearer token is the sole auth mechanism.
-      // All non-login requests must carry a valid signed JWT (enforced inside router()).
-      // If you want IP-level or CDN-level protection, use Cloudflare Access instead.
       if (!env.JWT_SECRET)
         return respond({ success:false, error:'JWT_SECRET is not configured in Cloudflare Pages environment variables.' }, 500);
       if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY)
         return respond({ success:false, error:'Supabase secrets not configured in Cloudflare Pages environment variables.' }, 500);
+      if (!env.SUPABASE_ANON_KEY && !env.SUPABASE_PUBLISHABLE_KEY)
+        return respond({ success:false, error:'SUPABASE_ANON_KEY (or SUPABASE_PUBLISHABLE_KEY) is not configured in Cloudflare Pages environment variables.' }, 500);
       try {
         return await router(path, method, url, request, env.SUPABASE_URL.replace(/\/$/,''), env.SUPABASE_SERVICE_ROLE_KEY, env);
       } catch(err) {
@@ -43,13 +42,9 @@ export default {
   }
 };
 
-// ── Direct Supabase REST calls ────────────────────────────────────────────────
+// ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Direct Supabase REST calls ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
 
-// Module-level role context — set per request in router()
-let _reqRole = 'Admin';
-let _reqName = '';
-let _reqUserId = '';
-let _reqEmail = '';
+// Module-level role context ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â set per request in router()
 let _corsAllowOrigin = '*';
 const _allowedRoles = new Set(['Admin','Manager','Superintendent','Drilling Manager','Asset Manager','Maintenance Manager','Project Manager','Engineer','Assistant','Viewer']);
 const BCRYPT_COST = 10;
@@ -111,22 +106,15 @@ async function verifyJwt(token, secret) {
   return payload;
 }
 
-function authHeaders(key, extra={}) {
+function userHeaders(anonKey, userJwt, extra={}) {
   return {
-    'apikey': key,
-    'Authorization': `Bearer ${key}`,
+    'apikey': anonKey,
+    'Authorization': `Bearer ${userJwt}`,
     'Content-Type': 'application/json',
-    // Pass the role as a PostgreSQL session variable so RLS
-    // policy public.app_role() can read it via current_setting()
-    'x-supabase-request-option': `db.request.jwt.claims=${JSON.stringify({ app_role: _reqRole, app_name: _reqName })}`,
     ...extra
   };
 }
 
-// bypassHeaders: service-role key WITHOUT the RLS claim header.
-// Use for internal lookups that must bypass RLS (e.g. login user lookup).
-// The service_role key already bypasses RLS in Supabase by default —
-// but only when no x-supabase-request-option header forces a non-privileged role.
 function bypassHeaders(key, extra={}) {
   return {
     'apikey': key,
@@ -136,64 +124,70 @@ function bypassHeaders(key, extra={}) {
   };
 }
 
-async function sbGet(base, key, table, { select='*', filters={}, order=null, limit=null, single=false, bypass=false }={}) {
+function resolveHeaders(auth, extra={}, { bypass=false }={}, ctx=null) {
+  if (bypass) {
+    const serviceKey = typeof auth === 'string' ? auth : String(auth?.serviceKey || auth?.key || '');
+    return bypassHeaders(serviceKey, extra);
+  }
+  const anonKey = typeof auth === 'string' ? auth : String(auth?.anonKey || auth?.key || '');
+  const userJwt = typeof auth === 'object'
+    ? String(typeof auth?.getJwt === 'function' ? auth.getJwt() : (auth?.jwt || ctx?.reqToken || ''))
+    : String(ctx?.reqToken || '');
+  return userHeaders(anonKey, userJwt, extra);
+}
+
+async function sbGetCore(base, auth, table, { select='*', filters={}, order=null, limit=null, single=false, bypass=false }={}, ctx=null) {
   const u = new URL(`${base}/rest/v1/${table}`);
   u.searchParams.set('select', select);
   for (const [k,v] of Object.entries(filters)) u.searchParams.append(k, v);
   if (order) u.searchParams.set('order', order);
   if (limit) u.searchParams.set('limit', String(limit));
-  const h = bypass ? bypassHeaders(key) : authHeaders(key);
+  const h = resolveHeaders(auth, {}, { bypass }, ctx);
   if (single) h['Accept'] = 'application/vnd.pgjson';
   const r = await fetch(u.toString(), { headers:h });
   return parseRes(r, single);
 }
 
-async function sbPost(base, key, table, body, bypass=false) {
+async function sbPostCore(base, auth, table, body, { bypass=false }={}, ctx=null) {
   const u = new URL(`${base}/rest/v1/${table}`);
   u.searchParams.set('select', '*');
-  const hFn = bypass ? bypassHeaders : authHeaders;
-  const r = await fetch(u.toString(), { method:'POST', headers:hFn(key,{'Prefer':'return=representation'}), body:JSON.stringify(body) });
+  const r = await fetch(u.toString(), { method:'POST', headers:resolveHeaders(auth, {'Prefer':'return=representation'}, { bypass }, ctx), body:JSON.stringify(body) });
   return parseRes(r, true);
 }
 
-async function sbPatch(base, key, table, filters, body, bypass=false) {
+async function sbPatchCore(base, auth, table, filters, body, { bypass=false }={}, ctx=null) {
   const u = new URL(`${base}/rest/v1/${table}`);
   u.searchParams.set('select', '*');
   for (const [k,v] of Object.entries(filters)) u.searchParams.append(k, v);
-  const hFn = bypass ? bypassHeaders : authHeaders;
-  const r = await fetch(u.toString(), { method:'PATCH', headers:hFn(key,{'Prefer':'return=representation'}), body:JSON.stringify(body) });
+  const r = await fetch(u.toString(), { method:'PATCH', headers:resolveHeaders(auth, {'Prefer':'return=representation'}, { bypass }, ctx), body:JSON.stringify(body) });
   return parseRes(r, true);
 }
 
-async function sbRpc(base, key, fnName, args={}, bypass=false) {
+async function sbRpcCore(base, auth, fnName, args={}, { bypass=false }={}, ctx=null) {
   const u = new URL(`${base}/rest/v1/rpc/${fnName}`);
-  const hFn = bypass ? bypassHeaders : authHeaders;
   const r = await fetch(u.toString(), {
     method:'POST',
-    headers:hFn(key, {'Prefer':'return=representation'}),
+    headers:resolveHeaders(auth, {'Prefer':'return=representation'}, { bypass }, ctx),
     body:JSON.stringify(args)
   });
   return parseRes(r, true);
 }
 
-async function sbDelete(base, key, table, filters, bypass=false) {
+async function sbDeleteCore(base, auth, table, filters, { bypass=false }={}, ctx=null) {
   const u = new URL(`${base}/rest/v1/${table}`);
   for (const [k,v] of Object.entries(filters)) u.searchParams.append(k, v);
-  const hFn = bypass ? bypassHeaders : authHeaders;
-  const r = await fetch(u.toString(), { method:'DELETE', headers:hFn(key,{'Prefer':'return=minimal'}) });
+  const r = await fetch(u.toString(), { method:'DELETE', headers:resolveHeaders(auth, {'Prefer':'return=minimal'}, { bypass }, ctx) });
   if (r.ok || r.status===204) return { error:null };
   const t = await r.text(); let m; try{m=JSON.parse(t)?.message}catch(_){m=t}
   return { error:{ message:`${r.status}: ${m}` } };
 }
 
-async function sbCount(base, key, table, bypass=false) {
+async function sbCountCore(base, auth, table, { bypass=false }={}, ctx=null) {
   const u = new URL(`${base}/rest/v1/${table}`);
   u.searchParams.set('select','*'); u.searchParams.set('limit','0');
-  const hFn = bypass ? bypassHeaders : authHeaders;
-  const r = await fetch(u.toString(), { headers:hFn(key,{'Prefer':'count=exact'}) });
+  const r = await fetch(u.toString(), { headers:resolveHeaders(auth, {'Prefer':'count=exact'}, { bypass }, ctx) });
   return parseInt((r.headers.get('content-range')||'0/0').split('/')[1])||0;
 }
-
 async function parseRes(r, single) {
   const text = await r.text();
   let data; try{data=JSON.parse(text)}catch(_){data=null}
@@ -202,34 +196,33 @@ async function parseRes(r, single) {
   return { data: data??[], error:null };
 }
 
-async function hashPassword(base, key, plain, cost=BCRYPT_COST) {
+async function hashPassword(base, auth, plain, cost=BCRYPT_COST, ctx=null) {
   const raw = String(plain || '');
   if (!raw) throw new Error('Password is required');
   const safeCost = Math.max(4, Math.min(12, Number(cost) || BCRYPT_COST));
-  const { data, error } = await sbRpc(base, key, 'app_hash_password', {
+  const { data, error } = await sbRpcCore(base, auth, 'app_hash_password', {
     plain_password: raw,
     cost_factor: safeCost
-  }, true);
+  }, { bypass:true }, ctx);
   if (error || !data) throw new Error(error?.message || 'Password hashing failed');
   return String(data);
 }
 
-async function verifyPassword(base, key, plain, stored) {
+async function verifyPassword(base, auth, plain, stored, ctx=null) {
   const input = String(plain || '');
   const hash  = String(stored || '').trim();
   if (!hash) return false;
 
-  // Bcrypt hash — try via Supabase RPC (requires 032_auth_password_bcrypt.sql run)
+  // Bcrypt hash - try via Supabase RPC (requires 032_auth_password_bcrypt.sql run)
   if (hash.startsWith('$2')) {
     try {
-      const { data, error } = await sbRpc(base, key, 'app_verify_password', {
+      const { data, error } = await sbRpcCore(base, auth, 'app_verify_password', {
         plain_password: input,
         stored_hash: hash
-      }, true);
+      }, { bypass:true }, ctx);
       if (error) {
-        // RPC not deployed yet — cannot verify bcrypt client-side; deny with clear message
         console.error('[verifyPassword] RPC error:', error.message,
-          '— run 032_auth_password_bcrypt.sql in Supabase to enable bcrypt verification');
+          '- run 032_auth_password_bcrypt.sql in Supabase to enable bcrypt verification');
         return false;
       }
       return data === true;
@@ -239,17 +232,35 @@ async function verifyPassword(base, key, plain, stored) {
     }
   }
 
-  // Plaintext stored — direct compare (legacy, pre-bcrypt)
   return input === hash;
 }
-
-// ── Permission guard helper ──────────────────────────────────────────────────
-function forbidden(action) {
-  return respond({ success:false, error:`Forbidden — your role (${_reqRole}) cannot ${action}` }, 403);
+function forbidden(ctx, action) {
+  return respond({ success:false, error:`Forbidden - your role (${ctx?.reqRole || 'Viewer'}) cannot ${action}` }, 403);
 }
 
-// ── Router ────────────────────────────────────────────────────────────────────
+async function resolveRequestUserStatus(base, auth, ctx) {
+  const email = String(ctx?.reqEmail || '').trim().toLowerCase();
+  const userId = String(ctx?.reqUserId || '').trim();
+  const tables = ['app_users', 'users'];
+  const lookups = [];
+  if (userId) lookups.push({ key: 'id', value: userId });
+  if (email) lookups.push({ key: 'email', value: email });
 
+  for (const table of tables) {
+    for (const lookup of lookups) {
+      const r = await sbGetCore(base, auth, table, {
+        select: 'id,email,active',
+        filters: { [lookup.key]: `eq.${lookup.value}` },
+        single: true,
+        bypass: true
+      }, ctx);
+      if (!r.error && r.data) {
+        return { user: r.data, source: table, error: null };
+      }
+    }
+  }
+  return { user: null, source: null, error: null };
+}
 async function router(path, method, url, request, SB, KEY, env={}) {
   const q    = url.searchParams;
   const seg  = path.replace(/^\/api\/?/,'').split('/');
@@ -257,6 +268,26 @@ async function router(path, method, url, request, SB, KEY, env={}) {
   const id   = seg[1];
   const act  = seg[2];
   const body = ['POST','PUT','PATCH'].includes(method) ? await request.json().catch(()=>({})) : {};
+
+  const anonKey = env.SUPABASE_ANON_KEY || env.SUPABASE_PUBLISHABLE_KEY || '';
+  const ctx = { reqRole:'Viewer', reqName:'', reqUserId:'', reqEmail:'', reqToken:'', reqActive:true };
+  const dbAuth = {
+    anonKey,
+    serviceKey: KEY,
+    getJwt: () => String(ctx.reqToken || '')
+  };
+  const sbGet = (base, key, table, opts={}) => sbGetCore(base, dbAuth, table, opts, ctx);
+  const sbPost = (base, key, table, payload) => sbPostCore(base, dbAuth, table, payload, {}, ctx);
+  const sbPatch = (base, key, table, filters, payload) => sbPatchCore(base, dbAuth, table, filters, payload, {}, ctx);
+  const sbRpc = (base, key, fnName, args={}) => sbRpcCore(base, dbAuth, fnName, args, {}, ctx);
+  const sbDelete = (base, key, table, filters) => sbDeleteCore(base, dbAuth, table, filters, {}, ctx);
+  const sbCount = (base, key, table) => sbCountCore(base, dbAuth, table, {}, ctx);
+  const sbGetBypass = (base, key, table, opts={}) => sbGetCore(base, dbAuth, table, { ...opts, bypass:true }, ctx);
+  const sbPostBypass = (base, key, table, payload) => sbPostCore(base, dbAuth, table, payload, { bypass:true }, ctx);
+  const sbPatchBypass = (base, key, table, filters, payload) => sbPatchCore(base, dbAuth, table, filters, payload, { bypass:true }, ctx);
+  const sbRpcBypass = (base, key, fnName, args={}) => sbRpcCore(base, dbAuth, fnName, args, { bypass:true }, ctx);
+  const sbDeleteBypass = (base, key, table, filters) => sbDeleteCore(base, dbAuth, table, filters, { bypass:true }, ctx);
+  const sbCountBypass = (base, key, table) => sbCountCore(base, dbAuth, table, { bypass:true }, ctx);
 
   // Never trust role headers from clients. Derive request identity from bearer token.
   const isAuthLogin = res === 'auth' && id === 'login' && method === 'POST';
@@ -270,28 +301,46 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     } catch (_) {
       return respond({ success:false, error:'Invalid or expired token' }, 401);
     }
-    _reqRole = _allowedRoles.has(String(claims.role || '')) ? String(claims.role) : 'Viewer';
-    _reqName = String(claims.name || '');
-    _reqUserId = String(claims.sub || '');
-    _reqEmail = String(claims.email || '');
+    const claimRole = String(claims.app_role || '');
+    if (!_allowedRoles.has(claimRole)) return respond({ success:false, code:'INVALID_ROLE', error:'Invalid role in token' }, 403);
+    ctx.reqRole = claimRole;
+    ctx.reqName = String(claims.name || claims.user_metadata?.name || '');
+    ctx.reqUserId = String(claims.sub || '');
+    ctx.reqEmail = String(claims.email || '');
+    ctx.reqToken = String(m[1] || '');
+
+    // Enforce active status on every authenticated request (immediate revoke).
+    const status = await resolveRequestUserStatus(SB, dbAuth, ctx);
+    if (status.error) {
+      return respond({ success:false, error:'Unable to validate account status.' }, 500);
+    }
+    if (!status.user) {
+      return respond({ success:false, error:'Account not found.' }, 401);
+    }
+    if (status.user.active === false) {
+      return respond({ success:false, code:'ACCOUNT_DISABLED', error:'Account is deactivated' }, 403);
+    }
+    ctx.reqActive = status.user.active !== false;
   } else {
-    _reqRole = 'Viewer';
-    _reqName = '';
-    _reqUserId = '';
-    _reqEmail = '';
+    ctx.reqRole = 'Viewer';
+    ctx.reqName = '';
+    ctx.reqUserId = '';
+    ctx.reqEmail = '';
+    ctx.reqToken = '';
+    ctx.reqActive = true;
   }
 
-  // ── Per-request permission flags ─────────────────────────────────────────
-  // Admin              → full access
-  // Manager tier       → view + approve (no add/edit/delete)
-  //   Manager          → approve all 3 stages
-  //   Superintendent   → approve stage 1 only
-  //   Drilling Manager → approve stage 2 only
-  //   Asset Manager    → approve stage 3 only
-  //   Maintenance/Project Manager → view only
-  // Engineer           → edit + view (no add/delete)
-  // Assistant          → edit + delete + view (delete flagged)
-  const R = _reqRole;
+  // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Per-request permission flags ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
+  // Admin              ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ full access
+  // Manager tier       ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ view + approve (no add/edit/delete)
+  //   Manager          ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ approve all 3 stages
+  //   Superintendent   ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ approve stage 1 only
+  //   Drilling Manager ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ approve stage 2 only
+  //   Asset Manager    ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ approve stage 3 only
+  //   Maintenance/Project Manager ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ view only
+  // Engineer           ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ edit + view (no add/delete)
+  // Assistant          ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ edit + delete + view (delete flagged)
+  const R = ctx.reqRole;
   const MANAGER_TIER = ['Manager','Superintendent','Drilling Manager','Asset Manager','Maintenance Manager','Project Manager'];
   const perm = {
     canView:    true,
@@ -306,126 +355,134 @@ async function router(path, method, url, request, SB, KEY, env={}) {
   };
   perm.canApprove = perm.canApproveStage1 || perm.canApproveStage2 || perm.canApproveStage3;
 
-  // ── Global permission guards (runs after perm object is built and res/id/act are declared) ──────
-  // Exempt: auth routes (login, debug, me) — they handle auth themselves.
-  // Exempt: GET and OPTIONS — reading is allowed for all authenticated users.
-  const isAuthRoute = res === 'auth';
-  if (!isAuthRoute && method !== 'GET' && method !== 'OPTIONS') {
-    if (method === 'POST'   && !perm.canAdd)    return forbidden('create records');
-    if (method === 'DELETE' && !perm.canDelete) return forbidden('delete records');
-    if ((method === 'PUT' || method === 'PATCH') && !perm.canEdit) return forbidden('edit records');
+  // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Global method-level permission guards ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
+  // Must run after perm is built and after res/id/act are declared.
+  if (res !== 'auth' && method !== 'GET' && method !== 'OPTIONS') {
+    if (method === 'POST'   && !perm.canAdd)    return forbidden(ctx, 'create records');
+    if (method === 'DELETE' && !perm.canDelete) return forbidden(ctx, 'delete records');
+    if ((method === 'PUT' || method === 'PATCH') && !perm.canEdit) return forbidden(ctx, 'edit records');
   }
   // Transfer approve endpoint requires canApprove (stage check is inside the handler)
-  if (res === 'transfers' && act === 'approve' && !perm.canApprove) return forbidden('approve transfers');
+  if (res === 'transfers' && act === 'approve' && !perm.canApprove) return forbidden(ctx, 'approve transfers');
 
-  // AUTH — LOGIN
+  // AUTH (server-side password check; never expose password field to client)
   if (res === 'auth' && id === 'login' && method === 'POST') {
     const identifierRaw = String(body.email || body.identifier || '').trim();
     const email = identifierRaw.toLowerCase();
     const password = String(body.password || '');
-    if (!identifierRaw || !password)
-      return respond({ success:false, error:'email and password required' }, 400);
+    if (!identifierRaw || !password) return respond({ success:false, error:'email and password required' }, 400);
 
-    // ── Step 1: find user ──────────────────────────────────────────────────
-    let user = null, userSource = 'app_users';
+    let user = null;
+    let userSource = 'app_users';
     const userSelect = 'id,name,role,dept,email,color,initials,password,active';
 
-    {
-      // exact email match
-      const { data, error } = await sbGet(SB, KEY, 'app_users', {
-        select: userSelect, filters:{ email:'eq.'+email }, single:true, bypass:true
-      });
-      if (!error && data) { user = data; userSource = 'app_users'; }
+    for (const table of ['app_users', 'users']) {
+      const exact = await sbGetBypass(SB, KEY, table, {
+        select: userSelect,
+        filters: { email: 'eq.' + email },
+        single: true,
+        bypass: true
+      }, ctx);
+      if (!exact.error && exact.data) {
+        user = exact.data;
+        userSource = table;
+        break;
+      }
 
-      // fuzzy email match (mixed-case, padded)
-      if (!user) {
-        const { data: rows2 } = await sbGet(SB, KEY, 'app_users', {
-          select: userSelect, filters:{ email:'ilike.*'+email+'*' },
-          order:'email.asc', limit:50, bypass:true
-        });
-        const match = (Array.isArray(rows2) ? rows2 : [])
-          .find(r => String(r?.email||'').trim().toLowerCase() === email);
-        if (match) { user = match; userSource = 'app_users'; }
+      // Legacy compatibility: mixed-case or padded emails.
+      const fuzzy = await sbGetBypass(SB, KEY, table, {
+        select: userSelect,
+        filters: { email: 'ilike.*' + email + '*' },
+        order: 'email.asc',
+        limit: 50,
+        bypass: true
+      }, ctx);
+      if (fuzzy.error) {
+        continue;
+      }
+
+      const rows = Array.isArray(fuzzy.data) ? fuzzy.data : [];
+      const match = rows.find(r => String(r?.email || '').trim().toLowerCase() === email);
+      if (match) {
+        user = match;
+        userSource = table;
+        break;
       }
     }
 
-    // fallback: search by name
     if (!user) {
-      const { data: rows3 } = await sbGet(SB, KEY, 'app_users', {
-        select: userSelect, filters:{ name:'ilike.*'+identifierRaw+'*' },
-        order:'name.asc', limit:50, bypass:true
-      });
-      const match = (Array.isArray(rows3) ? rows3 : [])
-        .find(r => String(r?.name||'').trim().toLowerCase() === identifierRaw.toLowerCase());
-      if (match) { user = match; userSource = 'app_users'; }
+      for (const table of ['app_users', 'users']) {
+        const byName = await sbGetBypass(SB, KEY, table, {
+          select: userSelect,
+          filters: { name: 'ilike.*' + identifierRaw + '*' },
+          order: 'name.asc',
+          limit: 50,
+          bypass: true
+        }, ctx);
+        if (byName.error) continue;
+        const rows = Array.isArray(byName.data) ? byName.data : [];
+        const match = rows.find(r => String(r?.name || '').trim().toLowerCase() === identifierRaw.toLowerCase());
+        if (match) {
+          user = match;
+          userSource = table;
+          break;
+        }
+      }
     }
 
-    if (!user)
-      return respond({ success:false, error:'No account found for "'+identifierRaw+'". Check your email address.' }, 401);
-    if (user.active === false)
-      return respond({ success:false, error:'Account is deactivated. Contact your administrator.' }, 403);
+    if (!user) return respond({ success:false, error:'Invalid credentials' }, 401);
+    if (user.active === false) return respond({ success:false, code:'ACCOUNT_DISABLED', error:'Account is deactivated' }, 403);
 
-    // ── Step 2: verify password ────────────────────────────────────────────
     const stored = String(user.password || '').trim();
     if (stored) {
-      const isBcrypt = stored.startsWith('$2');
+      // Has a stored password ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â verify it
       let valid = false;
-      let verifyError = null;
-
-      try {
-        if (isBcrypt) {
-          const { data: vd, error: ve } = await sbRpc(SB, KEY, 'app_verify_password',
-            { plain_password: password, stored_hash: stored }, true);
-          if (ve) {
-            verifyError = ve.message || String(ve);
-            // RPC not deployed — fall back to rejecting with a clear message
-            return respond({ success:false,
-              error:'Password verification unavailable. Run 032_auth_password_bcrypt.sql in Supabase SQL editor, then try again.',
-              detail: verifyError }, 503);
-          }
-          valid = (vd === true);
-        } else {
-          // Plaintext compare
-          valid = (password === stored);
-        }
-      } catch(e) {
-        return respond({ success:false,
-          error:'Password verification failed: ' + (e?.message || String(e)) }, 500);
+      try { valid = await verifyPassword(SB, dbAuth, password, stored, ctx); }
+      catch (e) { console.error('[login] verifyPassword threw:', e?.message || e); }
+      if (!valid) {
+        const isHash = stored.startsWith('$2');
+        const hint = isHash ? ' (bcrypt ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â ensure 032_auth_password_bcrypt.sql is deployed)' : '';
+        console.warn('[login] Password mismatch for user:', user?.email, hint);
+        return respond({ success:false, error:'Invalid credentials' }, 401);
       }
-
-      if (!valid)
-        return respond({ success:false,
-          error:'Incorrect password. Please try again.' +
-                (isBcrypt ? '' : ' (hint: passwords may be case-sensitive)') }, 401);
-
-      // Lazy-upgrade plaintext → bcrypt
-      if (!isBcrypt) {
+      // Lazy-upgrade plaintext ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ bcrypt on first successful login
+      if (!stored.startsWith('$2')) {
         try {
-          const hash = await hashPassword(SB, KEY, password, BCRYPT_COST);
-          await sbPatch(SB, KEY, userSource, { id:'eq.'+user.id }, { password: hash }, true);
-        } catch(e) {
-          console.warn('[login] bcrypt upgrade failed:', e?.message);
+          const upgradedHash = await hashPassword(SB, dbAuth, password, BCRYPT_COST, ctx);
+          await sbPatchBypass(SB, KEY, userSource, { id: `eq.${user.id}` }, { password: upgradedHash });
+        } catch (e) {
+          console.warn('Password lazy-upgrade failed for user', user?.id, e?.message || e);
         }
       }
     } else {
-      // NULL password → open login (recovery mode after patch 026)
-      console.warn('[login] open-login for', user.email, '— no password set');
+      // No password stored ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â open login (emergency recovery mode, patch 026)
+      console.warn('[login] User', user?.email, 'has no password set ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â open login allowed');
     }
 
-    // ── Step 3: sign JWT + respond ─────────────────────────────────────────
-    const normalizedRole = _allowedRoles.has(String(user.role||'')) ? String(user.role) : 'Viewer';
+    const normalizedRole = String(user.role || '');
+    if (!_allowedRoles.has(normalizedRole)) return respond({ success:false, code:'INVALID_ROLE', error:'User role is not allowed' }, 403);
     const safeUser = { ...user, role: normalizedRole };
     delete safeUser.password;
     const token = await signJwt(
-      { sub: safeUser.id, email: safeUser.email||'', name: safeUser.name||'', role: safeUser.role||'Viewer' },
+      {
+        sub: String(safeUser.id || ''),
+        email: safeUser.email || '',
+        name: safeUser.name || '',
+        aud: 'authenticated',
+        role: 'authenticated',
+        app_role: safeUser.role || 'Viewer',
+        app_metadata: { app_role: safeUser.role || 'Viewer' },
+        user_metadata: { name: safeUser.name || '' }
+      },
       env.JWT_SECRET || '',
       Number(env.JWT_EXPIRES_SEC || 28800)
     );
-    return respond({ success:true, data:{ token, user: safeUser } });
+    return respond({ success:true, data: { token, user: safeUser } });
   }
 
-  // ── AUTH DEBUG (remove after fixing login) ─────────────────────────────────
+  // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ AUTH DEBUG (remove after fixing login) ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
   if (res === 'auth' && id === 'debug' && method === 'POST') {
+    if (ctx.reqRole !== 'Admin') return respond({ success:false, error:'Forbidden' }, 403);
     const identifierRaw = String(body.email || body.identifier || '').trim();
     const email = identifierRaw.toLowerCase();
     const password = String(body.password || '');
@@ -434,13 +491,12 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     const userSelect = 'id,name,role,email,active,password';
     let user = null, userSource = null;
 
-    {
-      const r = await sbGet(SB, KEY, 'app_users', { select: userSelect, filters: { email: 'eq.' + email }, single: true, bypass: true });
-      if (!r.error && r.data) { user = r.data; userSource = 'app_users'; }
-      if (!user) {
-        const r2 = await sbGet(SB, KEY, 'app_users', { select: userSelect, filters: { name: 'ilike.*' + identifierRaw + '*' }, limit: 5, bypass: true });
-        if (!r2.error && Array.isArray(r2.data) && r2.data.length) { user = r2.data[0]; userSource = 'app_users'; }
-      }
+    for (const table of ['app_users','users']) {
+      const r = await sbGetBypass(SB, KEY, table, { select: userSelect, filters: { email: 'eq.' + email }, single: true });
+      if (!r.error && r.data) { user = r.data; userSource = table; break; }
+      // try name
+      const r2 = await sbGetBypass(SB, KEY, table, { select: userSelect, filters: { name: 'ilike.*' + identifierRaw + '*' }, limit: 5 });
+      if (!r2.error && Array.isArray(r2.data) && r2.data.length) { user = r2.data[0]; userSource = table; break; }
     }
 
     if (!user) return respond({ success:true, debug: { found: false, table: null, note: 'No user matched email or name' } });
@@ -452,7 +508,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     let verifyResult = null;
     if (password && hasPassword) {
       if (isBcrypt) {
-        const { data, error } = await sbRpc(SB, KEY, 'app_verify_password', { plain_password: password, stored_hash: stored }, true);
+        const { data, error } = await sbRpcBypass(SB, KEY, 'app_verify_password', { plain_password: password, stored_hash: stored });
         verifyResult = error ? { rpcError: error.message } : { matches: data === true };
       } else {
         verifyResult = { matches: password === stored, mode: 'plaintext' };
@@ -480,7 +536,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
   if (res === 'auth' && id === 'me' && method === 'GET') {
     return respond({
       success:true,
-      data: { id: _reqUserId || null, email: _reqEmail || null, name: _reqName || null, role: _reqRole || 'Viewer' }
+      data: { id: ctx.reqUserId || null, email: ctx.reqEmail || null, name: ctx.reqName || null, role: ctx.reqRole || 'Viewer', active: ctx.reqActive !== false }
     });
   }
 
@@ -550,7 +606,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       return ok((data||[]).map(c=>({...c,asset_name:c.assets?.name,asset_serial:c.assets?.serial,rig_name:c.assets?.rig_name,category:c.assets?.category,assets:undefined})));
     }
     if(method==='GET')    return ok(await sbGet(SB,KEY,'certificates',{filters:{cert_id:`eq.${id}`},single:true}));
-    if(method==='POST') { if(!body.cert_id) body.cert_id='CERT-'+String((await sbCount(SB,KEY,'certificates',true))+1).padStart(3,'0'); return ok(await sbPost(SB,KEY,'certificates',body)); }
+    if(method==='POST') { if(!body.cert_id) body.cert_id='CERT-'+String((await sbCount(SB,KEY,'certificates'))+1).padStart(3,'0'); return ok(await sbPost(SB,KEY,'certificates',body)); }
     if(method==='PUT')  { const {cert_id,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'certificates',{cert_id:`eq.${id}`},u)); }
     if(method==='DELETE'){const r=await sbDelete(SB,KEY,'certificates',{cert_id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
   }
@@ -560,11 +616,11 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     if(method==='POST'&&id&&act==='complete'){
       const {completion_date,performed_by,hours,cost,parts_used,notes,next_due_override}=body;
       if(!completion_date||!performed_by) return respond({success:false,error:'completion_date and performed_by required'},400);
-      const {data:sc,error:se}=await sbGet(SB,KEY,'maintenance_schedules',{filters:{id:`eq.${id}`},single:true,bypass:true});
+      const {data:sc,error:se}=await sbGet(SB,KEY,'maintenance_schedules',{filters:{id:`eq.${id}`},single:true});
       if(se||!sc) return respond({success:false,error:'Schedule not found'},404);
       const nextDue=next_due_override||(()=>{const d=new Date(completion_date);d.setDate(d.getDate()+(sc.freq||90));return d.toISOString().slice(0,10)})();
-      await sbPost(SB,KEY,'maintenance_logs',{schedule_id:id,completion_date,performed_by,hours,cost,parts_used,notes},true);
-      const {data:upd,error:ue}=await sbPatch(SB,KEY,'maintenance_schedules',{id:`eq.${id}`},{status:'Scheduled',last_done:completion_date,next_due:nextDue},true);
+      await sbPost(SB,KEY,'maintenance_logs',{schedule_id:id,completion_date,performed_by,hours,cost,parts_used,notes});
+      const {data:upd,error:ue}=await sbPatch(SB,KEY,'maintenance_schedules',{id:`eq.${id}`},{status:'Scheduled',last_done:completion_date,next_due:nextDue});
       if(ue) return err500(ue);
       return ok({schedule:{...upd,live_status:liveStatus(upd)}});
     }
@@ -579,7 +635,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     }
     if(method==='GET')    return ok(await sbGet(SB,KEY,'maintenance_schedules',{filters:{id:`eq.${id}`},single:true}));
     if(method==='POST') {
-      if(!body.id) body.id='PM-'+String((await sbCount(SB,KEY,'maintenance_schedules',true))+1).padStart(3,'0');
+      if(!body.id) body.id='PM-'+String((await sbCount(SB,KEY,'maintenance_schedules'))+1).padStart(3,'0');
       if(['Overdue','Due Soon'].includes(body.status)) body.status='Scheduled';
       return ok(await sbPost(SB,KEY,'maintenance_schedules',body));
     }
@@ -593,9 +649,9 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       const {role,action:decision,comment,approved_by}=body;
       if(!role||!decision||!comment) return respond({success:false,error:'role, action and comment required'},400);
       // Enforce per-stage role: only the correct roles can approve each stage
-      if(role==='supt'     && !perm.canApproveStage1) return forbidden('approve Stage 1 (requires Superintendent, Manager, or Admin)');
-      if(role==='drilling' && !perm.canApproveStage2) return forbidden('approve Stage 2 (requires Drilling Manager, Manager, or Admin)');
-      if(role==='ops'      && !perm.canApproveStage3) return forbidden('approve Stage 3 (requires Asset Manager, Manager, or Admin)');
+      if(role==='supt'     && !perm.canApproveStage1) return forbidden(ctx, 'approve Stage 1 (requires Superintendent, Manager, or Admin)');
+      if(role==='drilling' && !perm.canApproveStage2) return forbidden(ctx, 'approve Stage 2 (requires Drilling Manager, Manager, or Admin)');
+      if(role==='ops'      && !perm.canApproveStage3) return forbidden(ctx, 'approve Stage 3 (requires Asset Manager, Manager, or Admin)');
       const today=new Date().toISOString().slice(0,10);
       let patch={};
       if(role==='supt'){
@@ -608,8 +664,8 @@ async function router(path, method, url, request, SB, KEY, env={}) {
         patch={mgr_approved_by:approved_by,mgr_approved_date:today,mgr_action:decision,mgr_comment:comment,
           status:decision==='approve'?'Completed':decision==='reject'?'Rejected':'On Hold'};
         if(decision==='approve'){
-          const {data:tr}=await sbGet(SB,KEY,'transfers',{filters:{id:`eq.${id}`},single:true,bypass:true});
-          if(tr){ const au={location:tr.destination}; if(tr.dest_rig) au.rig_name=tr.dest_rig; await sbPatch(SB,KEY,'assets',{asset_id:`eq.${tr.asset_id}`},au,true); }
+          const {data:tr}=await sbGet(SB,KEY,'transfers',{filters:{id:`eq.${id}`},single:true});
+          if(tr){ const au={location:tr.destination}; if(tr.dest_rig) au.rig_name=tr.dest_rig; await sbPatch(SB,KEY,'assets',{asset_id:`eq.${tr.asset_id}`},au); }
         }
       } else return respond({success:false,error:'role must be supt, drilling or ops'},400);
       return ok(await sbPatch(SB,KEY,'transfers',{id:`eq.${id}`},patch));
@@ -621,9 +677,9 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       return ok(await sbGet(SB,KEY,'transfers',{filters:f,order:'created_at.desc',limit:+(q.get('limit')||200)}));
     }
     if(method==='POST'){
-      if(!body.id) body.id='TR-'+String((await sbCount(SB,KEY,'transfers',true))+1).padStart(3,'0');
+      if(!body.id) body.id='TR-'+String((await sbCount(SB,KEY,'transfers'))+1).padStart(3,'0');
       if(!body.request_date) body.request_date=new Date().toISOString().slice(0,10);
-      if(!body.asset_name&&body.asset_id){ const {data:a}=await sbGet(SB,KEY,'assets',{select:'name,location',filters:{asset_id:`eq.${body.asset_id}`},single:true,bypass:true}); if(a){body.asset_name=a.name;if(!body.current_loc)body.current_loc=a.location;} }
+      if(!body.asset_name&&body.asset_id){ const {data:a}=await sbGet(SB,KEY,'assets',{select:'name,location',filters:{asset_id:`eq.${body.asset_id}`},single:true}); if(a){body.asset_name=a.name;if(!body.current_loc)body.current_loc=a.location;} }
       return ok(await sbPost(SB,KEY,'transfers',body));
     }
   }
@@ -633,10 +689,10 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       return ok(await sbGet(SB,KEY,'app_users',{select:'id,name,role,dept,email,color,initials,active',order:'name.asc'}));
     }
     if(method==='POST'&&id&&act==='reset-password') {
-      if (_reqRole !== 'Admin') return respond({ success:false, error:'Forbidden' }, 403);
+      if (ctx.reqRole !== 'Admin') return respond({ success:false, error:'Forbidden' }, 403);
       const newPassword = String(body.new_password || '').trim();
       if (newPassword.length < 4) return respond({ success:false, error:'new_password must be at least 4 characters' }, 400);
-      const hashed = await hashPassword(SB, KEY, newPassword, BCRYPT_COST);
+      const hashed = await hashPassword(SB, dbAuth, newPassword, BCRYPT_COST, ctx);
       const r = await sbPatch(SB, KEY, 'app_users', { id:`eq.${id}` }, { password: hashed });
       if (r?.error) return err500(r.error);
       return respond({ success:true, data:{ id, password_updated:true } });
@@ -644,7 +700,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     if(method==='POST') {
       const payload = { ...body };
       if (typeof payload.password === 'string' && payload.password.trim()) {
-        payload.password = await hashPassword(SB, KEY, payload.password, BCRYPT_COST);
+        payload.password = await hashPassword(SB, dbAuth, payload.password, BCRYPT_COST, ctx);
       } else {
         delete payload.password;
       }
@@ -655,7 +711,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     if(method==='PUT')  {
       const {id:_,created_at,updated_at,...u}=body;
       if (typeof u.password === 'string') {
-        if (u.password.trim()) u.password = await hashPassword(SB, KEY, u.password, BCRYPT_COST);
+        if (u.password.trim()) u.password = await hashPassword(SB, dbAuth, u.password, BCRYPT_COST, ctx);
         else delete u.password;
       }
       const r = await sbPatch(SB,KEY,'app_users',{id:`eq.${id}`},u);
@@ -768,7 +824,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     if(method==='POST')  return ok(await sbPost(SB,KEY,'notifications',body));
   }
 
-  // ── GENERIC REGISTER TABLE HELPER ────────────────────────────────────────────
+  // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ GENERIC REGISTER TABLE HELPER ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
   // Handles: reg-bop, reg-well-head, reg-well-control, reg-fire-extinguishers, reg-scba
   const REG_TABLE_MAP = {
     'reg-bop':                'reg_bop',
@@ -797,26 +853,26 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       return ok(await sbGet(SB, KEY, tbl, { filters: { id: `eq.${id}` }, single: true }));
     }
 
-    // POST — create new entry
+    // POST ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â create new entry
     if (method === 'POST') {
-      // Remove any client-generated id — let Supabase uuid_generate_v4() handle it
+      // Remove any client-generated id ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â let Supabase uuid_generate_v4() handle it
       const { id: _cid, reg_id: _rid, created_at: _ca, updated_at: _ua, inspection_status: _is, ...insert } = body;
       return ok(await sbPost(SB, KEY, tbl, insert));
     }
 
-    // PUT — full update by UUID id
+    // PUT ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â full update by UUID id
     if (method === 'PUT') {
       const { id: _i, reg_id: _r, created_at: _ca, updated_at: _ua, inspection_status: _is, ...update } = body;
       return ok(await sbPatch(SB, KEY, tbl, { id: `eq.${id}` }, update));
     }
 
-    // PATCH — partial update by UUID id
+    // PATCH ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â partial update by UUID id
     if (method === 'PATCH') {
       const { id: _i, reg_id: _r, created_at: _ca, updated_at: _ua, inspection_status: _is, ...update } = body;
       return ok(await sbPatch(SB, KEY, tbl, { id: `eq.${id}` }, update));
     }
 
-    // DELETE — remove by UUID id
+    // DELETE ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â remove by UUID id
     if (method === 'DELETE') {
       const r = await sbDelete(SB, KEY, tbl, { id: `eq.${id}` });
       if (r.error) return err500(r.error);
@@ -827,7 +883,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
   return respond({ success:false, error:`Route not found: ${method} ${path}` }, 404);
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Helpers ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
 function liveStatus(m) {
   if(['Completed','Cancelled','In Progress'].includes(m.status)) return m.status;
   const today=new Date(); today.setHours(0,0,0,0);
@@ -870,6 +926,11 @@ function withSecurityHeaders(response) {
     "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self';");
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers: h });
 }
+
+
+
+
+
 
 
 
