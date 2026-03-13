@@ -12,8 +12,7 @@
 ═══════════════════════════════════════════════════ -->
   <script>
     window.__API_CONFIG__ = {
-      baseUrl: "/api",
-      apiKey: "unused"
+      baseUrl: "/api"
     };
   </script>
 
@@ -3117,7 +3116,6 @@
       const apiCfg = window.__API_CONFIG__ || {};
       const baseUrl = apiCfg.baseUrl || '/api';
       const apiHeaders = { 'Content-Type': 'application/json' };
-      if (apiCfg.apiKey) apiHeaders['x-api-key'] = apiCfg.apiKey;
 
       const res = await fetch(baseUrl + '/auth/login', {
         method: 'POST',
@@ -12944,8 +12942,8 @@ Instructions:
       const BASE = (cfg.baseUrl || '').replace(/\/$/, '');
       const API_KEY = cfg.apiKey || '';
 
-      if (!BASE || !API_KEY) {
-        console.warn('[AssetAPI] No config — offline mode.');
+      if (!BASE) {
+        console.warn('[AssetAPI] No baseUrl config — offline mode.');
         return;
       }
 
@@ -12959,8 +12957,9 @@ Instructions:
           ...opts,
           headers: {
             'Content-Type': 'application/json',
-            'x-api-key': API_KEY,
             'Authorization': 'Bearer ' + token,
+            'x-user-role': (window.__currentUserRole || ''),
+            'x-user-name': (window.__currentUserName || ''),
             ...(opts.headers || {}),
           },
         });

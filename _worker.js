@@ -23,11 +23,9 @@ export default {
     if (path === '/health') return respond({ status:'ok', service:'Asset Management (Cloudflare Worker)', ts:new Date().toISOString() });
 
     if (path.startsWith('/api')) {
-      // Optional hardening: require a shared API key when APP_API_KEY is configured.
-      if (env.APP_API_KEY) {
-        const reqKey = request.headers.get('x-api-key') || '';
-        if (reqKey !== env.APP_API_KEY) return respond({ success:false, error:'Unauthorized' }, 401);
-      }
+      // NOTE: APP_API_KEY guard removed — JWT Bearer token is the sole auth mechanism.
+      // All non-login requests must carry a valid signed JWT (enforced inside router()).
+      // If you want IP-level or CDN-level protection, use Cloudflare Access instead.
       if (!env.JWT_SECRET)
         return respond({ success:false, error:'JWT_SECRET is not configured in Cloudflare Pages environment variables.' }, 500);
       if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY)
