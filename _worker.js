@@ -119,19 +119,32 @@ function authHeaders(key, extra={}) {
     'Authorization': `Bearer ${key}`,
     'Content-Type': 'application/json',
     // Pass the role as a PostgreSQL session variable so RLS
-    // policy auth.app_role() can read it via current_setting()
+    // policy public.app_role() can read it via current_setting()
     'x-supabase-request-option': `db.request.jwt.claims=${JSON.stringify({ app_role: _reqRole, app_name: _reqName })}`,
     ...extra
   };
 }
 
-async function sbGet(base, key, table, { select='*', filters={}, order=null, limit=null, single=false }={}) {
+// bypassHeaders: service-role key WITHOUT the RLS claim header.
+// Use for internal lookups that must bypass RLS (e.g. login user lookup).
+// The service_role key already bypasses RLS in Supabase by default —
+// but only when no x-supabase-request-option header forces a non-privileged role.
+function bypassHeaders(key, extra={}) {
+  return {
+    'apikey': key,
+    'Authorization': `Bearer ${key}`,
+    'Content-Type': 'application/json',
+    ...extra
+  };
+}
+
+async function sbGet(base, key, table, { select='*', filters={}, order=null, limit=null, single=false, bypass=false }={}) {
   const u = new URL(`${base}/rest/v1/${table}`);
   u.searchParams.set('select', select);
   for (const [k,v] of Object.entries(filters)) u.searchParams.append(k, v);
   if (order) u.searchParams.set('order', order);
   if (limit) u.searchParams.set('limit', String(limit));
-  const h = authHeaders(key);
+  const h = bypass ? bypassHeaders(key) : authHeaders(key);
   if (single) h['Accept'] = 'application/vnd.pgjson';
   const r = await fetch(u.toString(), { headers:h });
   return parseRes(r, single);
@@ -200,16 +213,30 @@ async function hashPassword(base, key, plain, cost=BCRYPT_COST) {
 
 async function verifyPassword(base, key, plain, stored) {
   const input = String(plain || '');
-  const hash = String(stored || '').trim();
+  const hash  = String(stored || '').trim();
   if (!hash) return false;
+
+  // Bcrypt hash — try via Supabase RPC (requires 032_auth_password_bcrypt.sql run)
   if (hash.startsWith('$2')) {
-    const { data, error } = await sbRpc(base, key, 'app_verify_password', {
-      plain_password: input,
-      stored_hash: hash
-    });
-    if (error) return false;
-    return data === true;
+    try {
+      const { data, error } = await sbRpc(base, key, 'app_verify_password', {
+        plain_password: input,
+        stored_hash: hash
+      });
+      if (error) {
+        // RPC not deployed yet — cannot verify bcrypt client-side; deny with clear message
+        console.error('[verifyPassword] RPC error:', error.message,
+          '— run 032_auth_password_bcrypt.sql in Supabase to enable bcrypt verification');
+        return false;
+      }
+      return data === true;
+    } catch (e) {
+      console.error('[verifyPassword] RPC exception:', e?.message || e);
+      return false;
+    }
   }
+
+  // Plaintext stored — direct compare (legacy, pre-bcrypt)
   return input === hash;
 }
 
@@ -301,7 +328,8 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       const exact = await sbGet(SB, KEY, table, {
         select: userSelect,
         filters: { email: 'eq.' + email },
-        single: true
+        single: true,
+        bypass: true
       });
       if (!exact.error && exact.data) {
         user = exact.data;
@@ -314,7 +342,8 @@ async function router(path, method, url, request, SB, KEY, env={}) {
         select: userSelect,
         filters: { email: 'ilike.*' + email + '*' },
         order: 'email.asc',
-        limit: 50
+        limit: 50,
+        bypass: true
       });
       if (fuzzy.error) {
         continue;
@@ -335,7 +364,8 @@ async function router(path, method, url, request, SB, KEY, env={}) {
           select: userSelect,
           filters: { name: 'ilike.*' + identifierRaw + '*' },
           order: 'name.asc',
-          limit: 50
+          limit: 50,
+          bypass: true
         });
         if (byName.error) continue;
         const rows = Array.isArray(byName.data) ? byName.data : [];
@@ -352,16 +382,29 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     if (user.active === false) return respond({ success:false, error:'Account is deactivated' }, 403);
 
     const stored = String(user.password || '').trim();
-    if (!stored) return respond({ success:false, error:'Account has no password configured' }, 403);
-    const valid = await verifyPassword(SB, KEY, password, stored);
-    if (!valid) return respond({ success:false, error:'Invalid credentials' }, 401);
-    if (!stored.startsWith('$2')) {
-      try {
-        const upgradedHash = await hashPassword(SB, KEY, password, BCRYPT_COST);
-        await sbPatch(SB, KEY, userSource, { id: `eq.${user.id}` }, { password: upgradedHash });
-      } catch (e) {
-        console.warn('Password lazy-upgrade failed for user', user?.id, e?.message || e);
+    if (stored) {
+      // Has a stored password — verify it
+      let valid = false;
+      try { valid = await verifyPassword(SB, KEY, password, stored); }
+      catch (e) { console.error('[login] verifyPassword threw:', e?.message || e); }
+      if (!valid) {
+        const isHash = stored.startsWith('$2');
+        const hint = isHash ? ' (bcrypt — ensure 032_auth_password_bcrypt.sql is deployed)' : '';
+        console.warn('[login] Password mismatch for user:', user?.email, hint);
+        return respond({ success:false, error:'Invalid credentials' }, 401);
       }
+      // Lazy-upgrade plaintext → bcrypt on first successful login
+      if (!stored.startsWith('$2')) {
+        try {
+          const upgradedHash = await hashPassword(SB, KEY, password, BCRYPT_COST);
+          await sbPatch(SB, KEY, userSource, { id: `eq.${user.id}` }, { password: upgradedHash });
+        } catch (e) {
+          console.warn('Password lazy-upgrade failed for user', user?.id, e?.message || e);
+        }
+      }
+    } else {
+      // No password stored — open login (emergency recovery mode, patch 026)
+      console.warn('[login] User', user?.email, 'has no password set — open login allowed');
     }
 
     const normalizedRole = _allowedRoles.has(String(user.role || '')) ? String(user.role) : 'Viewer';
@@ -373,6 +416,58 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       Number(env.JWT_EXPIRES_SEC || 28800)
     );
     return respond({ success:true, data: { token, user: safeUser } });
+  }
+
+  // ── AUTH DEBUG (remove after fixing login) ─────────────────────────────────
+  if (res === 'auth' && id === 'debug' && method === 'POST') {
+    const identifierRaw = String(body.email || body.identifier || '').trim();
+    const email = identifierRaw.toLowerCase();
+    const password = String(body.password || '');
+    if (!identifierRaw) return respond({ success:false, error:'email required' }, 400);
+
+    const userSelect = 'id,name,role,email,active,password';
+    let user = null, userSource = null;
+
+    for (const table of ['app_users','users']) {
+      const r = await sbGet(SB, KEY, table, { select: userSelect, filters: { email: 'eq.' + email }, single: true });
+      if (!r.error && r.data) { user = r.data; userSource = table; break; }
+      // try name
+      const r2 = await sbGet(SB, KEY, table, { select: userSelect, filters: { name: 'ilike.*' + identifierRaw + '*' }, limit: 5 });
+      if (!r2.error && Array.isArray(r2.data) && r2.data.length) { user = r2.data[0]; userSource = table; break; }
+    }
+
+    if (!user) return respond({ success:true, debug: { found: false, table: null, note: 'No user matched email or name' } });
+
+    const stored = String(user.password || '').trim();
+    const isBcrypt = stored.startsWith('$2');
+    const hasPassword = stored.length > 0;
+
+    let verifyResult = null;
+    if (password && hasPassword) {
+      if (isBcrypt) {
+        const { data, error } = await sbRpc(SB, KEY, 'app_verify_password', { plain_password: password, stored_hash: stored });
+        verifyResult = error ? { rpcError: error.message } : { matches: data === true };
+      } else {
+        verifyResult = { matches: password === stored, mode: 'plaintext' };
+      }
+    }
+
+    const roleValid = _allowedRoles.has(String(user.role || ''));
+
+    return respond({ success: true, debug: {
+      found: true,
+      table: userSource,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      roleValid,
+      active: user.active,
+      hasPassword,
+      isBcrypt,
+      passwordLength: stored.length,
+      passwordPreview: stored ? stored.slice(0,7) + '...' : '(empty)',
+      verifyResult,
+    }});
   }
 
   if (res === 'auth' && id === 'me' && method === 'GET') {
