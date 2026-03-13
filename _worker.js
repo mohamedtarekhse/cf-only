@@ -307,8 +307,11 @@ async function router(path, method, url, request, SB, KEY, env={}) {
   perm.canApprove = perm.canApproveStage1 || perm.canApproveStage2 || perm.canApproveStage3;
 
   // ── Global method-level permission guards ────────────────────────────────
-  // Must run after perm is built and after res/id/act are declared.
-  if (res !== 'auth' && method !== 'GET' && method !== 'OPTIONS') {
+  // ── Global permission guards ────────────────────────────────────────────────
+  // Exempt: auth routes (login, debug, me) — they handle auth themselves.
+  // Exempt: GET and OPTIONS — reading is allowed for all authenticated users.
+  const isAuthRoute = res === 'auth';
+  if (!isAuthRoute && method !== 'GET' && method !== 'OPTIONS') {
     if (method === 'POST'   && !perm.canAdd)    return forbidden('create records');
     if (method === 'DELETE' && !perm.canDelete) return forbidden('delete records');
     if ((method === 'PUT' || method === 'PATCH') && !perm.canEdit) return forbidden('edit records');
