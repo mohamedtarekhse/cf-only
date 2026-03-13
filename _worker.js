@@ -329,7 +329,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
   const body = ['POST','PUT','PATCH'].includes(method) ? await request.json().catch(()=>({})) : {};
 
   const anonKey = env.SUPABASE_ANON_KEY || env.SUPABASE_PUBLISHABLE_KEY || '';
-  const ctx = { reqRole:'Viewer', reqName:'', reqUserId:'', reqEmail:'', reqToken:'', reqActive:true };
+  const ctx = { reqRole:'Viewer', reqName:'', reqUserId:'', reqEmail:'', reqToken:'', reqActive:true, reqClientId:'', reqClientName:'' };
   const dbAuth = {
     anonKey,
     serviceKey: KEY,
@@ -347,6 +347,44 @@ async function router(path, method, url, request, SB, KEY, env={}) {
   const sbRpcBypass = (base, key, fnName, args={}) => sbRpcCore(base, dbAuth, fnName, args, { bypass:true }, ctx);
   const sbDeleteBypass = (base, key, table, filters) => sbDeleteCore(base, dbAuth, table, filters, { bypass:true }, ctx);
   const sbCountBypass = (base, key, table) => sbCountCore(base, dbAuth, table, { bypass:true }, ctx);
+
+  const isClientAdmin = () => ctx.reqRole === 'Admin';
+  const currentClientId = () => String(ctx.reqClientId || '').trim();
+  const currentClientName = () => String(ctx.reqClientName || '').trim();
+  const scopedFilters = (filters = {}, field = 'client_id') => {
+    const next = { ...filters };
+    if (isClientAdmin()) return next;
+    const clientId = currentClientId();
+    next[field] = clientId ? `eq.${clientId}` : 'eq.__missing_client__';
+    return next;
+  };
+  const requireClientScope = () => {
+    if (isClientAdmin()) return null;
+    if (currentClientId()) return null;
+    return respond({ success:false, error:'Your account is not linked to a client.' }, 403);
+  };
+  const applyClientPayload = (payload = {}, fallbackClientId = currentClientId()) => {
+    const next = { ...payload };
+    if (!isClientAdmin() && fallbackClientId) next.client_id = fallbackClientId;
+    return next;
+  };
+  async function lookupAssetClientId(assetId) {
+    if (!assetId) return '';
+    const res = await sbGetBypass(SB, KEY, 'assets', { select: 'client_id', filters: { asset_id: `eq.${assetId}` }, single: true });
+    return String(res?.data?.client_id || '');
+  }
+  async function lookupRigClientId(rigName) {
+    if (!rigName) return '';
+    const res = await sbGetBypass(SB, KEY, 'rigs', { select: 'client_id', filters: { name: `eq.${rigName}` }, single: true });
+    if (!res?.error && res?.data?.client_id) return String(res.data.client_id || '');
+    const alt = await sbGetBypass(SB, KEY, 'rigs', { select: 'client_id', filters: { rig_name: `eq.${rigName}` }, single: true });
+    return String(alt?.data?.client_id || '');
+  }
+  async function enrichClientName(clientId) {
+    if (!clientId) return '';
+    const res = await sbGetBypass(SB, KEY, 'clients', { select: 'id,name', filters: { id: `eq.${clientId}` }, single: true });
+    return String(res?.data?.name || '');
+  }
 
   // Never trust role headers from clients. Derive request identity from bearer token.
   const isAuthLogin = res === 'auth' && id === 'login' && method === 'POST';
@@ -366,6 +404,8 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     ctx.reqName = String(claims.name || claims.user_metadata?.name || '');
     ctx.reqUserId = String(claims.sub || '');
     ctx.reqEmail = String(claims.email || '');
+    ctx.reqClientId = String(claims.client_id || claims.app_metadata?.client_id || '');
+    ctx.reqClientName = String(claims.client_name || claims.app_metadata?.client_name || '');
     ctx.reqToken = String(m[1] || '');
 
     // Enforce active status on every authenticated request (immediate revoke).
@@ -389,6 +429,8 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     ctx.reqName = '';
     ctx.reqUserId = '';
     ctx.reqEmail = '';
+    ctx.reqClientId = '';
+    ctx.reqClientName = '';
     ctx.reqToken = '';
     ctx.reqActive = true;
   }
@@ -611,7 +653,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
 
     let user = null;
     let userSource = 'app_users';
-    const userSelect = 'id,name,role,dept,email,color,initials,password,active';
+    const userSelect = 'id,name,role,dept,email,color,initials,password,active,client_id';
 
     for (const table of ['app_users']) {
       const exact = await sbGetBypass(SB, KEY, table, {
@@ -710,15 +752,20 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     if (!_allowedRoles.has(normalizedRole)) return respond({ success:false, code:'INVALID_ROLE', error:'User role is not allowed' }, 403);
     const safeUser = { ...user, role: normalizedRole };
     delete safeUser.password;
+    const clientId = String(safeUser.client_id || '');
+    const clientName = await enrichClientName(clientId);
+    if (clientName) safeUser.client_name = clientName;
     const token = await signJwt(
       {
         sub: String(safeUser.id || ''),
         email: safeUser.email || '',
         name: safeUser.name || '',
+        client_id: clientId,
+        client_name: clientName,
         aud: 'authenticated',
         role: 'authenticated',
         app_role: safeUser.role || 'Viewer',
-        app_metadata: { app_role: safeUser.role || 'Viewer' },
+        app_metadata: { app_role: safeUser.role || 'Viewer', client_id: clientId, client_name: clientName },
         user_metadata: { name: safeUser.name || '' }
       },
       env.JWT_SECRET || '',
@@ -783,8 +830,31 @@ async function router(path, method, url, request, SB, KEY, env={}) {
   if (res === 'auth' && id === 'me' && method === 'GET') {
     return respond({
       success:true,
-      data: { id: ctx.reqUserId || null, email: ctx.reqEmail || null, name: ctx.reqName || null, role: ctx.reqRole || 'Viewer', active: ctx.reqActive !== false }
+      data: { id: ctx.reqUserId || null, email: ctx.reqEmail || null, name: ctx.reqName || null, role: ctx.reqRole || 'Viewer', active: ctx.reqActive !== false, client_id: ctx.reqClientId || null, client_name: ctx.reqClientName || null }
     });
+  }
+
+  if (res === 'clients') {
+    if (method === 'GET' && !id) {
+      if (isClientAdmin()) return ok(await sbGetBypass(SB, KEY, 'clients', { order: 'name.asc', bypass: true }));
+      if (!currentClientId()) return respond({ success:true, data:[] }, 200);
+      return ok(await sbGetBypass(SB, KEY, 'clients', { filters: { id: `eq.${currentClientId()}` }, single: false, order: 'name.asc', bypass: true }));
+    }
+    if (method === 'GET' && id) {
+      if (!isClientAdmin() && id !== currentClientId()) return forbidden(ctx, 'view other clients');
+      return ok(await sbGetBypass(SB, KEY, 'clients', { filters: { id: `eq.${id}` }, single: true, bypass: true }));
+    }
+    if (!isClientAdmin()) return forbidden(ctx, 'manage clients');
+    if (method === 'POST') return ok(await sbPostBypass(SB, KEY, 'clients', body));
+    if (method === 'PUT' || method === 'PATCH') {
+      const { id: _id, created_at, updated_at, ...u } = body;
+      return ok(await sbPatchBypass(SB, KEY, 'clients', { id: `eq.${id}` }, u));
+    }
+    if (method === 'DELETE') {
+      const r = await sbDeleteBypass(SB, KEY, 'clients', { id: `eq.${id}` });
+      if (r.error) return err500(r.error);
+      return ok({ deleted: id });
+    }
   }
 
   // ASSETS
@@ -793,28 +863,47 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       const f={};
       if(q.get('status'))   f.status  =`eq.${q.get('status')}`;
       if(q.get('category')) f.category=`eq.${q.get('category')}`;
-
       if(q.get('rig_name')) f.rig_name=`eq.${q.get('rig_name')}`;
       if(q.get('search'))   f.name    =`ilike.%${q.get('search')}%`;
-      return ok(await sbGet(SB,KEY,'assets',{filters:f,order:'name.asc',limit:+(q.get('limit')||500)}));
+      return ok(await sbGet(SB,KEY,'assets',{filters:scopedFilters(f),order:'name.asc',limit:+(q.get('limit')||500)}));
     }
-    if(method==='GET')    return ok(await sbGet(SB,KEY,'assets',{filters:{asset_id:`eq.${id}`},single:true}));
-    if(method==='POST')   return ok(await sbPost(SB,KEY,'assets',body));
-    if(method==='PUT')  { const {asset_id,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'assets',{asset_id:`eq.${id}`},u)); }
-    if(method==='PATCH')  return ok(await sbPatch(SB,KEY,'assets',{asset_id:`eq.${id}`},body));
-    if(method==='DELETE'){const r=await sbDelete(SB,KEY,'assets',{asset_id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
+    if(method==='GET')    return ok(await sbGet(SB,KEY,'assets',{filters:scopedFilters({asset_id:`eq.${id}`}),single:true}));
+    if(method==='POST')   {
+      const scopeErr = requireClientScope(); if (scopeErr) return scopeErr;
+      const payload = applyClientPayload(body, body.client_id || await lookupRigClientId(body.rig_name));
+      return ok(await sbPost(SB,KEY,'assets',payload));
+    }
+    if(method==='PUT')  {
+      const scopeErr = requireClientScope(); if (scopeErr) return scopeErr;
+      const {asset_id,created_at,updated_at,...u}=body;
+      const payload = applyClientPayload(u, u.client_id || await lookupRigClientId(u.rig_name));
+      return ok(await sbPatch(SB,KEY,'assets',scopedFilters({asset_id:`eq.${id}`}),payload));
+    }
+    if(method==='PATCH')  {
+      const scopeErr = requireClientScope(); if (scopeErr) return scopeErr;
+      const payload = applyClientPayload(body, body.client_id || await lookupRigClientId(body.rig_name));
+      return ok(await sbPatch(SB,KEY,'assets',scopedFilters({asset_id:`eq.${id}`}),payload));
+    }
+    if(method==='DELETE'){const r=await sbDelete(SB,KEY,'assets',scopedFilters({asset_id:`eq.${id}`}));if(r.error)return err500(r.error);return ok({deleted:id});}
   }
 
   // RIGS
   if (res==='rigs') {
-    if(method==='GET'&&!id) return ok(await sbGet(SB,KEY,'rigs',{order:'name.asc'}));
-    if(method==='GET')    return ok(await sbGet(SB,KEY,'rigs',{filters:{id:`eq.${id}`},single:true}));
+    if(method==='GET'&&!id) return ok(await sbGet(SB,KEY,'rigs',{filters:scopedFilters({}),order:'name.asc'}));
+    if(method==='GET')    return ok(await sbGet(SB,KEY,'rigs',{filters:scopedFilters({id:`eq.${id}`}),single:true}));
     if(method==='POST') {
+      const scopeErr = requireClientScope(); if (scopeErr) return scopeErr;
       if(!body.id) { const s=(body.name||'RIG').toUpperCase().replace(/[^A-Z0-9]/g,'-').slice(0,12); body.id=s+'-'+Date.now().toString().slice(-5); }
-      return ok(await sbPost(SB,KEY,'rigs',body));
+      const payload = applyClientPayload(body, body.client_id || currentClientId());
+      return ok(await sbPost(SB,KEY,'rigs',payload));
     }
-    if(method==='PUT')  { const {id:_,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'rigs',{id:`eq.${id}`},u)); }
-    if(method==='DELETE'){const r=await sbDelete(SB,KEY,'rigs',{id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
+    if(method==='PUT')  {
+      const scopeErr = requireClientScope(); if (scopeErr) return scopeErr;
+      const {id:_,created_at,updated_at,...u}=body;
+      const payload = applyClientPayload(u, u.client_id || currentClientId());
+      return ok(await sbPatch(SB,KEY,'rigs',scopedFilters({id:`eq.${id}`}),payload));
+    }
+    if(method==='DELETE'){const r=await sbDelete(SB,KEY,'rigs',scopedFilters({id:`eq.${id}`}));if(r.error)return err500(r.error);return ok({deleted:id});}
   }
 
 
@@ -848,14 +937,24 @@ async function router(path, method, url, request, SB, KEY, env={}) {
   // CERTIFICATES
   if (res==='certificates') {
     if(method==='GET'&&!id){
-      const {data,error}=await sbGet(SB,KEY,'certificates',{select:'*, assets(name,serial,rig_name,category)',order:'cert_id.asc',limit:+(q.get('limit')||500)});
+      const {data,error}=await sbGet(SB,KEY,'certificates',{select:'*, assets(name,serial,rig_name,category)',filters:scopedFilters({}),order:'cert_id.asc',limit:+(q.get('limit')||500)});
       if(error) return err500(error);
       return ok((data||[]).map(c=>({...c,asset_name:c.assets?.name,asset_serial:c.assets?.serial,rig_name:c.assets?.rig_name,category:c.assets?.category,assets:undefined})));
     }
-    if(method==='GET')    return ok(await sbGet(SB,KEY,'certificates',{filters:{cert_id:`eq.${id}`},single:true}));
-    if(method==='POST') { if(!body.cert_id) body.cert_id='CERT-'+String((await sbCount(SB,KEY,'certificates'))+1).padStart(3,'0'); return ok(await sbPost(SB,KEY,'certificates',body)); }
-    if(method==='PUT')  { const {cert_id,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'certificates',{cert_id:`eq.${id}`},u)); }
-    if(method==='DELETE'){const r=await sbDelete(SB,KEY,'certificates',{cert_id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
+    if(method==='GET')    return ok(await sbGet(SB,KEY,'certificates',{filters:scopedFilters({cert_id:`eq.${id}`}),single:true}));
+    if(method==='POST') {
+      const scopeErr = requireClientScope(); if (scopeErr) return scopeErr;
+      if(!body.cert_id) body.cert_id='CERT-'+String((await sbCount(SB,KEY,'certificates'))+1).padStart(3,'0');
+      const inferredClientId = body.client_id || await lookupAssetClientId(body.asset_id);
+      return ok(await sbPost(SB,KEY,'certificates',applyClientPayload(body, inferredClientId)));
+    }
+    if(method==='PUT')  {
+      const scopeErr = requireClientScope(); if (scopeErr) return scopeErr;
+      const {cert_id,created_at,updated_at,...u}=body;
+      const inferredClientId = u.client_id || await lookupAssetClientId(u.asset_id);
+      return ok(await sbPatch(SB,KEY,'certificates',scopedFilters({cert_id:`eq.${id}`}),applyClientPayload(u, inferredClientId)));
+    }
+    if(method==='DELETE'){const r=await sbDelete(SB,KEY,'certificates',scopedFilters({cert_id:`eq.${id}`}));if(r.error)return err500(r.error);return ok({deleted:id});}
   }
 
   // MAINTENANCE
@@ -933,22 +1032,22 @@ async function router(path, method, url, request, SB, KEY, env={}) {
   // USERS
   if (res==='users') {
     if(method==='GET') {
-      return ok(await sbGet(SB,KEY,'app_users',{select:'id,name,role,dept,email,color,initials,active',order:'name.asc'}));
+      return ok(await sbGetBypass(SB,KEY,'app_users',{select:'id,name,role,dept,email,color,initials,active,client_id',filters:scopedFilters({}),order:'name.asc',bypass:true}));
     }
     if(method==='POST'&&id&&act==='reset-password') {
       if (ctx.reqRole !== 'Admin') return respond({ success:false, error:'Forbidden' }, 403);
       const newPassword = String(body.new_password || '').trim();
       if (newPassword.length < 4) return respond({ success:false, error:'new_password must be at least 4 characters' }, 400);
       const hashed = await hashPassword(SB, dbAuth, newPassword, BCRYPT_COST, ctx);
-      let r = await sbPatch(SB, KEY, 'app_users', { id:`eq.${id}` }, { password: hashed, password_changed_at: nowIso() });
+      let r = await sbPatch(SB, KEY, 'app_users', scopedFilters({ id:`eq.${id}` }), { password: hashed, password_changed_at: nowIso() });
       if (r?.error && isMissingColumnError(r.error)) {
-        r = await sbPatch(SB, KEY, 'app_users', { id:`eq.${id}` }, { password: hashed });
+        r = await sbPatch(SB, KEY, 'app_users', scopedFilters({ id:`eq.${id}` }), { password: hashed });
       }
       if (r?.error) return err500(r.error);
       return respond({ success:true, data:{ id, password_updated:true, session_revoked:true } });
     }
     if(method==='POST') {
-      const payload = { ...body };
+      const payload = applyClientPayload({ ...body }, body.client_id || currentClientId());
       const hadPassword = typeof payload.password === 'string' && payload.password.trim();
       if (hadPassword) {
         payload.password = await hashPassword(SB, dbAuth, payload.password, BCRYPT_COST, ctx);
@@ -975,15 +1074,16 @@ async function router(path, method, url, request, SB, KEY, env={}) {
           delete u.password;
         }
       }
-      let r = await sbPatch(SB,KEY,'app_users',{id:`eq.${id}`},u);
+      const payload = applyClientPayload(u, u.client_id || currentClientId());
+      let r = await sbPatch(SB,KEY,'app_users',scopedFilters({id:`eq.${id}`}),payload);
       if (r?.error && hadPassword && isMissingColumnError(r.error)) {
-        delete u.password_changed_at;
-        r = await sbPatch(SB,KEY,'app_users',{id:`eq.${id}`},u);
+        delete payload.password_changed_at;
+        r = await sbPatch(SB,KEY,'app_users',scopedFilters({id:`eq.${id}`}),payload);
       }
       if (r?.data) delete r.data.password;
       return ok(r);
     }
-    if(method==='DELETE'){const r=await sbDelete(SB,KEY,'app_users',{id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
+    if(method==='DELETE'){const r=await sbDelete(SB,KEY,'app_users',scopedFilters({id:`eq.${id}`}));if(r.error)return err500(r.error);return ok({deleted:id});}
   }
 
 

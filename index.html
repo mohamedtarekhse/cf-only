@@ -3091,6 +3091,10 @@
     const currentToken = String(window.__authToken || '').trim();
     const guardToken = String(expectedToken || '').trim();
     if (guardToken && currentToken && currentToken !== guardToken) return;
+    if (window.__deleteRequestPoller) {
+      clearInterval(window.__deleteRequestPoller);
+      window.__deleteRequestPoller = null;
+    }
     window.__currentUser = null;
     window.__currentUserRole = null;
     window.__currentUserName = null;
@@ -4575,6 +4579,10 @@ function showLoginError(msg) {
           <div class="form-group">
             <label class="form-label">Rig Name <span style="color:#b00">*</span></label>
             <input class="form-control" id="rig_name" placeholder="e.g. Rig 15">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Client</label>
+            <select class="form-control" id="rig_clientId"></select>
           </div>
           <div class="form-group">
             <label class="form-label">Rig Type</label>
@@ -6628,6 +6636,7 @@ Asset Management System</textarea>
     const NOTIFICATIONS = [];
 
     const USERS = [];
+    const CLIENTS = [];
 
     let ASSETS = [];
     // STATE
@@ -7670,6 +7679,10 @@ Asset Management System</textarea>
         <div class="form-row">
           <div class="form-group"><label class="form-label">Role</label><select class="form-select" id="ue_role"><option value="Admin">Admin - Full Access</option><optgroup label="Manager Tier (Approve &amp; View)"><option value="Manager">Manager - General</option><option value="Superintendent">Superintendent - Stage 1 Approval</option><option value="Drilling Manager">Drilling Manager - Stage 2 Approval</option><option value="Asset Manager">Asset Manager - Stage 3 Approval</option><option value="Maintenance Manager">Maintenance Manager</option><option value="Project Manager">Project Manager</option></optgroup><option value="Engineer">Engineer - Edit &amp; View</option><option value="Assistant">Assistant - Edit &amp; Delete (with approval)</option></select></div>
           <div class="form-group"><label class="form-label">Department</label><input class="form-input" id="ue_dept" placeholder="e.g. Operations"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Client</label><select class="form-select" id="ue_clientId"></select></div>
+          <div class="form-group"></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">Initials</label><input class="form-input" id="ue_initials" placeholder="e.g. AM" maxlength="3"></div>
@@ -9483,6 +9496,7 @@ This cannot be undone.`)) return;
       document.getElementById('addRigModalTitle').textContent = rigEditId ? 'Edit Rig' : 'Add New Rig';
       if (rig) {
         document.getElementById('rig_editId').value = rig.id || '';
+        populateClientSelect('rig_clientId', rig.client_id || currentClientId());
         document.getElementById('rig_name').value = rig.name || '';
         document.getElementById('rig_type').value = rig.type || '';
         document.getElementById('rig_location').value = rig.location || '';
@@ -9492,6 +9506,7 @@ This cannot be undone.`)) return;
         document.getElementById('rig_notes').value = rig.notes || '';
       } else {
         document.getElementById('rig_editId').value = '';
+        populateClientSelect('rig_clientId', currentClientId());
         document.getElementById('rig_name').value = '';
         document.getElementById('rig_type').value = 'Land Rig';
         document.getElementById('rig_location').value = '';
@@ -9600,11 +9615,49 @@ This cannot be undone.`)) return;
       renderNotifications();
     }
 
+    async function refreshDeleteRequests(options = {}) {
+      try {
+        const res = await GET('/delete-requests', { limit: 200 });
+        const rows = Array.isArray(res?.data) ? res.data : [];
+        const notices = rows.map(normalizeDeleteRequestNotice);
+        const nonDelete = NOTIFICATIONS.filter(n => !n.deleteRequest);
+        refill(NOTIFICATIONS, [...notices, ...nonDelete]);
+        renderNotifications();
+        return notices;
+      } catch (e) {
+        if (!options.silent) {
+          showToast('Could not refresh delete requests: ' + e.message, 'warning');
+        }
+        return [];
+      }
+    }
+
     function deleteRequestMeta(n) {
       if (!n.deleteRequest) return n.time || '';
       if (n.status === 'Pending') return `Pending approval | Requested by ${n.requestedBy || 'Assistant'}`;
       if (n.status === 'Approved') return `Approved | ${n.reviewComment || 'Delete completed'}`;
       return `Rejected | ${n.reviewComment || 'Delete request declined'}`;
+    }
+
+    function currentClientId() {
+      return window.__currentUser?.client_id || '';
+    }
+
+    function populateClientSelect(selectId, selected = '') {
+      const el = document.getElementById(selectId);
+      if (!el) return;
+      const options = CLIENTS.slice();
+      const preferred = selected || currentClientId() || options[0]?.id || '';
+      el.innerHTML = options.length
+        ? options.map(c => `<option value="${c.id}"${String(c.id) === String(preferred) ? ' selected' : ''}>${c.name || c.id}</option>`).join('')
+        : '<option value="">No client assigned</option>';
+      el.disabled = !isAdmin();
+      if (!isAdmin() && currentClientId()) el.value = currentClientId();
+    }
+
+    function refreshClientScopedFormState() {
+      populateClientSelect('ue_clientId');
+      populateClientSelect('rig_clientId');
     }
 
     async function reviewDeleteRequest(requestId, action) {
@@ -9648,8 +9701,10 @@ This cannot be undone.`)) return;
       NOTIFICATIONS[i].is_read = true;
       renderNotifications();
     }
-    function toggleNotif() {
+    async function toggleNotif() {
       const p = document.getElementById('notifPanel');
+      const opening = !p.classList.contains('open');
+      if (opening) await refreshDeleteRequests({ silent: true });
       p.classList.toggle('open');
       document.getElementById('userMenu').classList.remove('open');
     }
@@ -13138,8 +13193,16 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
 
       function handleDeleteResult(result, requestMessage) {
         if (result?.data?.delete_request) {
-          if (result.data.request) upsertDeleteRequestNotice(result.data.request);
+          if (result.data.request) {
+            upsertDeleteRequestNotice(result.data.request);
+          }
           showToast(requestMessage || 'Delete request submitted for manager approval.', 'info');
+          const panel = document.getElementById('notifPanel');
+          if (panel && !panel.classList.contains('open')) {
+            panel.classList.add('open');
+            document.getElementById('userMenu')?.classList.remove('open');
+          }
+          refreshDeleteRequests({ silent: true });
           return false;
         }
         return true;
@@ -13260,7 +13323,7 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
         try {
           showToast('Connecting to database...', 'info');
 
-          const [aR, rR, wsR, conR, mR, tR, cR, bR, uR, nR, drR, prjR, inspR] = await Promise.all([
+          const [aR, rR, wsR, conR, mR, tR, cR, bR, uR, clR, nR, drR, prjR, inspR] = await Promise.all([
             GET('/assets', { limit: 500 }),
             GET('/rigs'),
             GET('/workshops', { limit: 500 }),
@@ -13270,6 +13333,7 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
             GET('/certificates', { limit: 500 }),
             GET('/bom', { limit: 1000 }),
             GET('/users'),
+            GET('/clients'),
             GET('/notifications'),
             GET('/delete-requests', { limit: 200 }),
             GET('/projects', { limit: 500 }),
@@ -13290,6 +13354,8 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
           refill(CERTIFICATES, (cR.data || []).map(normC));
           refill(BOM_ITEMS, (bR.data || []).map(normB));
           refill(USERS, uR.data || []);
+          refill(CLIENTS, clR.data || []);
+          refreshClientScopedFormState();
           if (typeof PROJECTS !== 'undefined') refill(PROJECTS, (prjR.data || []).map(normP));
           if (typeof INSPECTIONS !== 'undefined') refill(INSPECTIONS, (inspR.data || []).map(normInsp));
           const liveNotifications = (nR.data || []).map(n => ({
@@ -13300,6 +13366,12 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
 
           rerenderAll();
           if (typeof runAllAlertRules === 'function') runAllAlertRules(true);
+          if (!window.__deleteRequestPoller) {
+            window.__deleteRequestPoller = setInterval(() => {
+              if (!window.__authToken) return;
+              refreshDeleteRequests({ silent: true });
+            }, 15000);
+          }
           showToast('Database connected (' + ASSETS.length + ' assets loaded)', 'success');
           console.log('[AssetAPI] Bootstrap complete');
 
@@ -13382,6 +13454,7 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
         document.getElementById('ue_name').value = u.name || ''; document.getElementById('ue_email').value = u.email || '';
         document.getElementById('ue_role').value = u.role || 'Viewer'; document.getElementById('ue_dept').value = u.dept || '';
         document.getElementById('ue_initials').value = u.initials || ''; document.getElementById('ue_color').value = u.color || '#0070F2';
+        populateClientSelect('ue_clientId', u.client_id || currentClientId());
         document.getElementById('ue_newPass').value = ''; document.getElementById('ue_confirmPass').value = '';
         document.getElementById('ue_warn').style.display = 'none';
         const isSelf = window.__currentUser && (String(window.__currentUser.id)===String(userId)||(window.__currentUser.email||'').toLowerCase()===(u.email||'').toLowerCase());
@@ -13414,6 +13487,7 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
           _ueUserId = null;
           ['ue_name','ue_email','ue_dept','ue_initials','ue_newPass','ue_confirmPass'].forEach(function(id){ const el=document.getElementById(id); if(el) el.value=''; });
           document.getElementById('ue_role').value='Viewer'; document.getElementById('ue_color').value='#0070F2';
+          populateClientSelect('ue_clientId', currentClientId());
           document.getElementById('userEditModalTitle').textContent='Add New User';
           document.getElementById('ue_selfNote').style.display='none'; document.getElementById('ue_warn').style.display='none';
           openModal('userEditModal');
@@ -13422,6 +13496,7 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
       window.saveUserEdit = async function () {
         const name=document.getElementById('ue_name').value.trim(), email=document.getElementById('ue_email').value.trim().toLowerCase();
         const role=document.getElementById('ue_role').value, dept=document.getElementById('ue_dept').value.trim();
+        const clientId=(document.getElementById('ue_clientId')?.value || currentClientId() || '').trim();
 
         const initials=document.getElementById('ue_initials').value.trim().toUpperCase().slice(0,3), color=document.getElementById('ue_color').value;
         const newPass=document.getElementById('ue_newPass').value, confPass=document.getElementById('ue_confirmPass').value;
@@ -13429,7 +13504,7 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
         document.getElementById('ue_warn').style.display='none';
         if (!name){showToast('Name is required.','error');return;} if (!email){showToast('Email is required.','error');return;}
         if (newPass||confPass){ if(newPass.length<4){showWarn('Password must be at least 4 characters.');return;} if(newPass!==confPass){showWarn('Passwords do not match.');return;} }
-        const payload={name,email,role,dept,initials,color,active:true}; if(newPass) payload.password=newPass;
+        const payload={name,email,role,dept,initials,color,active:true,client_id:clientId||null}; if(newPass) payload.password=newPass;
         try {
           let savedUser;
           if (_ueUserId) {
@@ -13452,7 +13527,8 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
               const emailEl=document.getElementById('loginEmail'); if(emailEl){emailEl.value=email;emailEl.focus();}
             },1200);
           } else if (isSelf) {
-            const cu=Object.assign({},window.__currentUser,{name,role,initials,color});
+            const clientName=(CLIENTS.find(c=>String(c.id)===String(clientId))?.name)||window.__currentUser?.client_name||'';
+            const cu=Object.assign({},window.__currentUser,{name,role,initials,color,client_id:clientId||null,client_name:clientName});
             window.__currentUser=cu; window.__currentUserRole=role; window.__currentUserName=name;
             const ini=initials||name.split(' ').filter(Boolean).map(function(n){return n[0];}).join('').slice(0,2).toUpperCase();
             const nameEl=document.getElementById('shellUserName'), roleEl=document.getElementById('shellUserRole'), avatarEl=document.getElementById('shellUserAvatar');
@@ -13906,6 +13982,7 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
         const name = document.getElementById('rig_name').value.trim();
         if (!name) { showToast('Rig Name is required.', 'error'); return; }
         const payload = {
+          client_id: (document.getElementById('rig_clientId')?.value || currentClientId() || '').trim() || null,
           name, type: document.getElementById('rig_type').value,
           location: document.getElementById('rig_location').value.trim(),
           depth: document.getElementById('rig_depth').value || null,
