@@ -222,13 +222,6 @@ function forbidden(action) {
 
 async function router(path, method, url, request, SB, KEY, env={}) {
   const q    = url.searchParams;
-
-  // ── Global method-level permission guards ────────────────────────────────
-  if (res !== 'auth' && method !== 'GET' && method !== 'OPTIONS') {
-    if (method === 'POST'   && !perm.canAdd)    return forbidden('create records');
-    if (method === 'DELETE' && !perm.canDelete) return forbidden('delete records');
-    if ((method === 'PUT' || method === 'PATCH') && !perm.canEdit) return forbidden('edit records');
-  }
   const seg  = path.replace(/^\/api\/?/,'').split('/');
   const res  = seg[0];
   const id   = seg[1];
@@ -282,6 +275,16 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     isAdmin:    R === 'Admin',
   };
   perm.canApprove = perm.canApproveStage1 || perm.canApproveStage2 || perm.canApproveStage3;
+
+  // ── Global method-level permission guards ────────────────────────────────
+  // Must run after perm is built and after res/id/act are declared.
+  if (res !== 'auth' && method !== 'GET' && method !== 'OPTIONS') {
+    if (method === 'POST'   && !perm.canAdd)    return forbidden('create records');
+    if (method === 'DELETE' && !perm.canDelete) return forbidden('delete records');
+    if ((method === 'PUT' || method === 'PATCH') && !perm.canEdit) return forbidden('edit records');
+  }
+  // Transfer approve endpoint requires canApprove (stage check is inside the handler)
+  if (res === 'transfers' && act === 'approve' && !perm.canApprove) return forbidden('approve transfers');
 
   // AUTH (server-side password check; never expose password field to client)
   if (res === 'auth' && id === 'login' && method === 'POST') {
