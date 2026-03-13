@@ -150,44 +150,49 @@ async function sbGet(base, key, table, { select='*', filters={}, order=null, lim
   return parseRes(r, single);
 }
 
-async function sbPost(base, key, table, body) {
+async function sbPost(base, key, table, body, bypass=false) {
   const u = new URL(`${base}/rest/v1/${table}`);
   u.searchParams.set('select', '*');
-  const r = await fetch(u.toString(), { method:'POST', headers:authHeaders(key,{'Prefer':'return=representation'}), body:JSON.stringify(body) });
+  const hFn = bypass ? bypassHeaders : authHeaders;
+  const r = await fetch(u.toString(), { method:'POST', headers:hFn(key,{'Prefer':'return=representation'}), body:JSON.stringify(body) });
   return parseRes(r, true);
 }
 
-async function sbPatch(base, key, table, filters, body) {
+async function sbPatch(base, key, table, filters, body, bypass=false) {
   const u = new URL(`${base}/rest/v1/${table}`);
   u.searchParams.set('select', '*');
   for (const [k,v] of Object.entries(filters)) u.searchParams.append(k, v);
-  const r = await fetch(u.toString(), { method:'PATCH', headers:authHeaders(key,{'Prefer':'return=representation'}), body:JSON.stringify(body) });
+  const hFn = bypass ? bypassHeaders : authHeaders;
+  const r = await fetch(u.toString(), { method:'PATCH', headers:hFn(key,{'Prefer':'return=representation'}), body:JSON.stringify(body) });
   return parseRes(r, true);
 }
 
-async function sbRpc(base, key, fnName, args={}) {
+async function sbRpc(base, key, fnName, args={}, bypass=false) {
   const u = new URL(`${base}/rest/v1/rpc/${fnName}`);
+  const hFn = bypass ? bypassHeaders : authHeaders;
   const r = await fetch(u.toString(), {
     method:'POST',
-    headers:authHeaders(key, {'Prefer':'return=representation'}),
+    headers:hFn(key, {'Prefer':'return=representation'}),
     body:JSON.stringify(args)
   });
   return parseRes(r, true);
 }
 
-async function sbDelete(base, key, table, filters) {
+async function sbDelete(base, key, table, filters, bypass=false) {
   const u = new URL(`${base}/rest/v1/${table}`);
   for (const [k,v] of Object.entries(filters)) u.searchParams.append(k, v);
-  const r = await fetch(u.toString(), { method:'DELETE', headers:authHeaders(key,{'Prefer':'return=minimal'}) });
+  const hFn = bypass ? bypassHeaders : authHeaders;
+  const r = await fetch(u.toString(), { method:'DELETE', headers:hFn(key,{'Prefer':'return=minimal'}) });
   if (r.ok || r.status===204) return { error:null };
   const t = await r.text(); let m; try{m=JSON.parse(t)?.message}catch(_){m=t}
   return { error:{ message:`${r.status}: ${m}` } };
 }
 
-async function sbCount(base, key, table) {
+async function sbCount(base, key, table, bypass=false) {
   const u = new URL(`${base}/rest/v1/${table}`);
   u.searchParams.set('select','*'); u.searchParams.set('limit','0');
-  const r = await fetch(u.toString(), { headers:authHeaders(key,{'Prefer':'count=exact'}) });
+  const hFn = bypass ? bypassHeaders : authHeaders;
+  const r = await fetch(u.toString(), { headers:hFn(key,{'Prefer':'count=exact'}) });
   return parseInt((r.headers.get('content-range')||'0/0').split('/')[1])||0;
 }
 
@@ -206,7 +211,7 @@ async function hashPassword(base, key, plain, cost=BCRYPT_COST) {
   const { data, error } = await sbRpc(base, key, 'app_hash_password', {
     plain_password: raw,
     cost_factor: safeCost
-  });
+  }, true);
   if (error || !data) throw new Error(error?.message || 'Password hashing failed');
   return String(data);
 }
@@ -222,7 +227,7 @@ async function verifyPassword(base, key, plain, stored) {
       const { data, error } = await sbRpc(base, key, 'app_verify_password', {
         plain_password: input,
         stored_hash: hash
-      });
+      }, true);
       if (error) {
         // RPC not deployed yet — cannot verify bcrypt client-side; deny with clear message
         console.error('[verifyPassword] RPC error:', error.message,
@@ -397,7 +402,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       if (!stored.startsWith('$2')) {
         try {
           const upgradedHash = await hashPassword(SB, KEY, password, BCRYPT_COST);
-          await sbPatch(SB, KEY, userSource, { id: `eq.${user.id}` }, { password: upgradedHash });
+          await sbPatch(SB, KEY, userSource, { id: `eq.${user.id}` }, { password: upgradedHash }, true);
         } catch (e) {
           console.warn('Password lazy-upgrade failed for user', user?.id, e?.message || e);
         }
@@ -429,10 +434,10 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     let user = null, userSource = null;
 
     for (const table of ['app_users','users']) {
-      const r = await sbGet(SB, KEY, table, { select: userSelect, filters: { email: 'eq.' + email }, single: true });
+      const r = await sbGet(SB, KEY, table, { select: userSelect, filters: { email: 'eq.' + email }, single: true, bypass: true });
       if (!r.error && r.data) { user = r.data; userSource = table; break; }
       // try name
-      const r2 = await sbGet(SB, KEY, table, { select: userSelect, filters: { name: 'ilike.*' + identifierRaw + '*' }, limit: 5 });
+      const r2 = await sbGet(SB, KEY, table, { select: userSelect, filters: { name: 'ilike.*' + identifierRaw + '*' }, limit: 5, bypass: true });
       if (!r2.error && Array.isArray(r2.data) && r2.data.length) { user = r2.data[0]; userSource = table; break; }
     }
 
@@ -445,7 +450,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     let verifyResult = null;
     if (password && hasPassword) {
       if (isBcrypt) {
-        const { data, error } = await sbRpc(SB, KEY, 'app_verify_password', { plain_password: password, stored_hash: stored });
+        const { data, error } = await sbRpc(SB, KEY, 'app_verify_password', { plain_password: password, stored_hash: stored }, true);
         verifyResult = error ? { rpcError: error.message } : { matches: data === true };
       } else {
         verifyResult = { matches: password === stored, mode: 'plaintext' };
@@ -543,7 +548,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       return ok((data||[]).map(c=>({...c,asset_name:c.assets?.name,asset_serial:c.assets?.serial,rig_name:c.assets?.rig_name,category:c.assets?.category,assets:undefined})));
     }
     if(method==='GET')    return ok(await sbGet(SB,KEY,'certificates',{filters:{cert_id:`eq.${id}`},single:true}));
-    if(method==='POST') { if(!body.cert_id) body.cert_id='CERT-'+String((await sbCount(SB,KEY,'certificates'))+1).padStart(3,'0'); return ok(await sbPost(SB,KEY,'certificates',body)); }
+    if(method==='POST') { if(!body.cert_id) body.cert_id='CERT-'+String((await sbCount(SB,KEY,'certificates',true))+1).padStart(3,'0'); return ok(await sbPost(SB,KEY,'certificates',body)); }
     if(method==='PUT')  { const {cert_id,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'certificates',{cert_id:`eq.${id}`},u)); }
     if(method==='DELETE'){const r=await sbDelete(SB,KEY,'certificates',{cert_id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
   }
@@ -553,11 +558,11 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     if(method==='POST'&&id&&act==='complete'){
       const {completion_date,performed_by,hours,cost,parts_used,notes,next_due_override}=body;
       if(!completion_date||!performed_by) return respond({success:false,error:'completion_date and performed_by required'},400);
-      const {data:sc,error:se}=await sbGet(SB,KEY,'maintenance_schedules',{filters:{id:`eq.${id}`},single:true});
+      const {data:sc,error:se}=await sbGet(SB,KEY,'maintenance_schedules',{filters:{id:`eq.${id}`},single:true,bypass:true});
       if(se||!sc) return respond({success:false,error:'Schedule not found'},404);
       const nextDue=next_due_override||(()=>{const d=new Date(completion_date);d.setDate(d.getDate()+(sc.freq||90));return d.toISOString().slice(0,10)})();
-      await sbPost(SB,KEY,'maintenance_logs',{schedule_id:id,completion_date,performed_by,hours,cost,parts_used,notes});
-      const {data:upd,error:ue}=await sbPatch(SB,KEY,'maintenance_schedules',{id:`eq.${id}`},{status:'Scheduled',last_done:completion_date,next_due:nextDue});
+      await sbPost(SB,KEY,'maintenance_logs',{schedule_id:id,completion_date,performed_by,hours,cost,parts_used,notes},true);
+      const {data:upd,error:ue}=await sbPatch(SB,KEY,'maintenance_schedules',{id:`eq.${id}`},{status:'Scheduled',last_done:completion_date,next_due:nextDue},true);
       if(ue) return err500(ue);
       return ok({schedule:{...upd,live_status:liveStatus(upd)}});
     }
@@ -572,7 +577,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     }
     if(method==='GET')    return ok(await sbGet(SB,KEY,'maintenance_schedules',{filters:{id:`eq.${id}`},single:true}));
     if(method==='POST') {
-      if(!body.id) body.id='PM-'+String((await sbCount(SB,KEY,'maintenance_schedules'))+1).padStart(3,'0');
+      if(!body.id) body.id='PM-'+String((await sbCount(SB,KEY,'maintenance_schedules',true))+1).padStart(3,'0');
       if(['Overdue','Due Soon'].includes(body.status)) body.status='Scheduled';
       return ok(await sbPost(SB,KEY,'maintenance_schedules',body));
     }
@@ -601,8 +606,8 @@ async function router(path, method, url, request, SB, KEY, env={}) {
         patch={mgr_approved_by:approved_by,mgr_approved_date:today,mgr_action:decision,mgr_comment:comment,
           status:decision==='approve'?'Completed':decision==='reject'?'Rejected':'On Hold'};
         if(decision==='approve'){
-          const {data:tr}=await sbGet(SB,KEY,'transfers',{filters:{id:`eq.${id}`},single:true});
-          if(tr){ const au={location:tr.destination}; if(tr.dest_rig) au.rig_name=tr.dest_rig; await sbPatch(SB,KEY,'assets',{asset_id:`eq.${tr.asset_id}`},au); }
+          const {data:tr}=await sbGet(SB,KEY,'transfers',{filters:{id:`eq.${id}`},single:true,bypass:true});
+          if(tr){ const au={location:tr.destination}; if(tr.dest_rig) au.rig_name=tr.dest_rig; await sbPatch(SB,KEY,'assets',{asset_id:`eq.${tr.asset_id}`},au,true); }
         }
       } else return respond({success:false,error:'role must be supt, drilling or ops'},400);
       return ok(await sbPatch(SB,KEY,'transfers',{id:`eq.${id}`},patch));
@@ -614,9 +619,9 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       return ok(await sbGet(SB,KEY,'transfers',{filters:f,order:'created_at.desc',limit:+(q.get('limit')||200)}));
     }
     if(method==='POST'){
-      if(!body.id) body.id='TR-'+String((await sbCount(SB,KEY,'transfers'))+1).padStart(3,'0');
+      if(!body.id) body.id='TR-'+String((await sbCount(SB,KEY,'transfers',true))+1).padStart(3,'0');
       if(!body.request_date) body.request_date=new Date().toISOString().slice(0,10);
-      if(!body.asset_name&&body.asset_id){ const {data:a}=await sbGet(SB,KEY,'assets',{select:'name,location',filters:{asset_id:`eq.${body.asset_id}`},single:true}); if(a){body.asset_name=a.name;if(!body.current_loc)body.current_loc=a.location;} }
+      if(!body.asset_name&&body.asset_id){ const {data:a}=await sbGet(SB,KEY,'assets',{select:'name,location',filters:{asset_id:`eq.${body.asset_id}`},single:true,bypass:true}); if(a){body.asset_name=a.name;if(!body.current_loc)body.current_loc=a.location;} }
       return ok(await sbPost(SB,KEY,'transfers',body));
     }
   }
