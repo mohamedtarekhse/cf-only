@@ -7622,7 +7622,7 @@ Asset Management System</textarea>
           <div class="form-group"><label class="form-label">Email <span style="color:var(--sap-error)">*</span></label><input class="form-input" id="ue_email" type="email" placeholder="email@company.com"></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label class="form-label">Role</label><select class="form-select" id="ue_role"><option>Admin</option><option>Manager</option><option>Supervisor</option><option>Technician</option><option>Viewer</option></select></div>
+          <div class="form-group"><label class="form-label">Role</label><select class="form-select" id="ue_role"><option value="Admin">Admin — Full Access</option><optgroup label="── Manager Tier (Approve &amp; View) ──"><option value="Manager">Manager — General</option><option value="Superintendent">Superintendent — Stage 1 Approval</option><option value="Drilling Manager">Drilling Manager — Stage 2 Approval</option><option value="Asset Manager">Asset Manager — Stage 3 Approval</option><option value="Maintenance Manager">Maintenance Manager</option><option value="Project Manager">Project Manager</option></optgroup><option value="Engineer">Engineer — Edit &amp; View</option><option value="Assistant">Assistant — Edit &amp; Delete (with approval)</option></select></div>
           <div class="form-group"><label class="form-label">Department</label><input class="form-input" id="ue_dept" placeholder="e.g. Operations"></div>
         </div>
         <div class="form-row">
@@ -9490,23 +9490,29 @@ Asset Management System</textarea>
     // ══════════════════════════════════
     //  RENDER USERS
     // ══════════════════════════════════
+
+    // ══════════════════════════════════
     function renderUsers() {
-      document.getElementById('userGrid').innerHTML = USERS.map(u => `
+      const meId = String((window.__currentUser && window.__currentUser.id) || '');
+      const canAdminReset = (typeof isAdmin === 'function') ? isAdmin() : false;
+      document.getElementById('userGrid').innerHTML = USERS.map(u => {
+        const canResetThisUser = canAdminReset && String(u.id || '') !== meId;
+        return `
     <div class="user-card">
       <div class="user-avatar-lg" style="background:${u.color || '#0070F2'};color:#fff">${u.initials ? u.initials.toUpperCase().slice(0, 2) : u.name.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase()}</div>
       <div>
         <div style="font-weight:600;font-size:14px">${u.name}</div>
-        <div style="font-size:12px;color:var(--sap-text-muted)">${u.role} · ${u.dept}</div>
+        <div style="font-size:12px;color:var(--sap-text-muted)">${u.role} ? ${u.dept}</div>
         <div style="font-size:12px;margin-top:4px">${u.email}</div>
         <div style="margin-top:8px;display:flex;gap:6px">
           <button class="btn btn-secondary" style="height:26px;font-size:11.5px" onclick="openUserEdit('${u.id}')"><i class="fas fa-edit"></i> Edit</button>
+          ${canResetThisUser ? `<button class="btn btn-ghost" style="height:26px;font-size:11.5px" onclick="resetUserPassword('${u.id}')"><i class="fas fa-key"></i> Reset</button>` : ''}
           <button class="btn btn-ghost" style="height:26px;font-size:11.5px" onclick="openEmailModal()"><i class="fas fa-envelope"></i></button>
         </div>
       </div>
-    </div>`).join('');
+    </div>`;
+      }).join('');
     }
-
-    // ══════════════════════════════════
     //  NOTIFICATIONS
     // ══════════════════════════════════
     function renderNotifications() {
@@ -10391,7 +10397,7 @@ Asset Management System</textarea>
             <button class="btn btn-ghost btn-icon" title="View Details" onclick="openTransferDetail('${t.id}')"><i class="fas fa-eye"></i></button>
             ${t.status === 'Pending' && canApproveSupt() ? `<button class="btn btn-ghost btn-icon" title="Superintendent Review" style="color:#0277BD" onclick="openApprovalModal('${t.id}','supt')"><i class="fas fa-user-shield"></i></button>` : ''}
             ${t.status === 'Supt Approved' && canApproveDrilling() ? `<button class="btn btn-ghost btn-icon" title="Drilling Manager Review" style="color:#E65100" onclick="openApprovalModal('${t.id}','drilling')"><i class="fas fa-hard-hat"></i></button>` : ''}
-            ${t.status === 'Drilling Approved' && canApproveOps() ? `<button class="btn btn-ghost btn-icon" title="Operations Manager Final Approval" style="color:#6D28D9" onclick="openApprovalModal('${t.id}','ops')"><i class="fas fa-user-tie"></i></button>` : ''}
+            ${t.status === 'Drilling Approved' && canApproveOps() ? `<button class="btn btn-ghost btn-icon" title="Asset Manager Final Approval" style="color:#6D28D9" onclick="openApprovalModal('${t.id}','ops')"><i class="fas fa-user-tie"></i></button>` : ''}
             ${(['Pending','Supt Approved','Drilling Approved'].includes(t.status)) ? `<button class="btn btn-ghost btn-icon" title="Cancel Request" style="color:var(--sap-error)" onclick="cancelTransfer('${t.id}')"><i class="fas fa-ban"></i></button>` : ''}
           </td>
         </tr>`;
@@ -10434,13 +10440,13 @@ Asset Management System</textarea>
     function openApprovalModal(transferId, role) {
       // Enforce role-based access per stage
       if (role === 'supt' && !canApproveSupt()) {
-        showToast('Only Superintendents (or Admin) can approve Stage 1.', 'error'); return;
+        showToast('Only Superintendent, Manager, or Admin can approve Stage 1.', 'error'); return;
       }
       if (role === 'drilling' && !canApproveDrilling()) {
-        showToast('Only Drilling Managers (or Admin) can approve Stage 2.', 'error'); return;
+        showToast('Only Drilling Manager, Manager, or Admin can approve Stage 2.', 'error'); return;
       }
       if (role === 'ops' && !canApproveOps()) {
-        showToast('Only Operations Managers (or Admin) can approve Stage 3.', 'error'); return;
+        showToast('Only Asset Manager, Manager, or Admin can approve Stage 3.', 'error'); return;
       }
       const t = TRANSFERS.find(x => x.id === transferId);
       if (!t) return;
@@ -10451,7 +10457,7 @@ Asset Management System</textarea>
 
       const roleLabel = role === 'supt'      ? 'Superintendent Review'
                       : role === 'drilling'  ? 'Drilling Manager Review'
-                      : 'Operations Manager Final Approval';
+                      : 'Asset Manager Final Approval';
       const roleIcon  = role === 'supt'      ? 'fa-user-shield'
                       : role === 'drilling'  ? 'fa-hard-hat'
                       : 'fa-user-tie';
@@ -10460,7 +10466,7 @@ Asset Management System</textarea>
                       : '#6D28D9';
       const roleNameLabel = role === 'supt'     ? 'Superintendent'
                           : role === 'drilling' ? 'Drilling Manager'
-                          : 'Operations Manager';
+                          : 'Asset Manager';
 
       document.getElementById('approvalModalTitle').innerHTML = `<i class="fas ${roleIcon}" style="color:${roleColor}"></i> ${roleLabel}`;
       document.getElementById('approvalActionTitle').innerHTML = `<i class="fas fa-gavel" style="color:${roleColor}"></i> Your Decision (${roleNameLabel})`;
@@ -10521,8 +10527,8 @@ Asset Management System</textarea>
           actionLabel: ops.action,
         },
         {
-          label: 'Operations Manager Final Approval',
-          sub: mgr.action ? `${mgr.by} — ${mgr.date}` : 'Awaiting Operations Manager',
+          label: 'Asset Manager Final Approval',
+          sub: mgr.action ? `${mgr.by} — ${mgr.date}` : 'Awaiting Asset Manager',
           icon: mgr.action === 'approve' ? 'fa-check' : mgr.action === 'reject' ? 'fa-times' : 'fa-user-tie',
           state: mgr.action === 'approve' ? 'done' : mgr.action === 'reject' ? 'reject' : (t.status === 'Drilling Approved' ? 'active' : 'pending'),
           comment: mgr.comment,
@@ -10679,7 +10685,7 @@ Asset Management System</textarea>
       document.getElementById('tdApprovalGrid').innerHTML =
         third(t.suptApproval || {}, 'supt', '#0277BD', 'user-shield', 'Superintendent') +
         third(t.opsApproval  || {}, 'ops',  '#E65100', 'hard-hat',    'Drilling Manager') +
-        third(t.mgrApproval  || {}, 'mgr',  '#6D28D9', 'user-tie',    'Operations Manager');
+        third(t.mgrApproval  || {}, 'mgr',  '#6D28D9', 'user-tie',    'Asset Manager');
     }
 
     function _tdFillEditForm() {
@@ -11798,25 +11804,55 @@ Asset Management System</textarea>
     //  Editor → can add/edit records, cannot import or approve transfers
     //  Viewer → read-only, no add/edit/import/approve
     // ══════════════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════════
+    //  ROLE & PERMISSION SYSTEM
+    //  Admin              → full access (view, add, edit, delete, approve, import)
+    //
+    //  ── Manager Tier (view + approve only — no add/edit/delete) ──
+    //  Manager            → approve all 3 stages + view
+    //  Superintendent     → approve Stage 1 only + view
+    //  Drilling Manager   → approve Stage 2 only + view
+    //  Asset Manager      → approve Stage 3 only + view
+    //  Maintenance Manager→ view only
+    //  Project Manager    → view only
+    //
+    //  Engineer           → edit + view (no add, no delete, no approve)
+    //  Assistant          → edit + delete (delete flagged) + view
+    // ══════════════════════════════════════════════════════════════════
     function getRole() {
       return (window.__currentUserRole || 'Viewer').trim();
     }
-    function isAdmin() { return getRole() === 'Admin'; }
-    function isEditor() { return getRole() === 'Editor'; }
-    function isViewer() { return getRole() === 'Viewer'; }
-    function isSuperintendent()   { return getRole() === 'Superintendent'; }
-    function isDrillingManager()  { return getRole() === 'Drilling Manager'; }
-    function isOpsManager()       { return getRole() === 'Operations Manager'; }
-    function canEdit() { return ['Admin', 'Editor', 'Superintendent', 'Drilling Manager', 'Operations Manager'].includes(getRole()); }
-    function canImport() { return isAdmin(); }
-    // Stage 1: Superintendent or Admin
-    function canApproveSupt()     { return isAdmin() || isSuperintendent(); }
-    // Stage 2: Drilling Manager or Admin
-    function canApproveDrilling() { return isAdmin() || isDrillingManager(); }
-    // Stage 3: Operations Manager or Admin
-    function canApproveOps()      { return isAdmin() || isOpsManager(); }
-    // Any approval role
-    function canApprove() { return canApproveSupt() || canApproveDrilling() || canApproveOps(); }
+
+    // ── Identity ─────────────────────────────────────────────────────
+    function isAdmin()              { return getRole() === 'Admin'; }
+    function isManager()            { return getRole() === 'Manager'; }
+    function isSuperintendent()     { return getRole() === 'Superintendent'; }
+    function isDrillingManager()    { return getRole() === 'Drilling Manager'; }
+    function isAssetManager()       { return getRole() === 'Asset Manager'; }
+    function isMaintenanceManager() { return getRole() === 'Maintenance Manager'; }
+    function isProjectManager()     { return getRole() === 'Project Manager'; }
+    function isEngineer()           { return getRole() === 'Engineer'; }
+    function isAssistant()          { return getRole() === 'Assistant'; }
+
+    // Manager tier = any approve-only role
+    function isManagerTier() {
+      return ['Manager','Superintendent','Drilling Manager','Asset Manager',
+              'Maintenance Manager','Project Manager'].includes(getRole());
+    }
+
+    // ── CRUD ─────────────────────────────────────────────────────────
+    function canView()             { return true; }
+    function canAdd()              { return isAdmin(); }
+    function canEdit()             { return isAdmin() || isEngineer() || isAssistant(); }
+    function canDelete()           { return isAdmin() || isAssistant(); }
+    function deleteNeedsApproval() { return isAssistant(); }
+    function canImport()           { return isAdmin(); }
+
+    // ── Transfer approval (3-stage) ──────────────────────────────────
+    function canApproveSupt()     { return isAdmin() || isManager() || isSuperintendent(); }
+    function canApproveDrilling() { return isAdmin() || isManager() || isDrillingManager(); }
+    function canApproveOps()      { return isAdmin() || isManager() || isAssetManager(); }
+    function canApprove()         { return canApproveSupt() || canApproveDrilling() || canApproveOps(); }
 
     function applyRoleUI() {
       // ── Import buttons: Admin only — reference by ID directly (stable, not positional) ──
@@ -11829,31 +11865,46 @@ Asset Management System</textarea>
         if (el) el.style.display = canImport() ? '' : 'none';
       });
 
-      // ── Add/New buttons: Editor + Admin only ──
+      // ── Add/New buttons: Admin only ──
       [
         'btnNewAsset', 'btnNewContract', 'btnNewRig',
         'btnAddUser', 'btnAddBOM', 'btnNewTransfer', 'btnNewSchedule', 'btnNewCert'
       ].forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.style.display = canEdit() ? '' : 'none';
+        if (el) el.style.display = canAdd() ? '' : 'none';
       });
 
-      // ── Edit / Delete / Transfer icon buttons in tables: Editor + Admin only ──
+      // ── Edit buttons: Admin, Engineer, Assistant ──
       document.querySelectorAll('.btn-icon').forEach(b => {
-        b.style.display = canEdit() ? '' : 'none';
+        b.style.display = (canEdit() || canDelete()) ? '' : 'none';
       });
 
       // ── Asset detail popup Edit button ──
       const editBtn = document.getElementById('assetDetailEditBtn');
       if (editBtn) editBtn.style.display = canEdit() ? '' : 'none';
 
-      // ── Transfer approve/reject: shown based on role + current stage ──
-      // The actual per-stage gating happens in openApprovalModal
-      // Here we just show/hide the buttons if user has ANY approval role
+      // ── Transfer approval buttons: shown per-stage based on role ──
       ['btnApprove', 'btnReject', 'btnHold'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = canApprove() ? '' : 'none';
       });
+
+      // ── Role badge in shell bar ──
+      const roleBadge = document.getElementById('shellUserRole');
+      if (roleBadge) {
+        const roleLabels = {
+          'Admin':               'Admin · Full Access',
+          'Manager':             'Manager · Approve & View',
+          'Superintendent':      'Superintendent · Stage 1 Approval',
+          'Drilling Manager':    'Drilling Manager · Stage 2 Approval',
+          'Asset Manager':       'Asset Manager · Stage 3 Approval',
+          'Maintenance Manager': 'Maintenance Manager · View',
+          'Project Manager':     'Project Manager · View',
+          'Engineer':            'Engineer · Edit & View',
+          'Assistant':           'Assistant · Edit & Delete',
+        };
+        roleBadge.textContent = roleLabels[getRole()] || getRole();
+      }
     }
 
     let chatHistory = [];
@@ -13171,6 +13222,24 @@ Instructions:
         document.getElementById('ue_selfNote').style.display = isSelf ? '' : 'none';
         openModal('userEditModal');
       };
+      window.resetUserPassword = async function (userId) {
+        if (typeof isAdmin === 'function' && !isAdmin()) { showToast('Only Admin can reset passwords.', 'error'); return; }
+        const u = USERS.find(x => String(x.id) === String(userId));
+        if (!u) { showToast('User not found.', 'error'); return; }
+        const newPass = prompt('Enter a temporary password for ' + (u.name || u.email || 'user') + ':', '');
+        if (newPass === null) return;
+        const p = String(newPass || '').trim();
+        if (p.length < 4) { showToast('Password must be at least 4 characters.', 'error'); return; }
+        const conf = prompt('Confirm password:', '');
+        if (conf === null) return;
+        if (String(conf) !== p) { showToast('Passwords do not match.', 'error'); return; }
+        try {
+          await POST('/users/' + encodeURIComponent(u.id) + '/reset-password', { new_password: p });
+          showToast('Password reset for ' + (u.name || u.email || 'user') + ' completed.', 'success');
+        } catch (e) {
+          showToast('Reset failed: ' + (e.message || e), 'error');
+        }
+      };
       const _btnAddUser = document.getElementById('btnAddUser');
       if (_btnAddUser && !_btnAddUser._ueWired) {
         _btnAddUser._ueWired = true;
@@ -13186,6 +13255,7 @@ Instructions:
       window.saveUserEdit = async function () {
         const name=document.getElementById('ue_name').value.trim(), email=document.getElementById('ue_email').value.trim().toLowerCase();
         const role=document.getElementById('ue_role').value, dept=document.getElementById('ue_dept').value.trim();
+
         const initials=document.getElementById('ue_initials').value.trim().toUpperCase().slice(0,3), color=document.getElementById('ue_color').value;
         const newPass=document.getElementById('ue_newPass').value, confPass=document.getElementById('ue_confirmPass').value;
         const showWarn=function(msg){ document.getElementById('ue_warnText').textContent=msg; document.getElementById('ue_warn').style.display=''; };
@@ -13535,7 +13605,7 @@ Instructions:
       //  OVERRIDE: processApproval()  — ops / mgr decision
       // ══════════════════════════════════════════════════════════════════════════
       window.processApproval = async function (decision) {
-        if (!canApprove()) { showToast('Only Drilling Managers and Asset Managers can approve transfers.', 'error'); return; }
+        if (!canApprove()) { showToast('Your role does not have permission to approve this stage.', 'error'); return; }
         const comment = document.getElementById('approvalComment').value.trim();
         if (!comment) { showToast('Please enter your decision comments.', 'error'); return; }
 
@@ -15059,6 +15129,7 @@ Instructions:
 </body>
 
 </html>
+
 
 
 

@@ -53,7 +53,8 @@ let _reqName = '';
 let _reqUserId = '';
 let _reqEmail = '';
 let _corsAllowOrigin = '*';
-const _allowedRoles = new Set(['Admin','Editor','Viewer','Asset Manager','Operations Manager','Drilling Manager','Superintendent']);
+const _allowedRoles = new Set(['Admin','Manager','Superintendent','Drilling Manager','Asset Manager','Maintenance Manager','Project Manager','Engineer','Assistant','Viewer']);
+const BCRYPT_COST = 10;
 
 function b64urlEncodeBytes(bytes) {
   let binary = '';
@@ -151,6 +152,16 @@ async function sbPatch(base, key, table, filters, body) {
   return parseRes(r, true);
 }
 
+async function sbRpc(base, key, fnName, args={}) {
+  const u = new URL(`${base}/rest/v1/rpc/${fnName}`);
+  const r = await fetch(u.toString(), {
+    method:'POST',
+    headers:authHeaders(key, {'Prefer':'return=representation'}),
+    body:JSON.stringify(args)
+  });
+  return parseRes(r, true);
+}
+
 async function sbDelete(base, key, table, filters) {
   const u = new URL(`${base}/rest/v1/${table}`);
   for (const [k,v] of Object.entries(filters)) u.searchParams.append(k, v);
@@ -175,10 +186,49 @@ async function parseRes(r, single) {
   return { data: data??[], error:null };
 }
 
+async function hashPassword(base, key, plain, cost=BCRYPT_COST) {
+  const raw = String(plain || '');
+  if (!raw) throw new Error('Password is required');
+  const safeCost = Math.max(4, Math.min(12, Number(cost) || BCRYPT_COST));
+  const { data, error } = await sbRpc(base, key, 'app_hash_password', {
+    plain_password: raw,
+    cost_factor: safeCost
+  });
+  if (error || !data) throw new Error(error?.message || 'Password hashing failed');
+  return String(data);
+}
+
+async function verifyPassword(base, key, plain, stored) {
+  const input = String(plain || '');
+  const hash = String(stored || '').trim();
+  if (!hash) return false;
+  if (hash.startsWith('$2')) {
+    const { data, error } = await sbRpc(base, key, 'app_verify_password', {
+      plain_password: input,
+      stored_hash: hash
+    });
+    if (error) return false;
+    return data === true;
+  }
+  return input === hash;
+}
+
+// ── Permission guard helper ──────────────────────────────────────────────────
+function forbidden(action) {
+  return respond({ success:false, error:`Forbidden — your role (${_reqRole}) cannot ${action}` }, 403);
+}
+
 // ── Router ────────────────────────────────────────────────────────────────────
 
 async function router(path, method, url, request, SB, KEY, env={}) {
   const q    = url.searchParams;
+
+  // ── Global method-level permission guards ────────────────────────────────
+  if (res !== 'auth' && method !== 'GET' && method !== 'OPTIONS') {
+    if (method === 'POST'   && !perm.canAdd)    return forbidden('create records');
+    if (method === 'DELETE' && !perm.canDelete) return forbidden('delete records');
+    if ((method === 'PUT' || method === 'PATCH') && !perm.canEdit) return forbidden('edit records');
+  }
   const seg  = path.replace(/^\/api\/?/,'').split('/');
   const res  = seg[0];
   const id   = seg[1];
@@ -208,6 +258,31 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     _reqEmail = '';
   }
 
+  // ── Per-request permission flags ─────────────────────────────────────────
+  // Admin              → full access
+  // Manager tier       → view + approve (no add/edit/delete)
+  //   Manager          → approve all 3 stages
+  //   Superintendent   → approve stage 1 only
+  //   Drilling Manager → approve stage 2 only
+  //   Asset Manager    → approve stage 3 only
+  //   Maintenance/Project Manager → view only
+  // Engineer           → edit + view (no add/delete)
+  // Assistant          → edit + delete + view (delete flagged)
+  const R = _reqRole;
+  const MANAGER_TIER = ['Manager','Superintendent','Drilling Manager','Asset Manager','Maintenance Manager','Project Manager'];
+  const perm = {
+    canView:    true,
+    canAdd:     R === 'Admin',
+    canEdit:    ['Admin','Engineer','Assistant'].includes(R),
+    canDelete:  ['Admin','Assistant'].includes(R),
+    canApproveStage1: ['Admin','Manager','Superintendent'].includes(R),
+    canApproveStage2: ['Admin','Manager','Drilling Manager'].includes(R),
+    canApproveStage3: ['Admin','Manager','Asset Manager'].includes(R),
+    canImport:  R === 'Admin',
+    isAdmin:    R === 'Admin',
+  };
+  perm.canApprove = perm.canApproveStage1 || perm.canApproveStage2 || perm.canApproveStage3;
+
   // AUTH (server-side password check; never expose password field to client)
   if (res === 'auth' && id === 'login' && method === 'POST') {
     const identifierRaw = String(body.email || body.identifier || '').trim();
@@ -216,7 +291,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     if (!identifierRaw || !password) return respond({ success:false, error:'email and password required' }, 400);
 
     let user = null;
-    let error = null;
+    let userSource = 'app_users';
     const userSelect = 'id,name,role,dept,email,color,initials,password,active';
 
     for (const table of ['app_users', 'users']) {
@@ -227,6 +302,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       });
       if (!exact.error && exact.data) {
         user = exact.data;
+        userSource = table;
         break;
       }
 
@@ -238,7 +314,6 @@ async function router(path, method, url, request, SB, KEY, env={}) {
         limit: 50
       });
       if (fuzzy.error) {
-        error = fuzzy.error;
         continue;
       }
 
@@ -246,6 +321,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       const match = rows.find(r => String(r?.email || '').trim().toLowerCase() === email);
       if (match) {
         user = match;
+        userSource = table;
         break;
       }
     }
@@ -263,6 +339,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
         const match = rows.find(r => String(r?.name || '').trim().toLowerCase() === identifierRaw.toLowerCase());
         if (match) {
           user = match;
+          userSource = table;
           break;
         }
       }
@@ -273,12 +350,16 @@ async function router(path, method, url, request, SB, KEY, env={}) {
 
     const stored = String(user.password || '').trim();
     if (!stored) return respond({ success:false, error:'Account has no password configured' }, 403);
-    if (stored.startsWith('$2')) {
-      // bcrypt verification is intentionally not done client-side.
-      // If bcrypt users exist, enable server-side bcrypt verification here.
-      return respond({ success:false, error:'Password verifier unavailable for this account type' }, 501);
+    const valid = await verifyPassword(SB, KEY, password, stored);
+    if (!valid) return respond({ success:false, error:'Invalid credentials' }, 401);
+    if (!stored.startsWith('$2')) {
+      try {
+        const upgradedHash = await hashPassword(SB, KEY, password, BCRYPT_COST);
+        await sbPatch(SB, KEY, userSource, { id: `eq.${user.id}` }, { password: upgradedHash });
+      } catch (e) {
+        console.warn('Password lazy-upgrade failed for user', user?.id, e?.message || e);
+      }
     }
-    if (password !== stored) return respond({ success:false, error:'Invalid credentials' }, 401);
 
     const normalizedRole = _allowedRoles.has(String(user.role || '')) ? String(user.role) : 'Viewer';
     const safeUser = { ...user, role: normalizedRole };
@@ -406,6 +487,10 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     if(method==='POST'&&id&&act==='approve'){
       const {role,action:decision,comment,approved_by}=body;
       if(!role||!decision||!comment) return respond({success:false,error:'role, action and comment required'},400);
+      // Enforce per-stage role: only the correct roles can approve each stage
+      if(role==='supt'     && !perm.canApproveStage1) return forbidden('approve Stage 1 (requires Superintendent, Manager, or Admin)');
+      if(role==='drilling' && !perm.canApproveStage2) return forbidden('approve Stage 2 (requires Drilling Manager, Manager, or Admin)');
+      if(role==='ops'      && !perm.canApproveStage3) return forbidden('approve Stage 3 (requires Asset Manager, Manager, or Admin)');
       const today=new Date().toISOString().slice(0,10);
       let patch={};
       if(role==='supt'){
@@ -437,12 +522,41 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       return ok(await sbPost(SB,KEY,'transfers',body));
     }
   }
-
   // USERS
   if (res==='users') {
-    if(method==='GET')    return ok(await sbGet(SB,KEY,'app_users',{select:'id,name,role,dept,email,color,initials,active',order:'name.asc'}));
-    if(method==='POST')   return ok(await sbPost(SB,KEY,'app_users',body));
-    if(method==='PUT')  { const {id:_,created_at,updated_at,...u}=body; return ok(await sbPatch(SB,KEY,'app_users',{id:`eq.${id}`},u)); }
+    if(method==='GET') {
+      return ok(await sbGet(SB,KEY,'app_users',{select:'id,name,role,dept,email,color,initials,active',order:'name.asc'}));
+    }
+    if(method==='POST'&&id&&act==='reset-password') {
+      if (_reqRole !== 'Admin') return respond({ success:false, error:'Forbidden' }, 403);
+      const newPassword = String(body.new_password || '').trim();
+      if (newPassword.length < 4) return respond({ success:false, error:'new_password must be at least 4 characters' }, 400);
+      const hashed = await hashPassword(SB, KEY, newPassword, BCRYPT_COST);
+      const r = await sbPatch(SB, KEY, 'app_users', { id:`eq.${id}` }, { password: hashed });
+      if (r?.error) return err500(r.error);
+      return respond({ success:true, data:{ id, password_updated:true } });
+    }
+    if(method==='POST') {
+      const payload = { ...body };
+      if (typeof payload.password === 'string' && payload.password.trim()) {
+        payload.password = await hashPassword(SB, KEY, payload.password, BCRYPT_COST);
+      } else {
+        delete payload.password;
+      }
+      const r = await sbPost(SB, KEY, 'app_users', payload);
+      if (r?.data) delete r.data.password;
+      return ok(r);
+    }
+    if(method==='PUT')  {
+      const {id:_,created_at,updated_at,...u}=body;
+      if (typeof u.password === 'string') {
+        if (u.password.trim()) u.password = await hashPassword(SB, KEY, u.password, BCRYPT_COST);
+        else delete u.password;
+      }
+      const r = await sbPatch(SB,KEY,'app_users',{id:`eq.${id}`},u);
+      if (r?.data) delete r.data.password;
+      return ok(r);
+    }
     if(method==='DELETE'){const r=await sbDelete(SB,KEY,'app_users',{id:`eq.${id}`});if(r.error)return err500(r.error);return ok({deleted:id});}
   }
 
