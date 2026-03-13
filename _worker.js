@@ -306,8 +306,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
   };
   perm.canApprove = perm.canApproveStage1 || perm.canApproveStage2 || perm.canApproveStage3;
 
-  // ── Global method-level permission guards ────────────────────────────────
-  // ── Global permission guards ────────────────────────────────────────────────
+  // ── Global permission guards (runs after perm object is built and res/id/act are declared) ──────
   // Exempt: auth routes (login, debug, me) — they handle auth themselves.
   // Exempt: GET and OPTIONS — reading is allowed for all authenticated users.
   const isAuthRoute = res === 'auth';
@@ -319,109 +318,108 @@ async function router(path, method, url, request, SB, KEY, env={}) {
   // Transfer approve endpoint requires canApprove (stage check is inside the handler)
   if (res === 'transfers' && act === 'approve' && !perm.canApprove) return forbidden('approve transfers');
 
-  // AUTH (server-side password check; never expose password field to client)
+  // AUTH — LOGIN
   if (res === 'auth' && id === 'login' && method === 'POST') {
     const identifierRaw = String(body.email || body.identifier || '').trim();
     const email = identifierRaw.toLowerCase();
     const password = String(body.password || '');
-    if (!identifierRaw || !password) return respond({ success:false, error:'email and password required' }, 400);
+    if (!identifierRaw || !password)
+      return respond({ success:false, error:'email and password required' }, 400);
 
-    let user = null;
-    let userSource = 'app_users';
+    // ── Step 1: find user ──────────────────────────────────────────────────
+    let user = null, userSource = 'app_users';
     const userSelect = 'id,name,role,dept,email,color,initials,password,active';
 
-    for (const table of ['app_users', 'users']) {
-      const exact = await sbGet(SB, KEY, table, {
-        select: userSelect,
-        filters: { email: 'eq.' + email },
-        single: true,
-        bypass: true
+    for (const table of ['app_users','users']) {
+      const { data, error } = await sbGet(SB, KEY, table, {
+        select: userSelect, filters:{ email:'eq.'+email }, single:true, bypass:true
       });
-      if (!exact.error && exact.data) {
-        user = exact.data;
-        userSource = table;
-        break;
-      }
+      if (!error && data) { user = data; userSource = table; break; }
 
-      // Legacy compatibility: mixed-case or padded emails.
-      const fuzzy = await sbGet(SB, KEY, table, {
-        select: userSelect,
-        filters: { email: 'ilike.*' + email + '*' },
-        order: 'email.asc',
-        limit: 50,
-        bypass: true
+      const { data: rows2 } = await sbGet(SB, KEY, table, {
+        select: userSelect, filters:{ email:'ilike.*'+email+'*' },
+        order:'email.asc', limit:50, bypass:true
       });
-      if (fuzzy.error) {
-        continue;
-      }
-
-      const rows = Array.isArray(fuzzy.data) ? fuzzy.data : [];
-      const match = rows.find(r => String(r?.email || '').trim().toLowerCase() === email);
-      if (match) {
-        user = match;
-        userSource = table;
-        break;
-      }
+      const match = (Array.isArray(rows2) ? rows2 : [])
+        .find(r => String(r?.email||'').trim().toLowerCase() === email);
+      if (match) { user = match; userSource = table; break; }
     }
 
+    // fallback: search by name
     if (!user) {
-      for (const table of ['app_users', 'users']) {
-        const byName = await sbGet(SB, KEY, table, {
-          select: userSelect,
-          filters: { name: 'ilike.*' + identifierRaw + '*' },
-          order: 'name.asc',
-          limit: 50,
-          bypass: true
+      for (const table of ['app_users','users']) {
+        const { data: rows3 } = await sbGet(SB, KEY, table, {
+          select: userSelect, filters:{ name:'ilike.*'+identifierRaw+'*' },
+          order:'name.asc', limit:50, bypass:true
         });
-        if (byName.error) continue;
-        const rows = Array.isArray(byName.data) ? byName.data : [];
-        const match = rows.find(r => String(r?.name || '').trim().toLowerCase() === identifierRaw.toLowerCase());
-        if (match) {
-          user = match;
-          userSource = table;
-          break;
-        }
+        const match = (Array.isArray(rows3) ? rows3 : [])
+          .find(r => String(r?.name||'').trim().toLowerCase() === identifierRaw.toLowerCase());
+        if (match) { user = match; userSource = table; break; }
       }
     }
 
-    if (!user) return respond({ success:false, error:'Invalid credentials' }, 401);
-    if (user.active === false) return respond({ success:false, error:'Account is deactivated' }, 403);
+    if (!user)
+      return respond({ success:false, error:'No account found for "'+identifierRaw+'". Check your email address.' }, 401);
+    if (user.active === false)
+      return respond({ success:false, error:'Account is deactivated. Contact your administrator.' }, 403);
 
+    // ── Step 2: verify password ────────────────────────────────────────────
     const stored = String(user.password || '').trim();
     if (stored) {
-      // Has a stored password — verify it
+      const isBcrypt = stored.startsWith('$2');
       let valid = false;
-      try { valid = await verifyPassword(SB, KEY, password, stored); }
-      catch (e) { console.error('[login] verifyPassword threw:', e?.message || e); }
-      if (!valid) {
-        const isHash = stored.startsWith('$2');
-        const hint = isHash ? ' (bcrypt — ensure 032_auth_password_bcrypt.sql is deployed)' : '';
-        console.warn('[login] Password mismatch for user:', user?.email, hint);
-        return respond({ success:false, error:'Invalid credentials' }, 401);
+      let verifyError = null;
+
+      try {
+        if (isBcrypt) {
+          const { data: vd, error: ve } = await sbRpc(SB, KEY, 'app_verify_password',
+            { plain_password: password, stored_hash: stored }, true);
+          if (ve) {
+            verifyError = ve.message || String(ve);
+            // RPC not deployed — fall back to rejecting with a clear message
+            return respond({ success:false,
+              error:'Password verification unavailable. Run 032_auth_password_bcrypt.sql in Supabase SQL editor, then try again.',
+              detail: verifyError }, 503);
+          }
+          valid = (vd === true);
+        } else {
+          // Plaintext compare
+          valid = (password === stored);
+        }
+      } catch(e) {
+        return respond({ success:false,
+          error:'Password verification failed: ' + (e?.message || String(e)) }, 500);
       }
-      // Lazy-upgrade plaintext → bcrypt on first successful login
-      if (!stored.startsWith('$2')) {
+
+      if (!valid)
+        return respond({ success:false,
+          error:'Incorrect password. Please try again.' +
+                (isBcrypt ? '' : ' (hint: passwords may be case-sensitive)') }, 401);
+
+      // Lazy-upgrade plaintext → bcrypt
+      if (!isBcrypt) {
         try {
-          const upgradedHash = await hashPassword(SB, KEY, password, BCRYPT_COST);
-          await sbPatch(SB, KEY, userSource, { id: `eq.${user.id}` }, { password: upgradedHash }, true);
-        } catch (e) {
-          console.warn('Password lazy-upgrade failed for user', user?.id, e?.message || e);
+          const hash = await hashPassword(SB, KEY, password, BCRYPT_COST);
+          await sbPatch(SB, KEY, userSource, { id:'eq.'+user.id }, { password: hash }, true);
+        } catch(e) {
+          console.warn('[login] bcrypt upgrade failed:', e?.message);
         }
       }
     } else {
-      // No password stored — open login (emergency recovery mode, patch 026)
-      console.warn('[login] User', user?.email, 'has no password set — open login allowed');
+      // NULL password → open login (recovery mode after patch 026)
+      console.warn('[login] open-login for', user.email, '— no password set');
     }
 
-    const normalizedRole = _allowedRoles.has(String(user.role || '')) ? String(user.role) : 'Viewer';
+    // ── Step 3: sign JWT + respond ─────────────────────────────────────────
+    const normalizedRole = _allowedRoles.has(String(user.role||'')) ? String(user.role) : 'Viewer';
     const safeUser = { ...user, role: normalizedRole };
     delete safeUser.password;
     const token = await signJwt(
-      { sub: safeUser.id, email: safeUser.email || '', name: safeUser.name || '', role: safeUser.role || 'Viewer' },
+      { sub: safeUser.id, email: safeUser.email||'', name: safeUser.name||'', role: safeUser.role||'Viewer' },
       env.JWT_SECRET || '',
       Number(env.JWT_EXPIRES_SEC || 28800)
     );
-    return respond({ success:true, data: { token, user: safeUser } });
+    return respond({ success:true, data:{ token, user: safeUser } });
   }
 
   // ── AUTH DEBUG (remove after fixing login) ─────────────────────────────────
