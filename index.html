@@ -3469,6 +3469,7 @@ function showLoginError(msg) {
       Maintenance <span id="maintAlertBadge"
         style="display:none;background:#B00;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:1px 6px;margin-left:4px">0</span></button>
     <button class="nav-tab" onclick="switchTab('workshops', this)" id="tab-workshops"><i class="fas fa-industry"></i> Workshops</button>
+    <button class="nav-tab" onclick="switchTab('clients', this)" id="tab-clients"><i class="fas fa-building"></i> Clients</button>
   </div>
 
   <!-- NOTIFICATION PANEL -->
@@ -3941,13 +3942,6 @@ function showLoginError(msg) {
     <!-- ======= USERS ======= -->
     <div class="section" id="section-users">
       <div class="content">
-        <div class="card" id="clientAdminCard">
-          <div class="card-header">
-            <span class="card-title">Clients Dashboard</span>
-            <button id="btnAddClient" class="btn btn-primary"><i class="fas fa-building"></i> Add Client</button>
-          </div>
-          <div class="user-grid" style="padding:16px" id="clientGrid"></div>
-        </div>
         <div class="card">
           <div class="card-header"><span class="card-title">Client &amp; User Management</span><button id="btnAddUser"
               class="btn btn-primary"><i class="fas fa-plus"></i> Add User</button>
@@ -3956,6 +3950,19 @@ function showLoginError(msg) {
             <input type="file" id="importFileUsers" accept=".xlsx,.xls,.csv" style="display:none">
           </div>
           <div class="user-grid" style="padding:16px" id="userGrid"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======= CLIENTS ======= -->
+    <div class="section" id="section-clients">
+      <div class="content">
+        <div class="card" id="clientAdminCard">
+          <div class="card-header">
+            <span class="card-title">Clients Dashboard</span>
+            <button id="btnAddClient" class="btn btn-primary"><i class="fas fa-building"></i> Add Client</button>
+          </div>
+          <div class="user-grid" style="padding:16px" id="clientGrid"></div>
         </div>
       </div>
     </div>
@@ -8338,10 +8345,18 @@ This cannot be undone.`)) return;
     // ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
     function switchTab(id, el) {
       if (typeof applyRoleUI === 'function') applyRoleUI();
+      if (id === 'clients' && !isAdmin()) {
+        showToast('Only Admin can access the Clients dashboard.', 'error');
+        const fallbackTab = document.querySelector(".nav-tab[onclick*=\"'assets'\"]");
+        if (fallbackTab && fallbackTab !== el) return switchTab('assets', fallbackTab);
+        return;
+      }
+      const section = document.getElementById('section-' + id);
+      if (!section) return;
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
       document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-      document.getElementById('section-' + id).classList.add('active');
-      el.classList.add('active');
+      section.classList.add('active');
+      if (el) el.classList.add('active');
       closeAllPanels();
       // Re-render the activated section so data is always fresh on tab switch
       const tabRenders = {
@@ -8354,6 +8369,8 @@ This cannot be undone.`)) return;
         workshops:    () => { if (typeof renderWorkshops       === 'function') renderWorkshops(); },
         contracts:    () => { if (typeof renderContracts       === 'function') renderContracts(); },
         rigs:         () => { if (typeof renderRigs            === 'function') renderRigs(); },
+        users:        () => { if (typeof renderUsers           === 'function') renderUsers(); },
+        clients:      () => { if (typeof renderClientsDashboard=== 'function') renderClientsDashboard(); },
       };
       if (tabRenders[id]) tabRenders[id]();
     }
@@ -12193,6 +12210,15 @@ This cannot be undone.`)) return;
 
       const clientAdminCard = document.getElementById('clientAdminCard');
       if (clientAdminCard) clientAdminCard.style.display = isAdmin() ? '' : 'none';
+      const clientTab = document.getElementById('tab-clients');
+      if (clientTab) clientTab.style.display = isAdmin() ? '' : 'none';
+      if (!isAdmin()) {
+        const activeClientSection = document.getElementById('section-clients');
+        if (activeClientSection && activeClientSection.classList.contains('active')) {
+          const assetsTab = document.querySelector(".nav-tab[onclick*=\"'assets'\"]");
+          if (assetsTab) switchTab('assets', assetsTab);
+        }
+      }
 
       const newTransferBtn = document.getElementById('btnNewTransfer');
       if (newTransferBtn) newTransferBtn.style.display = canAddTransfer() ? '' : 'none';
