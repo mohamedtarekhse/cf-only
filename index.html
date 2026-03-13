@@ -12992,8 +12992,17 @@ Instructions:
       //  CORE HTTP HELPER
       // ══════════════════════════════════════════════════════════════════════════
       async function api(path, opts = {}) {
-        const token = window.__authToken || '';
-        if (!token) throw new Error('Not authenticated. Please sign in.');
+        const token = String(
+          window.__authToken ||
+          localStorage.getItem('ams_token') ||
+          sessionStorage.getItem('ams_token') ||
+          ''
+        ).trim();
+        if (!token || token === 'null' || token === 'undefined') {
+          clearAuthSession();
+          throw new Error('No auth token. Please sign in again.');
+        }
+        window.__authToken = token;
         const res = await fetch(BASE + path, {
           ...opts,
           headers: {
