@@ -3087,7 +3087,10 @@
     if (!payload || typeof payload.exp !== 'number') return true;
     return payload.exp <= Math.floor(Date.now() / 1000);
   }
-  function clearAuthSession() {
+  function clearAuthSession(expectedToken = null) {
+    const currentToken = String(window.__authToken || '').trim();
+    const guardToken = String(expectedToken || '').trim();
+    if (guardToken && currentToken && currentToken !== guardToken) return;
     window.__currentUser = null;
     window.__currentUserRole = null;
     window.__currentUserName = null;
@@ -3230,22 +3233,22 @@ function showLoginError(msg) {
       const meRes = await fetch(baseUrl + '/auth/me', { method: 'GET', headers });
       const meJson = await meRes.json().catch(() => ({}));
       if (meRes.status === 403 && meJson && meJson.code === 'ACCOUNT_DISABLED') {
-        clearAuthSession();
+        clearAuthSession(token);
         return;
       }
       if (!meRes.ok || !meJson.success) {
-        clearAuthSession();
+        clearAuthSession(token);
         return;
       }
 
       const me = meJson.data || {};
       const allowedRoles = new Set(['Admin','Manager','Superintendent','Drilling Manager','Asset Manager','Maintenance Manager','Project Manager','Engineer','Assistant','Viewer']);
       if (me.role && !allowedRoles.has(me.role)) {
-        clearAuthSession();
+        clearAuthSession(token);
         return;
       }
       if (me.active === false) {
-        clearAuthSession();
+        clearAuthSession(token);
         return;
       }
 
