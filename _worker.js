@@ -330,32 +330,34 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     let user = null, userSource = 'app_users';
     const userSelect = 'id,name,role,dept,email,color,initials,password,active';
 
-    for (const table of ['app_users','users']) {
-      const { data, error } = await sbGet(SB, KEY, table, {
+    {
+      // exact email match
+      const { data, error } = await sbGet(SB, KEY, 'app_users', {
         select: userSelect, filters:{ email:'eq.'+email }, single:true, bypass:true
       });
-      if (!error && data) { user = data; userSource = table; break; }
+      if (!error && data) { user = data; userSource = 'app_users'; }
 
-      const { data: rows2 } = await sbGet(SB, KEY, table, {
-        select: userSelect, filters:{ email:'ilike.*'+email+'*' },
-        order:'email.asc', limit:50, bypass:true
-      });
-      const match = (Array.isArray(rows2) ? rows2 : [])
-        .find(r => String(r?.email||'').trim().toLowerCase() === email);
-      if (match) { user = match; userSource = table; break; }
+      // fuzzy email match (mixed-case, padded)
+      if (!user) {
+        const { data: rows2 } = await sbGet(SB, KEY, 'app_users', {
+          select: userSelect, filters:{ email:'ilike.*'+email+'*' },
+          order:'email.asc', limit:50, bypass:true
+        });
+        const match = (Array.isArray(rows2) ? rows2 : [])
+          .find(r => String(r?.email||'').trim().toLowerCase() === email);
+        if (match) { user = match; userSource = 'app_users'; }
+      }
     }
 
     // fallback: search by name
     if (!user) {
-      for (const table of ['app_users','users']) {
-        const { data: rows3 } = await sbGet(SB, KEY, table, {
-          select: userSelect, filters:{ name:'ilike.*'+identifierRaw+'*' },
-          order:'name.asc', limit:50, bypass:true
-        });
-        const match = (Array.isArray(rows3) ? rows3 : [])
-          .find(r => String(r?.name||'').trim().toLowerCase() === identifierRaw.toLowerCase());
-        if (match) { user = match; userSource = table; break; }
-      }
+      const { data: rows3 } = await sbGet(SB, KEY, 'app_users', {
+        select: userSelect, filters:{ name:'ilike.*'+identifierRaw+'*' },
+        order:'name.asc', limit:50, bypass:true
+      });
+      const match = (Array.isArray(rows3) ? rows3 : [])
+        .find(r => String(r?.name||'').trim().toLowerCase() === identifierRaw.toLowerCase());
+      if (match) { user = match; userSource = 'app_users'; }
     }
 
     if (!user)
@@ -432,12 +434,13 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     const userSelect = 'id,name,role,email,active,password';
     let user = null, userSource = null;
 
-    for (const table of ['app_users','users']) {
-      const r = await sbGet(SB, KEY, table, { select: userSelect, filters: { email: 'eq.' + email }, single: true, bypass: true });
-      if (!r.error && r.data) { user = r.data; userSource = table; break; }
-      // try name
-      const r2 = await sbGet(SB, KEY, table, { select: userSelect, filters: { name: 'ilike.*' + identifierRaw + '*' }, limit: 5, bypass: true });
-      if (!r2.error && Array.isArray(r2.data) && r2.data.length) { user = r2.data[0]; userSource = table; break; }
+    {
+      const r = await sbGet(SB, KEY, 'app_users', { select: userSelect, filters: { email: 'eq.' + email }, single: true, bypass: true });
+      if (!r.error && r.data) { user = r.data; userSource = 'app_users'; }
+      if (!user) {
+        const r2 = await sbGet(SB, KEY, 'app_users', { select: userSelect, filters: { name: 'ilike.*' + identifierRaw + '*' }, limit: 5, bypass: true });
+        if (!r2.error && Array.isArray(r2.data) && r2.data.length) { user = r2.data[0]; userSource = 'app_users'; }
+      }
     }
 
     if (!user) return respond({ success:true, debug: { found: false, table: null, note: 'No user matched email or name' } });
