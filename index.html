@@ -3177,6 +3177,13 @@
         showToast('Welcome back, ' + first, 'success');
       }
 
+      window.__bootstrapped = false;
+      window.__bootstrapDone = false;
+      if (typeof window.bootstrap === 'function') {
+        window.__bootstrapDone = true;
+        await window.bootstrap();
+      }
+
     } catch (e) {
       console.error('[Login]', e);
       showLoginError(e.message || 'Unknown error - check browser console (F12).');
@@ -13009,6 +13016,7 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
         const json = await res.json().catch(() => ({}));
         const disabled = res.status === 403 && json && json.code === 'ACCOUNT_DISABLED';
         const invalidRole = res.status === 403 && json && json.code === 'INVALID_ROLE';
+        const passwordChanged = res.status === 401 && json && json.code === 'PASSWORD_CHANGED';
         if (res.status === 401 || disabled || invalidRole) {
           console.error('[AssetAPI] Auth failure', {
             path,
@@ -13024,6 +13032,9 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
           }
           if (invalidRole) {
             throw new Error('Your account role is not valid. Please contact an administrator.');
+          }
+          if (passwordChanged) {
+            throw new Error('Your password was changed. Please sign in again.');
           }
           throw new Error((json && json.error) || 'Session expired. Please sign in again.');
         }

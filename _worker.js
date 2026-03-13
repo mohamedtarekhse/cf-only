@@ -107,6 +107,22 @@ async function verifyJwt(token, secret) {
   return payload;
 }
 
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function isMissingColumnError(error, column='password_changed_at') {
+  const msg = String(error?.message || error || '');
+  return msg.toLowerCase().includes(String(column).toLowerCase()) && /column|schema cache/i.test(msg);
+}
+
+function parseTimestampSeconds(value) {
+  if (!value) return null;
+  const ms = Date.parse(String(value));
+  if (!Number.isFinite(ms)) return null;
+  return Math.floor(ms / 1000);
+}
+
 function userHeaders(anonKey, userJwt, extra={}) {
   return {
     'apikey': anonKey,
@@ -252,15 +268,26 @@ async function resolveRequestUserStatus(base, auth, ctx) {
   const email = rawEmail.toLowerCase();
   const userId = String(ctx?.reqUserId || '').trim();
   const tables = ['app_users'];
+  const selectWithPasswordChange = 'id,email,active,password_changed_at';
+  const selectBasic = 'id,email,active';
+
+  async function getStatus(opts) {
+    const first = await sbGetCore(base, auth, opts.table, {
+      ...opts,
+      select: selectWithPasswordChange,
+      bypass: true
+    }, ctx);
+    if (!first.error || !isMissingColumnError(first.error)) return first;
+    return await sbGetCore(base, auth, opts.table, {
+      ...opts,
+      select: selectBasic,
+      bypass: true
+    }, ctx);
+  }
 
   for (const table of tables) {
     if (userId) {
-      const byId = await sbGetCore(base, auth, table, {
-        select: 'id,email,active',
-        filters: { id: `eq.${userId}` },
-        single: true,
-        bypass: true
-      }, ctx);
+      const byId = await getStatus({ table, filters: { id: `eq.${userId}` }, single: true });
       if (!byId.error && byId.data) {
         return { user: byId.data, source: table, error: null };
       }
@@ -269,24 +296,18 @@ async function resolveRequestUserStatus(base, auth, ctx) {
     if (rawEmail) {
       const exactVariants = [...new Set([rawEmail, email].filter(Boolean))];
       for (const candidate of exactVariants) {
-        const exact = await sbGetCore(base, auth, table, {
-          select: 'id,email,active',
-          filters: { email: `eq.${candidate}` },
-          single: true,
-          bypass: true
-        }, ctx);
+        const exact = await getStatus({ table, filters: { email: `eq.${candidate}` }, single: true });
         if (!exact.error && exact.data) {
           return { user: exact.data, source: table, error: null };
         }
       }
 
-      const fuzzy = await sbGetCore(base, auth, table, {
-        select: 'id,email,active',
+      const fuzzy = await getStatus({
+        table,
         filters: { email: `ilike.*${email}*` },
         order: 'email.asc',
-        limit: 25,
-        bypass: true
-      }, ctx);
+        limit: 25
+      });
       if (fuzzy.error) {
         return { user: null, source: null, error: fuzzy.error };
       }
@@ -357,6 +378,10 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     }
     if (status.user.active === false) {
       return respond({ success:false, code:'ACCOUNT_DISABLED', error:'Account is deactivated' }, 403);
+    }
+    const passwordChangedAtSec = parseTimestampSeconds(status.user.password_changed_at);
+    if (passwordChangedAtSec && typeof claims.iat === 'number' && claims.iat < passwordChangedAtSec) {
+      return respond({ success:false, code:'PASSWORD_CHANGED', error:'Session expired because your password was changed' }, 401);
     }
     ctx.reqActive = status.user.active !== false;
   } else {
@@ -741,28 +766,46 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       const newPassword = String(body.new_password || '').trim();
       if (newPassword.length < 4) return respond({ success:false, error:'new_password must be at least 4 characters' }, 400);
       const hashed = await hashPassword(SB, dbAuth, newPassword, BCRYPT_COST, ctx);
-      const r = await sbPatch(SB, KEY, 'app_users', { id:`eq.${id}` }, { password: hashed });
+      let r = await sbPatch(SB, KEY, 'app_users', { id:`eq.${id}` }, { password: hashed, password_changed_at: nowIso() });
+      if (r?.error && isMissingColumnError(r.error)) {
+        r = await sbPatch(SB, KEY, 'app_users', { id:`eq.${id}` }, { password: hashed });
+      }
       if (r?.error) return err500(r.error);
-      return respond({ success:true, data:{ id, password_updated:true } });
+      return respond({ success:true, data:{ id, password_updated:true, session_revoked:true } });
     }
     if(method==='POST') {
       const payload = { ...body };
-      if (typeof payload.password === 'string' && payload.password.trim()) {
+      const hadPassword = typeof payload.password === 'string' && payload.password.trim();
+      if (hadPassword) {
         payload.password = await hashPassword(SB, dbAuth, payload.password, BCRYPT_COST, ctx);
+        payload.password_changed_at = nowIso();
       } else {
         delete payload.password;
       }
-      const r = await sbPost(SB, KEY, 'app_users', payload);
+      let r = await sbPost(SB, KEY, 'app_users', payload);
+      if (r?.error && hadPassword && isMissingColumnError(r.error)) {
+        delete payload.password_changed_at;
+        r = await sbPost(SB, KEY, 'app_users', payload);
+      }
       if (r?.data) delete r.data.password;
       return ok(r);
     }
     if(method==='PUT')  {
       const {id:_,created_at,updated_at,...u}=body;
+      const hadPassword = typeof u.password === 'string' && u.password.trim();
       if (typeof u.password === 'string') {
-        if (u.password.trim()) u.password = await hashPassword(SB, dbAuth, u.password, BCRYPT_COST, ctx);
-        else delete u.password;
+        if (hadPassword) {
+          u.password = await hashPassword(SB, dbAuth, u.password, BCRYPT_COST, ctx);
+          u.password_changed_at = nowIso();
+        } else {
+          delete u.password;
+        }
       }
-      const r = await sbPatch(SB,KEY,'app_users',{id:`eq.${id}`},u);
+      let r = await sbPatch(SB,KEY,'app_users',{id:`eq.${id}`},u);
+      if (r?.error && hadPassword && isMissingColumnError(r.error)) {
+        delete u.password_changed_at;
+        r = await sbPatch(SB,KEY,'app_users',{id:`eq.${id}`},u);
+      }
       if (r?.data) delete r.data.password;
       return ok(r);
     }
