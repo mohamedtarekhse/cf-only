@@ -408,6 +408,8 @@ async function router(path, method, url, request, SB, KEY, env={}) {
   const perm = {
     canView:    true,
     canAdd:     R === 'Admin',
+    canAddProjects: R === 'Admin' || MANAGER_TIER.includes(R),
+    canAddTransfers: R === 'Admin' || MANAGER_TIER.includes(R),
     canEdit:    ['Admin','Engineer','Assistant'].includes(R),
     canDelete:  ['Admin','Assistant'].includes(R),
     canApproveStage1: ['Admin','Manager','Superintendent'].includes(R),
@@ -417,16 +419,188 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     isAdmin:    R === 'Admin',
   };
   perm.canApprove = perm.canApproveStage1 || perm.canApproveStage2 || perm.canApproveStage3;
+  perm.canReviewDeleteRequests = R === 'Admin' || MANAGER_TIER.includes(R);
+
+  const DELETE_REQUEST_RESOURCES = {
+    assets: { table: 'assets', idColumn: 'asset_id', labelFields: ['name', 'asset_id'] },
+    contracts: { table: 'contracts', idColumn: 'id', labelFields: ['id'] },
+    rigs: { table: 'rigs', idColumn: 'id', labelFields: ['name', 'id'] },
+    projects: { table: 'projects', idColumn: 'project_id', labelFields: ['description', 'project_id'] },
+    inspections: { table: 'inspections', idColumn: 'id', labelFields: ['inspection_type', 'id'] },
+    workshops: { table: 'workshops', idColumn: 'workshop_id', labelFields: ['name', 'workshop_id'] },
+    bom: { table: 'bom_items', idColumn: 'id', labelFields: ['name', 'part_no', 'id'] },
+    maintenance: { table: 'maintenance_schedules', idColumn: 'id', labelFields: ['task', 'asset_id', 'id'] },
+    certificates: { table: 'certificates', idColumn: 'cert_id', labelFields: ['name', 'cert_id'] },
+  };
+
+  function firstMeaningful(row, fields, fallback) {
+    for (const field of fields) {
+      const value = String(row?.[field] ?? '').trim();
+      if (value) return value;
+    }
+    return fallback;
+  }
+
+  function buildDeleteRequestLabel(resource, row, recordId) {
+    const fallback = `${resource}:${recordId}`;
+    const cfg = DELETE_REQUEST_RESOURCES[resource];
+    if (!cfg || !row) return fallback;
+    const primary = firstMeaningful(row, cfg.labelFields, recordId);
+    if (resource === 'assets') return `${primary} (${recordId})`;
+    if (resource === 'projects' && row?.project_id) return `${primary} (${row.project_id})`;
+    if (resource === 'workshops' && row?.workshop_id) return `${primary} (${row.workshop_id})`;
+    if (resource === 'certificates' && row?.cert_id) return `${primary} (${row.cert_id})`;
+    return primary;
+  }
+
+  async function createDeleteRequest(resource, recordId, reason='') {
+    const cfg = DELETE_REQUEST_RESOURCES[resource];
+    if (!cfg) return { error: { message: `Delete approval is not configured for ${resource}.` } };
+
+    const target = await sbGetBypass(SB, KEY, cfg.table, {
+      filters: { [cfg.idColumn]: `eq.${recordId}` },
+      single: true,
+      bypass: true
+    }, ctx);
+    if (target.error || !target.data) {
+      return { error: { message: `Record not found for ${resource}:${recordId}` } };
+    }
+
+    const existing = await sbGetBypass(SB, KEY, 'delete_requests', {
+      filters: {
+        resource: `eq.${resource}`,
+        record_id: `eq.${recordId}`,
+        status: 'eq.Pending'
+      },
+      order: 'created_at.desc',
+      limit: 1,
+      bypass: true
+    }, ctx);
+    if (!existing.error && Array.isArray(existing.data) && existing.data.length) {
+      return { data: existing.data[0], existing: true };
+    }
+
+    const requesterName = ctx.reqName || ctx.reqEmail || ctx.reqUserId || 'Unknown';
+    const payload = {
+      resource,
+      record_id: recordId,
+      record_label: buildDeleteRequestLabel(resource, target.data, recordId),
+      requested_by_user_id: ctx.reqUserId || null,
+      requested_by_name: requesterName,
+      requested_by_role: ctx.reqRole || 'Assistant',
+      reason: String(reason || '').trim() || null,
+      status: 'Pending'
+    };
+    const created = await sbPostBypass(SB, KEY, 'delete_requests', payload);
+    if (created.error) return created;
+    return { data: created.data };
+  }
+
+  async function reviewDeleteRequest(requestId, action, comment='') {
+    const reqRow = await sbGetBypass(SB, KEY, 'delete_requests', {
+      filters: { id: `eq.${requestId}` },
+      single: true,
+      bypass: true
+    }, ctx);
+    if (reqRow.error || !reqRow.data) {
+      return { error: { message: 'Delete request not found.' } };
+    }
+    if (reqRow.data.status !== 'Pending') {
+      return { error: { message: `Delete request is already ${String(reqRow.data.status || '').toLowerCase()}.` } };
+    }
+
+    const decision = String(action || '').toLowerCase();
+    if (!['approve', 'reject'].includes(decision)) {
+      return { error: { message: 'Invalid delete review action.' } };
+    }
+
+    if (decision == 'approve') {
+      const cfg = DELETE_REQUEST_RESOURCES[reqRow.data.resource];
+      if (!cfg) return { error: { message: 'Delete request resource is not supported.' } };
+      if (reqRow.data.resource === 'bom') {
+        const tree = await sbGetBypass(SB, KEY, cfg.table, { order: 'created_at.desc', limit: 5000, bypass: true }, ctx);
+        if (tree.error) return tree;
+        const rows = Array.isArray(tree.data) ? tree.data : [];
+        const collectIds = (parentId) => [
+          parentId,
+          ...rows
+            .filter(item => String(item?.parent_id || '') === String(parentId))
+            .flatMap(item => collectIds(item.id))
+        ];
+        const ids = [...new Set(collectIds(reqRow.data.record_id))].reverse();
+        for (const bomId of ids) {
+          const del = await sbDeleteBypass(SB, KEY, cfg.table, { [cfg.idColumn]: `eq.${bomId}` });
+          if (del.error) return del;
+        }
+      } else {
+        const del = await sbDeleteBypass(SB, KEY, cfg.table, { [cfg.idColumn]: `eq.${reqRow.data.record_id}` });
+        if (del.error) return del;
+      }
+    }
+
+    const patch = {
+      status: decision === 'approve' ? 'Approved' : 'Rejected',
+      reviewed_by_user_id: ctx.reqUserId || null,
+      reviewed_by_name: ctx.reqName || ctx.reqEmail || 'Unknown',
+      reviewed_at: new Date().toISOString(),
+      review_comment: String(comment || '').trim() || null,
+    };
+    const updated = await sbPatchBypass(SB, KEY, 'delete_requests', { id: `eq.${requestId}` }, patch);
+    if (updated.error) return updated;
+    return { data: updated.data };
+  }
 
   // ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Global method-level permission guards ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
   // Must run after perm is built and after res/id/act are declared.
   if (res !== 'auth' && method !== 'GET' && method !== 'OPTIONS') {
-    if (method === 'POST'   && !perm.canAdd)    return forbidden(ctx, 'create records');
+    if (method === 'POST') {
+      const canCreateThisRoute =
+        perm.canAdd ||
+        (res === 'projects' && !id && perm.canAddProjects) ||
+        (res === 'transfers' && !id && perm.canAddTransfers) ||
+        (res === 'delete-requests' && !id && R === 'Assistant') ||
+        (res === 'delete-requests' && id && act === 'review' && perm.canReviewDeleteRequests);
+      if (!canCreateThisRoute) return forbidden(ctx, 'create records');
+    }
     if (method === 'DELETE' && !perm.canDelete) return forbidden(ctx, 'delete records');
     if ((method === 'PUT' || method === 'PATCH') && !perm.canEdit) return forbidden(ctx, 'edit records');
   }
   // Transfer approve endpoint requires canApprove (stage check is inside the handler)
   if (res === 'transfers' && act === 'approve' && !perm.canApprove) return forbidden(ctx, 'approve transfers');
+
+  if (method === 'DELETE' && R === 'Assistant' && res !== 'delete-requests' && DELETE_REQUEST_RESOURCES[res] && id) {
+    const requested = await createDeleteRequest(res, id, body?.reason || '');
+    if (requested.error) return err500(requested.error);
+    return respond({ success:true, data:{ delete_request:true, request: requested.data, existing: !!requested.existing } }, 202);
+  }
+
+  if (res === 'delete-requests') {
+    if (method === 'GET' && !id) {
+      if (perm.canReviewDeleteRequests) {
+        return ok(await sbGetBypass(SB, KEY, 'delete_requests', { order: 'created_at.desc', limit: +(q.get('limit') || 200), bypass: true }, ctx));
+      }
+      if (R === 'Assistant') {
+        return ok(await sbGetBypass(SB, KEY, 'delete_requests', {
+          filters: { requested_by_user_id: `eq.${ctx.reqUserId}` },
+          order: 'created_at.desc',
+          limit: +(q.get('limit') || 100),
+          bypass: true
+        }, ctx));
+      }
+      return respond({ success:true, data:[] }, 200);
+    }
+    if (method === 'POST' && !id) {
+      const requested = await createDeleteRequest(String(body.resource || ''), String(body.record_id || ''), body.reason || '');
+      if (requested.error) return err500(requested.error);
+      return respond({ success:true, data:{ delete_request:true, request: requested.data, existing: !!requested.existing } }, 202);
+    }
+    if (method === 'POST' && id && act === 'review') {
+      if (!perm.canReviewDeleteRequests) return forbidden(ctx, 'review delete requests');
+      const reviewed = await reviewDeleteRequest(id, body.action, body.comment || '');
+      if (reviewed.error) return err500(reviewed.error);
+      return ok(reviewed);
+    }
+  }
 
   // AUTH (server-side password check; never expose password field to client)
   if (res === 'auth' && id === 'login' && method === 'POST') {

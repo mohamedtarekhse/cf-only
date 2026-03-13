@@ -3679,7 +3679,7 @@ function showLoginError(msg) {
           <div class="card-header">
             <span class="card-title"><i class="fas fa-layer-group" style="color:var(--sap-blue)"></i> Projects <span
                 class="record-count" id="prjCount"></span></span>
-            <button class="btn btn-primary" onclick="openProjectModal()"><i class="fas fa-plus"></i> New
+            <button id="btnNewProject" class="btn btn-primary" onclick="openProjectModal()"><i class="fas fa-plus"></i> New
               Project</button>
             <button class="btn btn-secondary" onclick="exportProjectsExcel()"><i class="fas fa-file-excel"></i> Export
               Excel</button>
@@ -5475,7 +5475,7 @@ Asset Management System</textarea>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeModal('assetDetailModal')">Close</button>
         <button class="btn btn-ghost" onclick="openEmailModal()"><i class="fas fa-envelope"></i> Send Alert</button>
-        <button class="btn btn-warning" onclick="openTransferModal(currentAsset?.assetId)"
+        <button id="assetDetailTransferBtn" class="btn btn-warning" onclick="openTransferModal(currentAsset?.assetId)"
           style="background:#E9730C;color:#fff;border-color:#E9730C"><i class="fas fa-exchange-alt"></i> Transfer
           Asset</button>
         <button id="assetDetailEditBtn" class="btn btn-primary" onclick="editCurrentAsset()"><i class="fas fa-edit"></i>
@@ -9394,7 +9394,8 @@ This cannot be undone.`)) return;
       if (!confirm(`Delete contract "${id}"?  This cannot be undone.`)) return;
       try {
         if (typeof DELETE !== 'undefined') {
-          await DELETE(`/contracts/${id}`);
+          const res = await DELETE(`/contracts/${id}`);
+          if (!handleDeleteResult(res, `Delete request submitted for contract ${id}.`)) return;
         }
         CONTRACTS.splice(CONTRACTS.findIndex(x => x.id === id), 1);
         applyContractFilters();
@@ -9413,7 +9414,8 @@ This cannot be undone.`)) return;
       if (!confirm(`Delete rig "${r.name}"?${warning}\n\nThis cannot be undone.`)) return;
       try {
         if (typeof DELETE !== 'undefined') {
-          await DELETE(`/rigs/${id}`);
+          const res = await DELETE(`/rigs/${id}`);
+          if (!handleDeleteResult(res, `Delete request submitted for rig ${id}.`)) return;
         }
         RIGS.splice(RIGS.findIndex(x => x.id === id), 1);
         renderRigs();
@@ -9564,22 +9566,88 @@ This cannot be undone.`)) return;
     }
     //  NOTIFICATIONS
     // ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
+    function normalizeDeleteRequestNotice(req) {
+      const status = String(req.status || 'Pending');
+      const statusTone = status === 'Approved' ? 'green' : status === 'Rejected' ? 'red' : 'orange';
+      return {
+        id: req.id,
+        deleteRequest: true,
+        requestId: req.id,
+        resource: req.resource,
+        recordId: req.record_id,
+        recordLabel: req.record_label,
+        requestedBy: req.requested_by_name,
+        requestedByRole: req.requested_by_role,
+        reviewComment: req.review_comment || '',
+        status,
+        icon: 'fas fa-trash-alt',
+        type: 'ni-' + statusTone,
+        title: `Delete Request: ${req.record_label || req.record_id}`,
+        desc: status === 'Pending'
+          ? `${req.requested_by_name || 'Assistant'} requested deletion of ${req.record_label || req.record_id}.`
+          : `${req.record_label || req.record_id} delete request ${status.toLowerCase()} by ${req.reviewed_by_name || 'manager'}.`,
+        time: req.created_at ? new Date(req.created_at).toLocaleString() : 'Just now',
+        read: status !== 'Pending',
+        is_read: status !== 'Pending'
+      };
+    }
+
+    function upsertDeleteRequestNotice(req) {
+      const notice = normalizeDeleteRequestNotice(req);
+      const idx = NOTIFICATIONS.findIndex(n => n.deleteRequest && n.requestId === req.id);
+      if (idx >= 0) NOTIFICATIONS[idx] = { ...NOTIFICATIONS[idx], ...notice };
+      else NOTIFICATIONS.unshift(notice);
+      renderNotifications();
+    }
+
+    function deleteRequestMeta(n) {
+      if (!n.deleteRequest) return n.time || '';
+      if (n.status === 'Pending') return `Pending approval | Requested by ${n.requestedBy || 'Assistant'}`;
+      if (n.status === 'Approved') return `Approved | ${n.reviewComment || 'Delete completed'}`;
+      return `Rejected | ${n.reviewComment || 'Delete request declined'}`;
+    }
+
+    async function reviewDeleteRequest(requestId, action) {
+      const label = action === 'approve' ? 'approve' : 'reject';
+      const comment = window.prompt(action === 'approve' ? 'Approval comment (optional)' : 'Rejection reason (optional)') || '';
+      try {
+        const res = await POST(`/delete-requests/${requestId}/review`, { action, comment });
+        const row = Array.isArray(res.data) ? res.data[0] : res.data;
+        if (row) upsertDeleteRequestNotice(row);
+        showToast(action === 'approve' ? 'Delete request approved and record removed.' : 'Delete request rejected.', action === 'approve' ? 'success' : 'warning');
+        await bootstrap();
+      } catch (e) {
+        showToast('Delete review failed: ' + e.message, 'error');
+      }
+    }
+
     function renderNotifications() {
-      document.getElementById('notifList').innerHTML = NOTIFICATIONS.map((n, i) => `
+      document.getElementById('notifList').innerHTML = NOTIFICATIONS.map((n, i) => {
+        const actions = n.deleteRequest && n.status === 'Pending' && canReviewDeleteRequests()
+          ? `<div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-primary" style="height:28px;font-size:11px" onclick="event.stopPropagation();reviewDeleteRequest('${n.requestId}','approve')">Approve</button><button class="btn btn-secondary" style="height:28px;font-size:11px" onclick="event.stopPropagation();reviewDeleteRequest('${n.requestId}','reject')">Reject</button></div>`
+          : '';
+        return `
     <div class="notif-item ${n.read ? '' : 'unread'}" onclick="markRead(${i})">
       <div class="notif-icon-wrap ${n.type}"><i class="${n.icon}"></i></div>
       <div class="notif-body">
         <div class="notif-title">${n.title}</div>
         <div class="notif-desc">${n.desc}</div>
-        <div class="notif-time">${n.time}</div>
+        <div class="notif-time">${deleteRequestMeta(n)}</div>
+        ${actions}
       </div>
-    </div>`).join('');
+    </div>`;
+      }).join('');
       const unread = NOTIFICATIONS.filter(n => !n.read).length;
       const badge = document.getElementById('notifBadge');
       badge.textContent = unread;
       badge.style.display = unread ? '' : 'none';
     }
-    function markRead(i) { NOTIFICATIONS[i].read = true; renderNotifications(); }
+    function markRead(i) {
+      if (!NOTIFICATIONS[i]) return;
+      NOTIFICATIONS[i].read = true;
+      NOTIFICATIONS[i].is_read = true;
+      renderNotifications();
+    }
     function toggleNotif() {
       const p = document.getElementById('notifPanel');
       p.classList.toggle('open');
@@ -10279,6 +10347,11 @@ This cannot be undone.`)) return;
 
     // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ OPEN TRANSFER MODAL ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
     function openTransferModal(assetId) {
+      if (!canAddTransfer()) {
+        showToast('Your role can view transfers, but only manager-tier roles and admins can create them.', 'error');
+        return;
+      }
+
       // Close detail popup if open
       closeModal('assetDetailModal');
 
@@ -11892,9 +11965,12 @@ This cannot be undone.`)) return;
     // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ CRUD ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
     function canView()             { return true; }
     function canAdd()              { return isAdmin(); }
+    function canAddProject()       { return isAdmin() || isManagerTier(); }
+    function canAddTransfer()      { return isAdmin() || isManagerTier(); }
     function canEdit()             { return isAdmin() || isEngineer() || isAssistant(); }
     function canDelete()           { return isAdmin() || isAssistant(); }
     function deleteNeedsApproval() { return isAssistant(); }
+    function canReviewDeleteRequests() { return isAdmin() || isManagerTier(); }
     function canImport()           { return isAdmin(); }
 
     // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Transfer approval (3-stage) ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
@@ -11917,11 +11993,20 @@ This cannot be undone.`)) return;
       // Add/New buttons: Admin only
       [
         'btnNewAsset', 'btnNewContract', 'btnNewRig',
-        'btnAddUser', 'btnAddBOM', 'btnNewTransfer', 'btnNewSchedule', 'btnNewCert'
+        'btnAddUser', 'btnAddBOM', 'btnNewSchedule', 'btnNewCert'
       ].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = canAdd() ? '' : 'none';
       });
+
+      const newTransferBtn = document.getElementById('btnNewTransfer');
+      if (newTransferBtn) newTransferBtn.style.display = canAddTransfer() ? '' : 'none';
+
+      const newProjectBtn = document.getElementById('btnNewProject');
+      if (newProjectBtn) newProjectBtn.style.display = canAddProject() ? '' : 'none';
+
+      const assetTransferBtn = document.getElementById('assetDetailTransferBtn');
+      if (assetTransferBtn) assetTransferBtn.style.display = canAddTransfer() ? '' : 'none';
 
       // Edit buttons: Admin, Engineer, Assistant
       document.querySelectorAll('.btn-icon').forEach(b => {
@@ -11942,15 +12027,15 @@ This cannot be undone.`)) return;
       const roleBadge = document.getElementById('shellUserRole');
       if (roleBadge) {
         const roleLabels = {
-          'Admin':               'Admin  ?  Full Access',
-          'Manager':             'Manager  ?  Approve & View',
-          'Superintendent':      'Superintendent  ?  Stage 1 Approval',
-          'Drilling Manager':    'Drilling Manager  ?  Stage 2 Approval',
-          'Asset Manager':       'Asset Manager  ?  Stage 3 Approval',
-          'Maintenance Manager': 'Maintenance Manager  ?  View',
-          'Project Manager':     'Project Manager  ?  View',
-          'Engineer':            'Engineer  ?  Edit & View',
-          'Assistant':           'Assistant  ?  Edit & Delete',
+          'Admin':               'Admin | Full Access',
+          'Manager':             'Manager | Approve + Add Project/Transfer',
+          'Superintendent':      'Superintendent | Stage 1 + Add Project/Transfer',
+          'Drilling Manager':    'Drilling Manager | Stage 2 + Add Project/Transfer',
+          'Asset Manager':       'Asset Manager | Stage 3 + Add Project/Transfer',
+          'Maintenance Manager': 'Maintenance Manager | View + Add Project/Transfer',
+          'Project Manager':     'Project Manager | View + Add Project/Transfer',
+          'Engineer':            'Engineer | Edit and View',
+          'Assistant':           'Assistant | Edit + Delete Request',
         };
         roleBadge.textContent = roleLabels[getRole()] || getRole();
       }
@@ -13051,6 +13136,15 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
       const PATCH = (p, b) => api(p, { method: 'PATCH', body: JSON.stringify(b) });
       const DELETE = (p) => api(p, { method: 'DELETE' });
 
+      function handleDeleteResult(result, requestMessage) {
+        if (result?.data?.delete_request) {
+          if (result.data.request) upsertDeleteRequestNotice(result.data.request);
+          showToast(requestMessage || 'Delete request submitted for manager approval.', 'info');
+          return false;
+        }
+        return true;
+      }
+
       // ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
       //  NORMALISERS  (API snake_case  ->  App camelCase)
       // ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
@@ -13166,7 +13260,7 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
         try {
           showToast('Connecting to database...', 'info');
 
-          const [aR, rR, wsR, conR, mR, tR, cR, bR, uR, nR, prjR, inspR] = await Promise.all([
+          const [aR, rR, wsR, conR, mR, tR, cR, bR, uR, nR, drR, prjR, inspR] = await Promise.all([
             GET('/assets', { limit: 500 }),
             GET('/rigs'),
             GET('/workshops', { limit: 500 }),
@@ -13177,6 +13271,7 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
             GET('/bom', { limit: 1000 }),
             GET('/users'),
             GET('/notifications'),
+            GET('/delete-requests', { limit: 200 }),
             GET('/projects', { limit: 500 }),
             GET('/inspections', { limit: 1000 }),
           ]);
@@ -13197,9 +13292,11 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
           refill(USERS, uR.data || []);
           if (typeof PROJECTS !== 'undefined') refill(PROJECTS, (prjR.data || []).map(normP));
           if (typeof INSPECTIONS !== 'undefined') refill(INSPECTIONS, (inspR.data || []).map(normInsp));
-          refill(NOTIFICATIONS, (nR.data || []).map(n => ({
+          const liveNotifications = (nR.data || []).map(n => ({
             ...n, type: 'ni-' + n.kind, desc: n.description, read: n.is_read
-          })));
+          }));
+          const deleteRequestNotifications = (drR.data || []).map(normalizeDeleteRequestNotice);
+          refill(NOTIFICATIONS, [...deleteRequestNotifications, ...liveNotifications]);
 
           rerenderAll();
           if (typeof runAllAlertRules === 'function') runAllAlertRules(true);
@@ -13259,7 +13356,8 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
       window.deleteWorkshop = async function (id) {
         if (!confirm('Delete workshop ' + id + '? This cannot be undone.')) return;
         try {
-          await DELETE('/workshops/' + id);
+          const res = await DELETE('/workshops/' + id);
+          if (!handleDeleteResult(res, `Delete request submitted for workshop ${id}.`)) return;
           const i = WORKSHOPS.findIndex(w => w.workshopId === id);
           if (i >= 0) WORKSHOPS.splice(i, 1);
           renderWorkshops();
@@ -13304,7 +13402,7 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
         if (String(conf) !== p) { showToast('Passwords do not match.', 'error'); return; }
         try {
           await POST('/users/' + encodeURIComponent(u.id) + '/reset-password', { new_password: p });
-          showToast('Password reset for ' + (u.name || u.email || 'user') + ' completed.', 'success');
+          showToast('Password reset for ' + (u.name || u.email || 'user') + ' completed. User will be signed out on next request.', 'success');
         } catch (e) {
           showToast('Reset failed: ' + (e.message || e), 'error');
         }
@@ -13416,7 +13514,8 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
       window.deleteAsset = async function (id) {
         if (!confirm('Delete asset ' + id + '? This cannot be undone.')) return;
         try {
-          await DELETE(`/assets/${id}`);
+          const res = await DELETE(`/assets/${id}`);
+          if (!handleDeleteResult(res, `Delete request submitted for asset ${id}.`)) return;
           refill(ASSETS, ASSETS.filter(a => a.assetId !== id));
           filteredAssets = ASSETS.slice();
           rerender('renderAssets', 'updateKPIs');
@@ -13481,11 +13580,16 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
         }
         const toDelete = collectIds(id);
         try {
-          await Promise.all(toDelete.map(did => DELETE(`/bom/${did}`)));
-          refill(BOM_ITEMS, BOM_ITEMS.filter(b => !toDelete.includes(b.id)));
-          showToast(`Deleted "${item?.name}" and ${toDelete.length - 1} sub-component(s).`, 'warning');
-          rerender('renderBOMSection', 'populateBomSelects');
-          if (currentAsset) renderPopupBOM(currentAsset.assetId);
+          if (deleteNeedsApproval()) {
+            const res = await DELETE(`/bom/${id}`);
+            if (!handleDeleteResult(res, `Delete request submitted for BOM item ${item?.name || id}.`)) return;
+          } else {
+            await Promise.all(toDelete.map(did => DELETE(`/bom/${did}`)));
+            refill(BOM_ITEMS, BOM_ITEMS.filter(b => !toDelete.includes(b.id)));
+            showToast(`Deleted "${item?.name}" and ${toDelete.length - 1} sub-component(s).`, 'warning');
+            rerender('renderBOMSection', 'populateBomSelects');
+            if (currentAsset) renderPopupBOM(currentAsset.assetId);
+          }
         } catch (e) { showToast('Delete failed: ' + e.message, 'error'); }
       };
 
@@ -13583,7 +13687,8 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
         const m = MAINT_SCHEDULES.find(x => x.id === id);
         if (!confirm(`Delete maintenance schedule "${m?.task}"?`)) return;
         try {
-          await DELETE(`/maintenance/${id}`);
+          const res = await DELETE(`/maintenance/${id}`);
+          if (!handleDeleteResult(res, 'Delete request submitted for maintenance schedule approval.')) return;
           refill(MAINT_SCHEDULES, MAINT_SCHEDULES.filter(x => x.id !== id));
           rerender('renderMaintenance', 'updateMaintKPIs');
           showToast('Schedule deleted.', 'warning');
@@ -13615,6 +13720,11 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
       //  OVERRIDE: submitTransferRequest()
       // ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
       window.submitTransferRequest = async function () {
+        if (!canAddTransfer()) {
+          showToast('Your role can view transfers, but only manager-tier roles and admins can create them.', 'error');
+          return;
+        }
+
         const assetId = document.getElementById('tr_asset').value;
         const destination = document.getElementById('tr_destination').value.trim();
         const reason = document.getElementById('tr_reason').value.trim();
@@ -13769,7 +13879,8 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
       window.deleteCert = async function (certId) {
         if (!confirm('Delete this certificate record?')) return;
         try {
-          await DELETE(`/certificates/${certId}`);
+          const res = await DELETE(`/certificates/${certId}`);
+          if (!handleDeleteResult(res, `Delete request submitted for certificate ${certId}.`)) return;
           refill(CERTIFICATES, CERTIFICATES.filter(c => c.certId !== certId));
           rerender('renderCertificates', 'updateCertKPIs');
           showToast('Certificate deleted.', 'warning');
@@ -13824,7 +13935,8 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
         if (!rig) return;
         if (!confirm(`Delete rig "${rig.name}"? This cannot be undone.`)) return;
         try {
-          await DELETE(`/rigs/${id}`);
+          const res = await DELETE(`/rigs/${id}`);
+          if (!handleDeleteResult(res, `Delete request submitted for rig ${id}.`)) return;
           RIGS.splice(RIGS.findIndex(r => r.id === id), 1);
           if (typeof renderRigs === 'function') renderRigs();
           if (typeof populateFormSelects === 'function') populateFormSelects();
@@ -13869,7 +13981,8 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
         if (!c) return;
         if (!confirm(`Delete contract "${id}"? This cannot be undone.`)) return;
         try {
-          await DELETE(`/contracts/${id}`);
+          const res = await DELETE(`/contracts/${id}`);
+          if (!handleDeleteResult(res, `Delete request submitted for contract ${id}.`)) return;
           CONTRACTS.splice(CONTRACTS.findIndex(x => x.id === id), 1);
           if (typeof applyContractFilters === 'function') applyContractFilters();
           else if (typeof renderContracts === 'function') renderContracts();
@@ -13879,6 +13992,11 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
 
       // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ PROJECT save/delete ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
       window.saveProject = async function () {
+        if (!window._prjEditId && !canAddProject()) {
+          showToast('Your role can view projects, but only manager-tier roles and admins can create them.', 'error');
+          return;
+        }
+
         let id = (document.getElementById('prj_editId').value || document.getElementById('prj_id').value).trim();
         const description = document.getElementById('prj_desc').value.trim();
         if (!description) { showToast('Project Description is required.', 'error'); return; }
@@ -13924,7 +14042,8 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
         if (!p) return;
         if (!silent && !confirm(`Delete project "${p.description || id}"? This cannot be undone.`)) return;
         try {
-          await DELETE(`/projects/${id}`);
+          const res = await DELETE(`/projects/${id}`);
+          if (!handleDeleteResult(res, `Delete request submitted for project ${p?.description || id}.`)) return;
           PROJECTS.splice(PROJECTS.findIndex(x => x.projectId === id), 1);
           filteredProjects = [...PROJECTS];
           if (typeof applyProjectFilters === 'function') applyProjectFilters();
@@ -13972,7 +14091,8 @@ ${insp.inspectionType} ? ${insp.startDate}
 
 This cannot be undone.`)) return;
         try {
-          await DELETE(`/inspections/${id}`);
+          const res = await DELETE(`/inspections/${id}`);
+          if (!handleDeleteResult(res, `Delete request submitted for inspection ${insp?.inspectionType || id}.`)) return;
           INSPECTIONS.splice(INSPECTIONS.findIndex(x => x.id === id), 1);
           filteredInspections = [...INSPECTIONS];
           if (typeof applyInspectionFilters === 'function') applyInspectionFilters();
