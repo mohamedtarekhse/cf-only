@@ -217,6 +217,7 @@ async function signVapidJwt(endpoint, subject, publicKey, privateKey) {
 
 function derToJose(der, size) {
   const bytes = der instanceof Uint8Array ? der : new Uint8Array(der);
+  if (bytes.length === size) return bytes;
   if (bytes[0] !== 0x30) throw new Error('Unexpected DER signature format');
   let offset = 2;
   if (bytes[1] & 0x80) offset = 2 + (bytes[1] & 0x7f);
