@@ -107,6 +107,160 @@ async function verifyJwt(token, secret) {
   return payload;
 }
 
+function utf8Bytes(text) {
+  return new TextEncoder().encode(String(text || ''));
+}
+
+function bytesToBase64(bytes) {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+function base64ToBytes(input) {
+  const binary = atob(String(input || ''));
+  const out = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+  return out;
+}
+
+function base64UrlToBase64(input) {
+  const normalized = String(input || '').replace(/-/g, '+').replace(/_/g, '/');
+  return normalized + '='.repeat((4 - normalized.length % 4) % 4);
+}
+
+function concatBytes(...parts) {
+  const arrays = parts.filter(Boolean).map(part => part instanceof Uint8Array ? part : new Uint8Array(part));
+  const total = arrays.reduce((sum, part) => sum + part.length, 0);
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const part of arrays) {
+    out.set(part, offset);
+    offset += part.length;
+  }
+  return out;
+}
+
+function uint32Bytes(value) {
+  const out = new Uint8Array(4);
+  new DataView(out.buffer).setUint32(0, value >>> 0);
+  return out;
+}
+
+async function sha256(data) {
+  return new Uint8Array(await crypto.subtle.digest('SHA-256', data));
+}
+
+async function hmacSha256Bytes(keyBytes, dataBytes) {
+  const key = await crypto.subtle.importKey('raw', keyBytes, { name:'HMAC', hash:'SHA-256' }, false, ['sign']);
+  return new Uint8Array(await crypto.subtle.sign('HMAC', key, dataBytes));
+}
+
+async function hkdfExtract(saltBytes, ikmBytes) {
+  return hmacSha256Bytes(saltBytes, ikmBytes);
+}
+
+async function hkdfExpand(prkBytes, infoBytes, length) {
+  let prev = new Uint8Array(0);
+  const chunks = [];
+  let generated = 0;
+  let counter = 1;
+  while (generated < length) {
+    prev = await hmacSha256Bytes(prkBytes, concatBytes(prev, infoBytes, Uint8Array.of(counter)));
+    chunks.push(prev);
+    generated += prev.length;
+    counter += 1;
+  }
+  return concatBytes(...chunks).slice(0, length);
+}
+
+function parseVapidPublicKey(publicKey) {
+  const raw = b64urlDecodeBytes(String(publicKey || ''));
+  if (raw.length !== 65 || raw[0] !== 4) throw new Error('VAPID_PUBLIC_KEY must be an uncompressed P-256 public key');
+  return {
+    raw,
+    x: b64urlEncodeBytes(raw.slice(1, 33)),
+    y: b64urlEncodeBytes(raw.slice(33, 65))
+  };
+}
+
+async function importVapidPrivateKey(privateKey, publicKey) {
+  const pub = parseVapidPublicKey(publicKey);
+  return crypto.subtle.importKey(
+    'jwk',
+    {
+      kty: 'EC',
+      crv: 'P-256',
+      d: String(privateKey || ''),
+      x: pub.x,
+      y: pub.y,
+      ext: true
+    },
+    { name:'ECDSA', namedCurve:'P-256' },
+    false,
+    ['sign']
+  );
+}
+
+async function signVapidJwt(endpoint, subject, publicKey, privateKey) {
+  const aud = new URL(endpoint).origin;
+  const now = Math.floor(Date.now() / 1000);
+  const exp = now + 12 * 60 * 60;
+  const header = b64urlEncodeText(JSON.stringify({ alg:'ES256', typ:'JWT' }));
+  const payload = b64urlEncodeText(JSON.stringify({ aud, exp, sub: subject }));
+  const signingInput = `${header}.${payload}`;
+  const key = await importVapidPrivateKey(privateKey, publicKey);
+  const sigDer = new Uint8Array(await crypto.subtle.sign({ name:'ECDSA', hash:'SHA-256' }, key, utf8Bytes(signingInput)));
+  const joseSig = derToJose(sigDer, 64);
+  return `${signingInput}.${b64urlEncodeBytes(joseSig)}`;
+}
+
+function derToJose(der, size) {
+  const bytes = der instanceof Uint8Array ? der : new Uint8Array(der);
+  if (bytes[0] !== 0x30) throw new Error('Unexpected DER signature format');
+  let offset = 2;
+  if (bytes[1] & 0x80) offset = 2 + (bytes[1] & 0x7f);
+  if (bytes[offset] !== 0x02) throw new Error('Unexpected DER signature format');
+  const rLen = bytes[offset + 1];
+  const r = bytes.slice(offset + 2, offset + 2 + rLen);
+  offset = offset + 2 + rLen;
+  if (bytes[offset] !== 0x02) throw new Error('Unexpected DER signature format');
+  const sLen = bytes[offset + 1];
+  const s = bytes.slice(offset + 2, offset + 2 + sLen);
+  const out = new Uint8Array(size);
+  out.set(r.slice(-size / 2), size / 2 - Math.min(r.length, size / 2));
+  out.set(s.slice(-size / 2), size - Math.min(s.length, size / 2));
+  return out;
+}
+
+async function encryptWebPushPayload(subscription, payload) {
+  const userPublicRaw = b64urlDecodeBytes(String(subscription?.keys?.p256dh || ''));
+  const authSecret = b64urlDecodeBytes(String(subscription?.keys?.auth || ''));
+  if (userPublicRaw.length !== 65) throw new Error('Invalid subscription public key');
+  if (!authSecret.length) throw new Error('Invalid subscription auth secret');
+
+  const uaPublicKey = await crypto.subtle.importKey('raw', userPublicRaw, { name:'ECDH', namedCurve:'P-256' }, true, []);
+  const asKeys = await crypto.subtle.generateKey({ name:'ECDH', namedCurve:'P-256' }, true, ['deriveBits']);
+  const asPublicRaw = new Uint8Array(await crypto.subtle.exportKey('raw', asKeys.publicKey));
+  const sharedSecret = new Uint8Array(await crypto.subtle.deriveBits({ name:'ECDH', public: uaPublicKey }, asKeys.privateKey, 256));
+
+  const prkKey = await hkdfExtract(authSecret, sharedSecret);
+  const keyInfo = concatBytes(utf8Bytes('WebPush: info'), Uint8Array.of(0), userPublicRaw, asPublicRaw);
+  const ikm = await hkdfExpand(prkKey, keyInfo, 32);
+
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const contentPrk = await hkdfExtract(salt, ikm);
+  const cek = await hkdfExpand(contentPrk, utf8Bytes('Content-Encoding: aes128gcm\0'), 16);
+  const nonce = await hkdfExpand(contentPrk, utf8Bytes('Content-Encoding: nonce\0'), 12);
+  const plainBytes = concatBytes(utf8Bytes(JSON.stringify(payload || {})), Uint8Array.of(0x02));
+
+  const cekKey = await crypto.subtle.importKey('raw', cek, 'AES-GCM', false, ['encrypt']);
+  const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name:'AES-GCM', iv: nonce, tagLength: 128 }, cekKey, plainBytes));
+
+  const header = concatBytes(salt, uint32Bytes(4096), Uint8Array.of(asPublicRaw.length), asPublicRaw);
+  return concatBytes(header, ciphertext);
+}
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -384,6 +538,220 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     if (!clientId) return '';
     const res = await sbGetBypass(SB, KEY, 'clients', { select: 'id,name', filters: { id: `eq.${clientId}` }, single: true });
     return String(res?.data?.name || '');
+  }
+  function notificationScopeFilters(userId) {
+    const or = userId ? `(user_id.is.null,user_id.eq.${userId})` : '(user_id.is.null)';
+    return { or };
+  }
+  async function findUserByIdentity(identifier, clientId='') {
+    const raw = String(identifier || '').trim();
+    if (!raw) return null;
+    const normalized = raw.toLowerCase();
+    const filters = clientId ? { client_id: `eq.${clientId}` } : {};
+    if (normalized.includes('@')) {
+      const exact = await sbGetBypass(SB, KEY, 'app_users', {
+        select: 'id,email,name,role,active,client_id',
+        filters: { ...filters, email: `eq.${normalized}` },
+        single: true
+      });
+      if (!exact.error && exact.data) return exact.data;
+      const fuzzy = await sbGetBypass(SB, KEY, 'app_users', {
+        select: 'id,email,name,role,active,client_id',
+        filters: { ...filters, email: `ilike.*${normalized}*` },
+        limit: 5
+      });
+      if (!fuzzy.error && Array.isArray(fuzzy.data)) {
+        const match = fuzzy.data.find(u => String(u.email || '').trim().toLowerCase() === normalized);
+        if (match) return match;
+      }
+      return null;
+    }
+    const byName = await sbGetBypass(SB, KEY, 'app_users', {
+      select: 'id,email,name,role,active,client_id',
+      filters: { ...filters, name: `ilike.*${raw}*` },
+      limit: 20
+    });
+    if (byName.error || !Array.isArray(byName.data)) return null;
+    const exactName = byName.data.find(u => String(u.name || '').trim().toLowerCase() === normalized);
+    return exactName || byName.data[0] || null;
+  }
+  function transferEventRoleTargets(eventType) {
+    switch (eventType) {
+      case 'transfer_request':
+        return ['Admin', 'Manager', 'Superintendent'];
+      case 'transfer_stage1':
+        return ['Admin', 'Manager', 'Drilling Manager'];
+      case 'transfer_stage2':
+        return ['Admin', 'Manager', 'Asset Manager'];
+      case 'transfer_stage3':
+      case 'transfer_completed':
+      case 'transfer_rejected':
+      default:
+        return ['Admin', 'Manager'];
+    }
+  }
+  function transferNotificationContent(eventType, transfer, actorName='') {
+    const assetLabel = String(transfer?.asset_name || transfer?.asset_id || 'Asset').trim();
+    const transferId = String(transfer?.id || '').trim();
+    const dest = String(transfer?.destination || transfer?.dest_rig || '').trim();
+    const actor = actorName ? ` by ${actorName}` : '';
+    switch (eventType) {
+      case 'transfer_request':
+        return {
+          title: `Transfer Request ${transferId || ''}`.trim(),
+          description: `${assetLabel} transfer requested${dest ? ` to ${dest}` : ''}.`,
+          kind: 'blue'
+        };
+      case 'transfer_stage1':
+        return {
+          title: `Stage 1 ${String(transfer?.status || '').includes('Reject') ? 'Decision' : 'Approved'}`,
+          description: `${assetLabel} transfer was reviewed${actor}. Current status: ${transfer?.status || 'Updated'}.`,
+          kind: String(transfer?.status || '').toLowerCase().includes('reject') ? 'red' : 'orange'
+        };
+      case 'transfer_stage2':
+        return {
+          title: `Stage 2 Updated`,
+          description: `${assetLabel} transfer moved to ${transfer?.status || 'the next stage'}${actor}.`,
+          kind: String(transfer?.status || '').toLowerCase().includes('reject') ? 'red' : 'orange'
+        };
+      case 'transfer_stage3':
+      case 'transfer_completed':
+        return {
+          title: `Transfer Completed`,
+          description: `${assetLabel} transfer completed${dest ? ` to ${dest}` : ''}${actor}.`,
+          kind: 'green'
+        };
+      case 'transfer_rejected':
+      default:
+        return {
+          title: `Transfer Rejected`,
+          description: `${assetLabel} transfer was rejected${actor}.`,
+          kind: 'red'
+        };
+    }
+  }
+  async function listTransferRecipients(transfer, eventType) {
+    const clientId = String(transfer?.client_id || await lookupAssetClientId(transfer?.asset_id) || await lookupRigClientId(transfer?.dest_rig) || currentClientId()).trim();
+    const targetRoles = new Set(transferEventRoleTargets(eventType));
+    const approvers = await sbGetBypass(SB, KEY, 'app_users', {
+      select: 'id,name,email,role,client_id,active',
+      filters: {
+        client_id: clientId ? `eq.${clientId}` : 'eq.__missing_client__',
+        active: 'eq.true'
+      },
+      limit: 200,
+      order: 'name.asc'
+    });
+    const recipients = [];
+    if (!approvers.error && Array.isArray(approvers.data)) {
+      for (const user of approvers.data) {
+        if (targetRoles.has(String(user.role || ''))) recipients.push(user);
+      }
+    }
+    const requester = await findUserByIdentity(transfer?.requested_by, clientId);
+    if (requester && requester.active !== false) recipients.push(requester);
+    const seen = new Set();
+    return recipients.filter(user => {
+      const key = String(user.id || '');
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+  async function createNotificationForUser(user, payload) {
+    return sbPostBypass(SB, KEY, 'notifications', {
+      title: payload.title,
+      description: payload.description,
+      icon: payload.icon || 'fas fa-exchange-alt',
+      kind: payload.kind || 'blue',
+      link: payload.link || '/?tab=transfers',
+      user_id: user?.id || null,
+      client_id: user?.client_id || payload.client_id || null,
+      event_type: payload.event_type || null,
+      is_read: false
+    });
+  }
+  async function deactivatePushSubscriptionByEndpoint(endpoint) {
+    if (!endpoint) return;
+    await sbPatchBypass(SB, KEY, 'push_subscriptions', { endpoint: `eq.${endpoint}` }, { active: false, updated_at: nowIso() });
+  }
+  async function sendPushToSubscription(subscription, payload) {
+    const publicKey = String(env.VAPID_PUBLIC_KEY || '').trim();
+    const privateKey = String(env.VAPID_PRIVATE_KEY || '').trim();
+    const subject = String(env.VAPID_SUBJECT || 'mailto:admin@example.com').trim();
+    if (!publicKey || !privateKey) return { skipped: true, reason: 'VAPID keys are not configured' };
+    const endpoint = String(subscription?.endpoint || '').trim();
+    if (!endpoint) return { skipped: true, reason: 'Subscription endpoint missing' };
+    try {
+      const body = await encryptWebPushPayload(subscription, payload);
+      const token = await signVapidJwt(endpoint, subject, publicKey, privateKey);
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'TTL': '60',
+          'Urgency': 'high',
+          'Content-Encoding': 'aes128gcm',
+          'Content-Type': 'application/octet-stream',
+          'Authorization': `vapid t=${token}, k=${publicKey}`
+        },
+        body
+      });
+      if (res.status === 404 || res.status === 410) {
+        await deactivatePushSubscriptionByEndpoint(endpoint);
+      }
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        return { error: { message: `Push failed (${res.status}): ${text.slice(0, 200)}` } };
+      }
+      return { data: true };
+    } catch (error) {
+      return { error: { message: error?.message || String(error) } };
+    }
+  }
+  async function fanOutTransferNotification(transfer, eventType, actorName='') {
+    const recipients = await listTransferRecipients(transfer, eventType);
+    if (!recipients.length) return { data: [] };
+    const clientId = String(transfer?.client_id || await lookupAssetClientId(transfer?.asset_id) || await lookupRigClientId(transfer?.dest_rig) || '').trim() || null;
+    const content = transferNotificationContent(eventType, transfer, actorName);
+    const payload = {
+      title: content.title,
+      description: content.description,
+      icon: 'fas fa-exchange-alt',
+      kind: content.kind,
+      link: transfer?.id ? `/?tab=transfers&transfer=${encodeURIComponent(String(transfer.id))}` : '/?tab=transfers',
+      event_type: eventType,
+      client_id: clientId
+    };
+    const results = [];
+    for (const user of recipients) {
+      await createNotificationForUser(user, payload);
+      const subs = await sbGetBypass(SB, KEY, 'push_subscriptions', {
+        select: 'id,user_id,client_id,endpoint,p256dh,auth,platform,user_agent,active',
+        filters: {
+          user_id: `eq.${user.id}`,
+          active: 'eq.true'
+        },
+        limit: 20,
+        order: 'updated_at.desc'
+      });
+      if (!subs.error && Array.isArray(subs.data)) {
+        for (const sub of subs.data) {
+          const pushPayload = {
+            title: payload.title,
+            body: payload.description,
+            url: payload.link,
+            tag: `transfer-${transfer?.id || eventType}`,
+            transfer_id: transfer?.id || null,
+            event_type: eventType
+          };
+          results.push(await sendPushToSubscription({
+            endpoint: sub.endpoint,
+            keys: { p256dh: sub.p256dh, auth: sub.auth }
+          }, pushPayload));
+        }
+      }
+    }
+    return { data: results };
   }
 
   // Never trust role headers from clients. Derive request identity from bearer token.
@@ -1010,7 +1378,15 @@ async function router(path, method, url, request, SB, KEY, env={}) {
           if(tr){ const au={location:tr.destination}; if(tr.dest_rig) au.rig_name=tr.dest_rig; await sbPatch(SB,KEY,'assets',{asset_id:`eq.${tr.asset_id}`},au); }
         }
       } else return respond({success:false,error:'role must be supt, drilling or ops'},400);
-      return ok(await sbPatch(SB,KEY,'transfers',{id:`eq.${id}`},patch));
+      const updated = await sbPatch(SB,KEY,'transfers',{id:`eq.${id}`},patch);
+      if (updated.error) return err500(updated.error);
+      const eventType =
+        decision === 'reject' ? 'transfer_rejected' :
+        role === 'supt' ? 'transfer_stage1' :
+        role === 'drilling' ? 'transfer_stage2' :
+        decision === 'approve' ? 'transfer_completed' : 'transfer_stage3';
+      await fanOutTransferNotification(updated.data || { ...patch, id }, eventType, approved_by || ctx.reqName || ctx.reqEmail || '');
+      return ok(updated);
     }
     if(method==='GET'){
       const f={};
@@ -1022,7 +1398,10 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       if(!body.id) body.id='TR-'+String((await sbCount(SB,KEY,'transfers'))+1).padStart(3,'0');
       if(!body.request_date) body.request_date=new Date().toISOString().slice(0,10);
       if(!body.asset_name&&body.asset_id){ const {data:a}=await sbGet(SB,KEY,'assets',{select:'name,location',filters:{asset_id:`eq.${body.asset_id}`},single:true}); if(a){body.asset_name=a.name;if(!body.current_loc)body.current_loc=a.location;} }
-      return ok(await sbPost(SB,KEY,'transfers',body));
+      const created = await sbPost(SB,KEY,'transfers',body);
+      if (created.error) return err500(created.error);
+      await fanOutTransferNotification(created.data || body, 'transfer_request', body.requested_by || ctx.reqName || ctx.reqEmail || '');
+      return ok(created);
     }
   }
   // USERS
@@ -1173,6 +1552,58 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     }
   }
 
+  if (res === 'push-subscriptions') {
+    if (method === 'GET' && id === 'public-key') {
+      if (!env.VAPID_PUBLIC_KEY) return respond({ success:false, error:'Push notifications are not configured.' }, 500);
+      return respond({ success:true, data:{ publicKey: String(env.VAPID_PUBLIC_KEY || '') } });
+    }
+    if (method === 'GET' && !id) {
+      return ok(await sbGetBypass(SB, KEY, 'push_subscriptions', {
+        select: 'id,endpoint,platform,user_agent,active,created_at,updated_at',
+        filters: { user_id: `eq.${ctx.reqUserId}`, active: 'eq.true' },
+        order: 'updated_at.desc',
+        limit: 20
+      }));
+    }
+    if (method === 'POST') {
+      const endpoint = String(body?.endpoint || '').trim();
+      const p256dh = String(body?.keys?.p256dh || body?.p256dh || '').trim();
+      const auth = String(body?.keys?.auth || body?.auth || '').trim();
+      if (!endpoint || !p256dh || !auth) return respond({ success:false, error:'Push subscription endpoint and keys are required.' }, 400);
+      const existing = await sbGetBypass(SB, KEY, 'push_subscriptions', {
+        select: 'id',
+        filters: { user_id: `eq.${ctx.reqUserId}`, endpoint: `eq.${endpoint}` },
+        single: true
+      });
+      const payload = {
+        user_id: ctx.reqUserId || null,
+        client_id: currentClientId() || null,
+        endpoint,
+        p256dh,
+        auth,
+        platform: String(body?.platform || request.headers.get('sec-ch-ua-platform') || '').slice(0, 200) || null,
+        user_agent: String(body?.user_agent || request.headers.get('user-agent') || '').slice(0, 500) || null,
+        is_standalone: body?.is_standalone === true,
+        active: true,
+        updated_at: nowIso(),
+        last_used_at: nowIso()
+      };
+      if (!existing.error && existing.data?.id) {
+        return ok(await sbPatchBypass(SB, KEY, 'push_subscriptions', { id: `eq.${existing.data.id}` }, payload));
+      }
+      payload.created_at = nowIso();
+      return ok(await sbPostBypass(SB, KEY, 'push_subscriptions', payload));
+    }
+    if (method === 'DELETE') {
+      if (id && id !== 'current') {
+        return ok(await sbPatchBypass(SB, KEY, 'push_subscriptions', { id: `eq.${id}`, user_id: `eq.${ctx.reqUserId}` }, { active: false, updated_at: nowIso() }));
+      }
+      const endpoint = String(body?.endpoint || '').trim();
+      if (!endpoint) return respond({ success:false, error:'Subscription endpoint is required.' }, 400);
+      return ok(await sbPatchBypass(SB, KEY, 'push_subscriptions', { endpoint: `eq.${endpoint}`, user_id: `eq.${ctx.reqUserId}` }, { active: false, updated_at: nowIso() }));
+    }
+  }
+
   // SEND EMAIL (via Resend)
   if (res === 'send-email') {
     if (method !== 'POST') return respond({ success:false, error:'POST only' }, 405);
@@ -1202,9 +1633,9 @@ async function router(path, method, url, request, SB, KEY, env={}) {
 
   // NOTIFICATIONS
   if (res==='notifications') {
-    if(method==='PATCH'&&id==='mark-all-read') return ok(await sbPatch(SB,KEY,'notifications',{is_read:`eq.false`},{is_read:true}));
-    if(method==='PATCH'&&id) return ok(await sbPatch(SB,KEY,'notifications',{id:`eq.${id}`},{is_read:true}));
-    if(method==='GET')   return ok(await sbGet(SB,KEY,'notifications',{order:'created_at.desc',limit:50}));
+    if(method==='PATCH'&&id==='mark-all-read') return ok(await sbPatch(SB,KEY,'notifications',{...notificationScopeFilters(ctx.reqUserId),is_read:`eq.false`},{is_read:true}));
+    if(method==='PATCH'&&id) return ok(await sbPatch(SB,KEY,'notifications',{...notificationScopeFilters(ctx.reqUserId),id:`eq.${id}`},{is_read:true}));
+    if(method==='GET')   return ok(await sbGet(SB,KEY,'notifications',{filters:notificationScopeFilters(ctx.reqUserId),order:'created_at.desc',limit:50}));
     if(method==='POST')  return ok(await sbPost(SB,KEY,'notifications',body));
   }
 
