@@ -452,8 +452,8 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     canAdd:     R === 'Admin',
     canAddProjects: R === 'Admin' || MANAGER_TIER.includes(R),
     canAddTransfers: R === 'Admin' || MANAGER_TIER.includes(R),
-    canEdit:    ['Admin','Engineer','Assistant'].includes(R),
-    canDelete:  ['Admin','Assistant'].includes(R),
+    canEdit:    R === 'Admin',
+    canDelete:  R === 'Admin',
     canApproveStage1: ['Admin','Manager','Superintendent'].includes(R),
     canApproveStage2: ['Admin','Manager','Drilling Manager'].includes(R),
     canApproveStage3: ['Admin','Manager','Asset Manager'].includes(R),
@@ -600,21 +600,17 @@ async function router(path, method, url, request, SB, KEY, env={}) {
         perm.canAdd ||
         (res === 'projects' && !id && perm.canAddProjects) ||
         (res === 'transfers' && !id && perm.canAddTransfers) ||
-        (res === 'delete-requests' && !id && R === 'Assistant') ||
         (res === 'delete-requests' && id && act === 'review' && perm.canReviewDeleteRequests);
       if (!canCreateThisRoute) return forbidden(ctx, 'create records');
     }
     if (method === 'DELETE' && !perm.canDelete) return forbidden(ctx, 'delete records');
-    if ((method === 'PUT' || method === 'PATCH') && !perm.canEdit) return forbidden(ctx, 'edit records');
+    if ((method === 'PUT' || method === 'PATCH') && !perm.canEdit) {
+      const isSelfUserEdit = res === 'users' && id && String(id) === String(ctx.reqUserId);
+      if (!isSelfUserEdit) return forbidden(ctx, 'edit records');
+    }
   }
   // Transfer approve endpoint requires canApprove (stage check is inside the handler)
   if (res === 'transfers' && act === 'approve' && !perm.canApprove) return forbidden(ctx, 'approve transfers');
-
-  if (method === 'DELETE' && R === 'Assistant' && res !== 'delete-requests' && DELETE_REQUEST_RESOURCES[res] && id) {
-    const requested = await createDeleteRequest(res, id, body?.reason || '');
-    if (requested.error) return err500(requested.error);
-    return respond({ success:true, data:{ delete_request:true, request: requested.data, existing: !!requested.existing } }, 202);
-  }
 
   if (res === 'delete-requests') {
     if (method === 'GET' && !id) {
