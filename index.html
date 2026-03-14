@@ -3332,9 +3332,9 @@
     const currentToken = String(window.__authToken || '').trim();
     const guardToken = String(expectedToken || '').trim();
     if (guardToken && currentToken && currentToken !== guardToken) return;
-    if (window.__deleteRequestPoller) {
-      clearInterval(window.__deleteRequestPoller);
-      window.__deleteRequestPoller = null;
+    if (window.__liveSyncPoller) {
+      clearInterval(window.__liveSyncPoller);
+      window.__liveSyncPoller = null;
     }
     window.__currentUser = null;
     window.__currentUserRole = null;
@@ -7836,8 +7836,28 @@ Asset Management System</textarea>
               if (rule.notifBell) {
                 const title = isOverdue ? `${item.label} OVERDUE` : `${item.label} Due in ${daysLeft}d`;
                 const desc = `${assetName} - ${isOverdue ? Math.abs(daysLeft) + ' days past due' : daysLeft + ' days remaining'}`;
-                if (!NOTIFICATIONS.some(n => n.title === title && n.desc === desc)) {
-                  addNotification(isOverdue ? 'error' : rule.severity, isOverdue ? 'exclamation-circle' : 'clock', title, desc, 'Now');
+                const groupKey = `${item.source || 'due'}:${assetId}:${isOverdue ? 'overdue' : 'due'}`;
+                if (!NOTIFICATIONS.some(n => n.groupKey === groupKey && n.title === title)) {
+                  addNotification(
+                    isOverdue ? 'error' : rule.severity,
+                    isOverdue ? 'exclamation-circle' : 'clock',
+                    title,
+                    desc,
+                    'Now',
+                    {
+                      groupKey,
+                      groupLabel: item.label,
+                      eventType: 'inspection_due',
+                      assetId,
+                      dueDate: item.dueDate
+                    }
+                  );
+                  maybeShowGroupedBrowserNotification({
+                    groupKey,
+                    title,
+                    body: desc,
+                    url: item.source === 'insp' ? '/?tab=inspections' : '/?tab=certificates'
+                  });
                 }
               }
 
@@ -8640,6 +8660,7 @@ This cannot be undone.`)) return;
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
       document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
       section.classList.add('active');
+      window.__activeTab = id;
       if (el) el.classList.add('active');
       closeAllPanels();
       // Re-render the activated section so data is always fresh on tab switch
@@ -10077,6 +10098,86 @@ This cannot be undone.`)) return;
       return `Rejected | ${n.reviewComment || 'Delete request declined'}`;
     }
 
+    function groupNotifications(items) {
+      const groups = new Map();
+      const ordered = [];
+      items.forEach((item, index) => {
+        const key = item.groupKey || '';
+        if (!key) {
+          ordered.push({ ...item, _indexes: [index] });
+          return;
+        }
+        const existing = groups.get(key);
+        if (!existing) {
+          const grouped = { ...item, _indexes: [index], count: 1, groupItems: [item] };
+          groups.set(key, grouped);
+          ordered.push(grouped);
+          return;
+        }
+        existing._indexes.push(index);
+        existing.count += 1;
+        existing.groupItems.push(item);
+        existing.read = existing.read && item.read;
+        existing.is_read = existing.is_read && item.is_read;
+        const names = existing.groupItems.map(x => x.groupLabel || x.title).filter(Boolean);
+        existing.desc = names.length > 1
+          ? `${names[0]} + ${names.length - 1} more`
+          : (existing.desc || item.desc);
+        existing.time = existing.time || item.time;
+      });
+      return ordered;
+    }
+
+    async function maybeShowGroupedBrowserNotification(meta) {
+      const key = String(meta?.groupKey || '').trim();
+      if (!key || Notification.permission !== 'granted' || !window.__pushReady) return;
+      window.__shownBrowserGroups ||= {};
+      const last = Number(window.__shownBrowserGroups[key] || 0);
+      if (Date.now() - last < 6 * 60 * 60 * 1000) return;
+      window.__shownBrowserGroups[key] = Date.now();
+      try {
+        const reg = await ensurePushRegistration();
+        await reg.showNotification(meta.title, {
+          body: meta.body,
+          tag: key,
+          data: { url: meta.url || '/?tab=certificates' }
+        });
+      } catch (_) {
+        try {
+          new Notification(meta.title, { body: meta.body, tag: key });
+        } catch (_) { }
+      }
+    }
+
+    async function notifyDesktopForFreshItems(items) {
+      if (isIosDevice() || Notification.permission !== 'granted' || !window.__pushReady) return;
+      const grouped = groupNotifications(items).filter(n => !n.read && !n.deleteRequest);
+      const nextKeys = new Set(grouped.map(n => String(n.groupKey || n.id || `${n.title}|${n.desc}`)));
+      if (!window.__notificationSnapshotInitialized) {
+        window.__notificationSnapshotInitialized = true;
+        window.__seenNotificationKeys = nextKeys;
+        return;
+      }
+      const seen = window.__seenNotificationKeys || new Set();
+      const fresh = grouped.filter(n => !seen.has(String(n.groupKey || n.id || `${n.title}|${n.desc}`)));
+      window.__seenNotificationKeys = nextKeys;
+      for (const item of fresh.slice(0, 3)) {
+        const key = String(item.groupKey || item.id || `${item.title}|${item.desc}`);
+        try {
+          const reg = await ensurePushRegistration();
+          await reg.showNotification(item.title, {
+            body: item.desc,
+            tag: key,
+            data: { url: item.link || '/?tab=transfers' }
+          });
+        } catch (_) {
+          try {
+            new Notification(item.title, { body: item.desc, tag: key });
+          } catch (_) { }
+        }
+      }
+    }
+
     function currentClientId() {
       return window.__currentUser?.client_id || '';
     }
@@ -10112,18 +10213,44 @@ This cannot be undone.`)) return;
       }
     }
 
+    async function deleteNotification(i) {
+      const item = (window.__renderedNotifications || [])[i];
+      if (!item) return;
+      const indexes = [...(item._indexes || [])].sort((a, b) => b - a);
+      const ids = (item.groupItems || [item]).map(x => x.id).filter(Boolean);
+      try {
+        for (const id of ids) {
+          await DELETE(`/notifications/${id}`);
+        }
+        indexes.forEach(idx => {
+          if (NOTIFICATIONS[idx]) NOTIFICATIONS.splice(idx, 1);
+        });
+        renderNotifications();
+        showToast('Notification deleted.', 'success');
+      } catch (e) {
+        showToast('Could not delete notification: ' + e.message, 'error');
+      }
+    }
+
     function renderNotifications() {
-      document.getElementById('notifList').innerHTML = NOTIFICATIONS.map((n, i) => {
+      const displayItems = groupNotifications(NOTIFICATIONS);
+      window.__renderedNotifications = displayItems;
+      document.getElementById('notifList').innerHTML = displayItems.map((n, i) => {
         const actions = n.deleteRequest && n.status === 'Pending' && canReviewDeleteRequests()
           ? `<div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-primary" style="height:28px;font-size:11px" onclick="event.stopPropagation();reviewDeleteRequest('${n.requestId}','approve')">Approve</button><button class="btn btn-secondary" style="height:28px;font-size:11px" onclick="event.stopPropagation();reviewDeleteRequest('${n.requestId}','reject')">Reject</button></div>`
           : '';
+        const deleteBtn = n.deleteRequest
+          ? ''
+          : `<button class="shell-btn" style="margin-left:auto;color:var(--sap-text-muted);width:26px;height:26px" title="Delete notification" onclick="event.stopPropagation();deleteNotification(${i})"><i class="fas fa-trash"></i></button>`;
+        const groupedMeta = n.count > 1 ? `<div class="notif-time">${n.count} related alerts</div>` : '';
         return `
     <div class="notif-item ${n.read ? '' : 'unread'}" onclick="markRead(${i})">
       <div class="notif-icon-wrap ${n.type}"><i class="${n.icon}"></i></div>
       <div class="notif-body">
-        <div class="notif-title">${n.title}</div>
+        <div style="display:flex;align-items:center;gap:8px"><div class="notif-title" style="flex:1">${n.title}</div>${deleteBtn}</div>
         <div class="notif-desc">${n.desc}</div>
         <div class="notif-time">${deleteRequestMeta(n)}</div>
+        ${groupedMeta}
         ${actions}
       </div>
     </div>`;
@@ -10134,9 +10261,13 @@ This cannot be undone.`)) return;
       badge.style.display = unread ? '' : 'none';
     }
     function markRead(i) {
-      if (!NOTIFICATIONS[i]) return;
-      NOTIFICATIONS[i].read = true;
-      NOTIFICATIONS[i].is_read = true;
+      const item = (window.__renderedNotifications || [])[i];
+      if (!item) return;
+      (item._indexes || []).forEach(idx => {
+        if (!NOTIFICATIONS[idx]) return;
+        NOTIFICATIONS[idx].read = true;
+        NOTIFICATIONS[idx].is_read = true;
+      });
       renderNotifications();
     }
     async function toggleNotif() {
@@ -11469,8 +11600,17 @@ This cannot be undone.`)) return;
     }
 
     // ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ NOTIFICATION HELPER (patch into existing system) ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
-    function addNotification(type, icon, title, desc, time) {
-      NOTIFICATIONS.unshift({ icon: 'fas fa-' + icon, type: 'ni-' + (type === 'success' ? 'green' : type === 'error' ? 'red' : type === 'warning' ? 'orange' : 'blue'), title, desc, time, read: false });
+    function addNotification(type, icon, title, desc, time, meta = {}) {
+      const entry = {
+        icon: 'fas fa-' + icon,
+        type: 'ni-' + (type === 'success' ? 'green' : type === 'error' ? 'red' : type === 'warning' ? 'orange' : 'blue'),
+        title,
+        desc,
+        time,
+        read: false,
+        ...meta
+      };
+      NOTIFICATIONS.unshift(entry);
       const badge = document.getElementById('notifBadge');
       const unread = NOTIFICATIONS.filter(n => !n.read).length;
       if (badge) { badge.textContent = unread; badge.style.display = unread ? 'flex' : 'none'; }
@@ -13851,6 +13991,7 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
           }));
           const deleteRequestNotifications = (drR.data || []).map(normalizeDeleteRequestNotice);
           refill(NOTIFICATIONS, [...deleteRequestNotifications, ...liveNotifications]);
+          notifyDesktopForFreshItems([...deleteRequestNotifications, ...liveNotifications]).catch(err => console.warn('[desktop notify]', err));
 
           rerenderAll();
           try {
@@ -13862,11 +14003,17 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
             }
           } catch (_) { }
           if (typeof runAllAlertRules === 'function') runAllAlertRules(true);
-          if (!window.__deleteRequestPoller) {
-            window.__deleteRequestPoller = setInterval(() => {
-              if (!window.__authToken) return;
-              refreshDeleteRequests({ silent: true });
-            }, 15000);
+          if (!window.__liveSyncPoller) {
+            window.__liveSyncPoller = setInterval(() => {
+              if (!window.__authToken || document.hidden || window.__bootstrapInFlight) return;
+              window.__bootstrapInFlight = true;
+              Promise.resolve(window.bootstrap())
+                .catch(err => console.warn('[live sync]', err))
+                .finally(() => {
+                  window.__bootstrapInFlight = false;
+                  window.__bootstrapDone = !!window.__bootstrapped;
+                });
+            }, 20000);
           }
           window.__bootstrapped = true;
           window.__bootstrapDone = true;

@@ -1669,6 +1669,11 @@ async function router(path, method, url, request, SB, KEY, env={}) {
   if (res==='notifications') {
     if(method==='PATCH'&&id==='mark-all-read') return ok(await sbPatch(SB,KEY,'notifications',{...notificationScopeFilters(ctx.reqUserId),is_read:`eq.false`},{is_read:true}));
     if(method==='PATCH'&&id) return ok(await sbPatch(SB,KEY,'notifications',{...notificationScopeFilters(ctx.reqUserId),id:`eq.${id}`},{is_read:true}));
+    if(method==='DELETE'&&id) {
+      const r = await sbDelete(SB,KEY,'notifications',{...notificationScopeFilters(ctx.reqUserId),id:`eq.${id}`});
+      if(r.error) return err500(r.error);
+      return ok({ deleted:id });
+    }
     if(method==='GET')   return ok(await sbGet(SB,KEY,'notifications',{filters:notificationScopeFilters(ctx.reqUserId),order:'created_at.desc',limit:50}));
     if(method==='POST')  return ok(await sbPost(SB,KEY,'notifications',body));
   }
