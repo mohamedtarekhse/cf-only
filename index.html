@@ -3118,17 +3118,19 @@
       btnEl.textContent = 'Unavailable';
       return;
     }
+    if (window.__pushSubscription) {
+      statusEl.textContent = 'Push enabled for transfer updates';
+      btnEl.style.display = 'none';
+      btnEl.disabled = false;
+      btnEl.textContent = 'Enable push';
+      return;
+    }
     btnEl.disabled = false;
     btnEl.style.display = '';
     if (Notification.permission === 'denied') {
       statusEl.textContent = 'Push blocked in this browser';
       btnEl.textContent = 'Blocked';
       btnEl.disabled = true;
-      return;
-    }
-    if (window.__pushSubscription) {
-      statusEl.textContent = 'Push enabled for transfer updates';
-      btnEl.textContent = 'Disable push';
       return;
     }
     if (Notification.permission === 'granted') {
@@ -3286,6 +3288,8 @@
         }
       }
       await syncPushSubscription({ subscribe: true });
+      await pushApi('/push-subscriptions/test', { method: 'POST' });
+      showToast('Push notification enabled and tested successfully.', 'success');
     } catch (error) {
       updatePushUi();
       showToast('Could not enable push: ' + error.message, 'error');

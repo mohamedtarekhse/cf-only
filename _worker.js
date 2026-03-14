@@ -1557,6 +1557,39 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       if (!env.VAPID_PUBLIC_KEY) return respond({ success:false, error:'Push notifications are not configured.' }, 500);
       return respond({ success:true, data:{ publicKey: String(env.VAPID_PUBLIC_KEY || '') } });
     }
+    if (method === 'POST' && id === 'test') {
+      const subs = await sbGetBypass(SB, KEY, 'push_subscriptions', {
+        select: 'id,user_id,client_id,endpoint,p256dh,auth,platform,user_agent,active',
+        filters: {
+          user_id: `eq.${ctx.reqUserId}`,
+          active: 'eq.true'
+        },
+        limit: 20,
+        order: 'updated_at.desc'
+      });
+      if (subs.error) return err500(subs.error);
+      const rows = Array.isArray(subs.data) ? subs.data : [];
+      if (!rows.length) return respond({ success:false, error:'No active push subscription found for this account.' }, 404);
+      const payload = {
+        title: 'Push notifications enabled',
+        body: 'Transfer alerts will now appear on this device.',
+        url: '/?tab=transfers',
+        tag: `push-test-${Date.now()}`,
+        event_type: 'push_test'
+      };
+      const results = [];
+      for (const sub of rows) {
+        results.push(await sendPushToSubscription({
+          endpoint: sub.endpoint,
+          keys: { p256dh: sub.p256dh, auth: sub.auth }
+        }, payload));
+      }
+      const failures = results.filter(r => r?.error);
+      if (failures.length === results.length) {
+        return respond({ success:false, error: failures[0]?.error?.message || 'Push test failed.' }, 502);
+      }
+      return respond({ success:true, data:{ sent: results.length, failures: failures.length } });
+    }
     if (method === 'GET' && !id) {
       return ok(await sbGetBypass(SB, KEY, 'push_subscriptions', {
         select: 'id,endpoint,platform,user_agent,active,created_at,updated_at',
