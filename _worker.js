@@ -1638,6 +1638,38 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     }
   }
 
+  if (res === 'live' && id === 'version' && method === 'GET') {
+    const watchers = [
+      ['assets', 'updated_at'],
+      ['rigs', 'updated_at'],
+      ['contracts', 'updated_at'],
+      ['maintenance_schedules', 'updated_at'],
+      ['transfers', 'updated_at'],
+      ['certificates', 'updated_at'],
+      ['bom_items', 'updated_at'],
+      ['app_users', 'updated_at'],
+      ['clients', 'updated_at'],
+      ['notifications', 'created_at'],
+      ['delete_requests', 'updated_at'],
+      ['projects', 'updated_at'],
+      ['inspections', 'updated_at'],
+      ['workshops', 'updated_at']
+    ];
+    const stamps = [];
+    for (const [table, column] of watchers) {
+      const row = await sbGetBypass(SB, KEY, table, {
+        select: column,
+        order: `${column}.desc`,
+        limit: 1,
+        single: true
+      });
+      const value = row?.data?.[column];
+      if (value) stamps.push(`${table}:${value}`);
+    }
+    const version = stamps.sort().join('|') || 'empty';
+    return respond({ success:true, data:{ version } });
+  }
+
   // SEND EMAIL (via Resend)
   if (res === 'send-email') {
     if (method !== 'POST') return respond({ success:false, error:'POST only' }, 405);

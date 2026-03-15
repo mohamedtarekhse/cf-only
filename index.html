@@ -185,6 +185,8 @@
       border-bottom: 1px solid var(--sap-border);
       padding: 0 8px;
       display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
       align-items: center;
       height: 40px;
       gap: 0;
@@ -210,9 +212,12 @@
       border-bottom: 2px solid transparent;
       transition: all 0.15s;
       display: flex;
+      flex-direction: row;
       align-items: center;
+      justify-content: center;
       gap: 6px;
       white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .nav-tab.active {
@@ -3063,6 +3068,7 @@
   window.__pushReady = false;
   window.__pushSyncInFlight = false;
   window.__pushPublicKey = null;
+  window.__liveVersion = null;
 
   function isIosDevice() {
     const ua = navigator.userAgent || '';
@@ -3182,6 +3188,19 @@
     const json = await res.json().catch(() => ({}));
     if (!res.ok || !json.success) throw new Error(json.error || ('HTTP ' + res.status));
     return json;
+  }
+
+  async function fetchLiveVersion() {
+    const apiCfg = window.__API_CONFIG__ || {};
+    const baseUrl = (apiCfg.baseUrl || '/api').replace(/\/$/, '');
+    const token = String(window.__authToken || localStorage.getItem('ams_token') || sessionStorage.getItem('ams_token') || '').trim();
+    if (!token) throw new Error('No auth token. Please sign in again.');
+    const res = await fetch(baseUrl + '/live/version', {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !json.success) throw new Error(json.error || ('HTTP ' + res.status));
+    return String(json?.data?.version || '');
   }
 
   async function loadExistingPushSubscription() {
@@ -10244,7 +10263,7 @@ This cannot be undone.`)) return;
           : `<button class="shell-btn" style="margin-left:auto;color:var(--sap-text-muted);width:26px;height:26px" title="Delete notification" onclick="event.stopPropagation();deleteNotification(${i})"><i class="fas fa-trash"></i></button>`;
         const groupedMeta = n.count > 1 ? `<div class="notif-time">${n.count} related alerts</div>` : '';
         return `
-    <div class="notif-item ${n.read ? '' : 'unread'}" onclick="markRead(${i})">
+    <div class="notif-item ${n.read ? '' : 'unread'}" onclick="openNotification(${i})">
       <div class="notif-icon-wrap ${n.type}"><i class="${n.icon}"></i></div>
       <div class="notif-body">
         <div style="display:flex;align-items:center;gap:8px"><div class="notif-title" style="flex:1">${n.title}</div>${deleteBtn}</div>
@@ -10259,6 +10278,29 @@ This cannot be undone.`)) return;
       const badge = document.getElementById('notifBadge');
       badge.textContent = unread;
       badge.style.display = unread ? '' : 'none';
+    }
+    function openNotification(i) {
+      const item = (window.__renderedNotifications || [])[i];
+      if (!item) return;
+      markRead(i);
+      const link = String(item.link || item.groupItems?.[0]?.link || '').trim();
+      if (!link) return;
+      try {
+        const url = new URL(link, window.location.origin);
+        const tab = url.searchParams.get('tab');
+        const transferId = url.searchParams.get('transfer');
+        if (tab) {
+          const btn = document.querySelector(`.secondary-bar .nav-tab[onclick*="switchTab('${tab}'"]`);
+          if (btn && typeof switchTab === 'function') switchTab(tab, btn);
+        }
+        if (transferId) {
+          setTimeout(() => {
+            if (typeof openTransferDetail === 'function') openTransferDetail(transferId);
+          }, 120);
+        }
+      } catch (_) {
+        window.location.href = link;
+      }
     }
     function markRead(i) {
       const item = (window.__renderedNotifications || [])[i];
@@ -13992,6 +14034,11 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
           const deleteRequestNotifications = (drR.data || []).map(normalizeDeleteRequestNotice);
           refill(NOTIFICATIONS, [...deleteRequestNotifications, ...liveNotifications]);
           notifyDesktopForFreshItems([...deleteRequestNotifications, ...liveNotifications]).catch(err => console.warn('[desktop notify]', err));
+          try {
+            window.__liveVersion = await fetchLiveVersion();
+          } catch (err) {
+            console.warn('[live version seed]', err);
+          }
 
           rerenderAll();
           try {
@@ -14006,14 +14053,25 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
           if (!window.__liveSyncPoller) {
             window.__liveSyncPoller = setInterval(() => {
               if (!window.__authToken || document.hidden || window.__bootstrapInFlight) return;
-              window.__bootstrapInFlight = true;
-              Promise.resolve(window.bootstrap())
-                .catch(err => console.warn('[live sync]', err))
-                .finally(() => {
-                  window.__bootstrapInFlight = false;
-                  window.__bootstrapDone = !!window.__bootstrapped;
-                });
-            }, 20000);
+              Promise.resolve(fetchLiveVersion())
+                .then(version => {
+                  if (!version) return;
+                  if (!window.__liveVersion) {
+                    window.__liveVersion = version;
+                    return;
+                  }
+                  if (window.__liveVersion === version) return;
+                  window.__liveVersion = version;
+                  window.__bootstrapInFlight = true;
+                  return Promise.resolve(window.bootstrap())
+                    .catch(err => console.warn('[live sync]', err))
+                    .finally(() => {
+                      window.__bootstrapInFlight = false;
+                      window.__bootstrapDone = !!window.__bootstrapped;
+                    });
+                })
+                .catch(err => console.warn('[live version]', err));
+            }, 5000);
           }
           window.__bootstrapped = true;
           window.__bootstrapDone = true;
