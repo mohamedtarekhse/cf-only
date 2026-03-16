@@ -711,6 +711,160 @@
       scrollbar-color: #ccc transparent;
     }
 
+    .rig-profile-sheet {
+      background: #fff;
+      border: 1px solid #D5C58A;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .rig-profile-banner {
+      background: #B99A2E;
+      color: #fff;
+      text-align: center;
+      font-size: 27px;
+      font-weight: 700;
+      letter-spacing: .4px;
+      padding: 10px 14px;
+    }
+
+    .rig-profile-list {
+      padding: 0 18px 8px;
+      background: #F9F9F7;
+    }
+
+    .rig-profile-list.view-compact .rig-profile-row {
+      padding: 8px 0;
+    }
+
+    .rig-profile-list.view-compact .rig-profile-row-title {
+      font-size: 15px;
+    }
+
+    .rig-profile-list.view-compact .rig-profile-row-details {
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .rig-profile-list.view-wide .rig-profile-row {
+      grid-template-columns: 290px 1fr;
+      padding: 14px 0;
+      gap: 18px;
+    }
+
+    .rig-profile-row {
+      display: grid;
+      grid-template-columns: 250px 1fr;
+      gap: 14px;
+      border-bottom: 1px solid #C8B66C;
+      padding: 12px 0;
+    }
+
+    .rig-profile-row.dragging {
+      opacity: .55;
+    }
+
+    .rig-profile-row-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .rig-profile-drag-handle {
+      cursor: move;
+      color: #7A6A2A;
+      font-size: 15px;
+    }
+
+    .rig-profile-row-hide {
+      margin-left: auto;
+      border: 1px solid #D5C58A;
+      background: #fff;
+      color: #6A5A1A;
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .rig-profile-tools {
+      display: flex;
+      justify-content: flex-end;
+      padding: 8px 12px;
+      border-bottom: 1px solid #D5C58A;
+      background: #F4F0E0;
+      position: relative;
+    }
+
+    .rig-profile-row-panel {
+      position: absolute;
+      right: 12px;
+      top: 42px;
+      background: #fff;
+      border: 1px solid #D5C58A;
+      border-radius: 6px;
+      box-shadow: 0 8px 20px rgba(0,0,0,.08);
+      padding: 8px 10px;
+      min-width: 280px;
+      z-index: 20;
+      display: none;
+      max-height: 260px;
+      overflow: auto;
+    }
+
+    .rig-profile-row-panel.open { display: block; }
+
+    .rig-profile-row-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #333;
+      padding: 4px 0;
+    }
+
+    .rig-profile-row-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1D1D1D;
+      text-transform: uppercase;
+      letter-spacing: .2px;
+    }
+
+    .rig-profile-row-title .num {
+      margin-right: 6px;
+      color: #4A4A4A;
+    }
+
+    .rig-profile-row-details {
+      font-size: 14px;
+      color: #232323;
+      line-height: 1.45;
+      white-space: pre-line;
+    }
+
+    .rig-profile-item + .rig-profile-item {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed #D9D9D9;
+    }
+
+    .rig-profile-empty {
+      color: var(--sap-text-muted);
+      font-style: italic;
+    }
+
+    .rig-profile-footer {
+      display: flex;
+      justify-content: flex-end;
+      color: #222;
+      font-weight: 700;
+      letter-spacing: 1px;
+      font-size: 16px;
+      padding: 10px 16px 12px;
+      background: #F9F9F7;
+    }
+
     .table-wrap::-webkit-scrollbar {
       height: 4px;
     }
@@ -3742,6 +3896,7 @@ function showLoginError(msg) {
     <button class="nav-tab" onclick="switchTab('transfers', this)"><i class="fas fa-exchange-alt"></i>
       Transfers</button>
     <button class="nav-tab" onclick="switchTab('rigs', this)"><i class="fas fa-oil-well"></i> Land Rigs</button>
+    <button class="nav-tab" onclick="switchTab('rig-profile', this)"><i class="fas fa-table"></i> Rig Profile</button>
     <button class="nav-tab" onclick="switchTab('bom', this)"><i class="fas fa-sitemap"></i> Bill of Materials</button>
     <button class="nav-tab" onclick="switchTab('certificates', this)"><i class="fas fa-certificate"></i> Certificates
       <span id="certAlertBadge"
@@ -4196,25 +4351,55 @@ function showLoginError(msg) {
               PDF</button>
             <button class="btn btn-secondary" id="btnImportRigs" onclick="openImportGuide('rigs')"><i
                 class="fas fa-upload"></i> Import</button>
+            <div class="col-picker-wrap" id="rigColPickerWrap">
+              <button class="col-picker-btn" id="rigColPickerBtn" onclick="toggleColPicker('rig')"><i
+                  class="fas fa-columns"></i> Columns</button>
+              <div class="col-picker-panel" id="rigColPickerPanel">
+                <div class="col-picker-title">Visible Columns</div>
+              </div>
+            </div>
             <input type="file" id="importFileRigs" accept=".xlsx,.xls,.csv" style="display:none">
           </div>
           <div class="table-wrap">
             <table>
               <thead>
-                <tr>
-                  <th>Rig ID</th>
-                  <th>Rig Name</th>
-                  <th>Type</th>
-
-                  <th>Location</th>
-                  <th>Depth Capacity</th>
-                  <th>Status</th>
-                  <th>Assets Assigned</th>
-                  <th>Actions</th>
-                </tr>
+                <tr id="rigTheadRow"></tr>
               </thead>
               <tbody id="rigTbody"></tbody>
             </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section" id="section-rig-profile">
+      <div class="content">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Rig Profile <span class="record-count" id="rigProfileCount"></span></span>
+            <div class="filter-group">
+              <label class="filter-label">Rig</label>
+              <select class="filter-select" id="rigProfileRigFilter" onchange="renderRigProfile()" style="height:32px;min-width:220px">
+                <option value="">All Rigs</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label class="filter-label">View</label>
+              <select class="filter-select" id="rigProfileViewMode" onchange="renderRigProfile()" style="height:32px;min-width:130px">
+                <option value="compact">Compact</option>
+                <option value="wide">Wide</option>
+              </select>
+            </div>
+            <button class="btn btn-secondary" onclick="toggleRigProfileRowPanel()"><i class="fas fa-grip-vertical"></i> Rows</button>
+            <button class="btn btn-secondary" onclick="exportRigProfilePDF()"><i class="fas fa-file-pdf"></i> Export PDF</button>
+          </div>
+          <div class="rig-profile-sheet">
+            <div class="rig-profile-banner" id="rigProfileBanner">Rig Profile</div>
+            <div class="rig-profile-tools">
+              <div id="rigProfileRowPanel" class="rig-profile-row-panel"></div>
+            </div>
+            <div class="rig-profile-list" id="rigProfileRows"></div>
+            <div class="rig-profile-footer" id="rigProfileDate">-</div>
           </div>
         </div>
       </div>
@@ -7063,18 +7248,52 @@ Asset Management System</textarea>
       { key: 'notes',             label: 'Notes',              locked: false, default: false, sortKey: null },
     ];
 
+
+    const RIG_COLS = [
+      { key: 'id', label: 'Rig ID', locked: true, default: true },
+      { key: 'name', label: 'Rig Name', locked: false, default: true },
+      { key: 'type', label: 'Type', locked: false, default: true },
+      { key: 'location', label: 'Location', locked: false, default: true },
+      { key: 'depth', label: 'Depth Capacity', locked: false, default: true },
+      { key: 'status', label: 'Status', locked: false, default: true },
+      { key: 'assetsAssigned', label: 'Assets Assigned', locked: false, default: true },
+      { key: 'actions', label: 'Actions', locked: true, default: true },
+    ];
+
     const _colState = {
       asset: new Set(ASSET_COLS.filter(c => c.default).map(c => c.key)),
       transfer: new Set(TRANSFER_COLS.filter(c => c.default).map(c => c.key)),
       project: new Set(PROJECT_COLS.filter(c => c.default).map(c => c.key)),
+      rig: new Set(RIG_COLS.filter(c => c.default).map(c => c.key)),
     };
+    function getColDefs(table) {
+      if (table === 'asset') return ASSET_COLS;
+      if (table === 'project') return PROJECT_COLS;
+      if (table === 'transfer') return TRANSFER_COLS;
+      if (table === 'rig') return RIG_COLS;
+      return [];
+    }
+    function getColPanelId(table) {
+      if (table === 'asset') return 'assetColPickerPanel';
+      if (table === 'project') return 'prjColPickerPanel';
+      if (table === 'transfer') return 'trColPickerPanel';
+      if (table === 'rig') return 'rigColPickerPanel';
+      return '';
+    }
+    function getColBtnId(table) {
+      if (table === 'asset') return 'assetColPickerBtn';
+      if (table === 'project') return 'prjColPickerBtn';
+      if (table === 'transfer') return 'trColPickerBtn';
+      if (table === 'rig') return 'rigColPickerBtn';
+      return '';
+    }
     function getVisibleCols(table) {
-      const defs = table === 'asset' ? ASSET_COLS : table === 'project' ? PROJECT_COLS : TRANSFER_COLS;
+      const defs = getColDefs(table);
       return defs.filter(c => (_colState[table] || new Set()).has(c.key));
     }
     function buildColPickerPanel(table) {
-      const defs = table === 'asset' ? ASSET_COLS : table === 'project' ? PROJECT_COLS : TRANSFER_COLS;
-      const panelId = table === 'asset' ? 'assetColPickerPanel' : table === 'project' ? 'prjColPickerPanel' : 'trColPickerPanel';
+      const defs = getColDefs(table);
+      const panelId = getColPanelId(table);
       const panel = document.getElementById(panelId);
       if (!panel) return;
       const state = _colState[table];
@@ -7100,8 +7319,8 @@ Asset Management System</textarea>
       panel.appendChild(footer);
     }
     function toggleColPicker(table) {
-      const panelId = table === 'asset' ? 'assetColPickerPanel' : table === 'project' ? 'prjColPickerPanel' : 'trColPickerPanel';
-      const btnId = table === 'asset' ? 'assetColPickerBtn' : table === 'project' ? 'prjColPickerBtn' : 'trColPickerBtn';
+      const panelId = getColPanelId(table);
+      const btnId = getColBtnId(table);
       const panel = document.getElementById(panelId);
       const btn = document.getElementById(btnId);
       const isOpen = panel.classList.contains('open');
@@ -7115,27 +7334,29 @@ Asset Management System</textarea>
     }
 
     function closeColPicker(table) {
-      const panelId = table === 'asset' ? 'assetColPickerPanel' : table === 'project' ? 'prjColPickerPanel' : 'trColPickerPanel';
-      const btnId = table === 'asset' ? 'assetColPickerBtn' : table === 'project' ? 'prjColPickerBtn' : 'trColPickerBtn';
+      const panelId = getColPanelId(table);
+      const btnId = getColBtnId(table);
       document.getElementById(panelId)?.classList.remove('open');
       document.getElementById(btnId)?.classList.remove('active');
     }
     function toggleCol(table, key, visible) {
-      const defs = table === 'asset' ? ASSET_COLS : table === 'project' ? PROJECT_COLS : TRANSFER_COLS;
+      const defs = getColDefs(table);
       const col = defs.find(c => c.key === key);
       if (col?.locked) return;
       if (visible) _colState[table].add(key);
       else _colState[table].delete(key);
       if (table === 'asset') renderAssets();
       else if (table === 'project') renderProjects();
+      else if (table === 'rig') renderRigs();
       else renderTransfers();
     }
     function resetColPicker(table) {
-      const defs = table === 'asset' ? ASSET_COLS : table === 'project' ? PROJECT_COLS : TRANSFER_COLS;
+      const defs = getColDefs(table);
       _colState[table] = new Set(defs.filter(c => c.default).map(c => c.key));
       buildColPickerPanel(table);
       if (table === 'asset') renderAssets();
       else if (table === 'project') renderProjects();
+      else if (table === 'rig') renderRigs();
       else renderTransfers();
     }
     document.addEventListener('click', function (e) {
@@ -8530,6 +8751,7 @@ This cannot be undone.`)) return;
       renderAssets();
       renderContracts();
       renderRigs();
+      renderRigProfile();
 
       renderUsers();
       updateKPIs();
@@ -8572,6 +8794,7 @@ This cannot be undone.`)) return;
         workshops:    () => { if (typeof renderWorkshops       === 'function') renderWorkshops(); },
         contracts:    () => { if (typeof renderContracts       === 'function') renderContracts(); },
         rigs:         () => { if (typeof renderRigs            === 'function') renderRigs(); },
+        'rig-profile':() => { if (typeof renderRigProfile      === 'function') renderRigProfile(); },
         users:        () => { if (typeof renderUsers           === 'function') renderUsers(); },
         clients:      () => { if (typeof renderClientsDashboard=== 'function') renderClientsDashboard(); },
       };
@@ -9573,19 +9796,261 @@ This cannot be undone.`)) return;
     </tr>`).join('');
     }
     function renderRigs() {
-      document.getElementById('rigTbody').innerHTML = RIGS.map(r => `
-    <tr>
-      <td><span class="tag">${r.id}</span></td>
-      <td style="font-weight:500">${r.name}</td>
-      <td>${r.type}</td>
+      const visibleCols = getVisibleCols('rig');
+      const thead = document.getElementById('rigTheadRow');
+      const tbody = document.getElementById('rigTbody');
+      if (!thead || !tbody) return;
 
-      <td>${r.location}</td>
-      <td>${r.depth}</td>
-      <td>${statusBadge(r.status)}</td>
-      <td>${ASSETS.filter(a => a.rigName === r.name).length}</td>
-      <td><button class="btn btn-ghost btn-icon" onclick="openRigDetail('${r.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-ghost btn-icon" onclick="openAddRigModal(RIGS.find(x=>x.id==='${r.id}'))"><i class="fas fa-edit"></i></button><button class="btn btn-ghost btn-icon" title="Delete" style="color:var(--sap-error)" onclick="deleteRig('${r.id}')"><i class="fas fa-trash"></i></button></td>
-    </tr>`).join('');
+      const headMap = {
+        id: 'Rig ID', name: 'Rig Name', type: 'Type', location: 'Location',
+        depth: 'Depth Capacity', status: 'Status', assetsAssigned: 'Assets Assigned', actions: 'Actions'
+      };
+      thead.innerHTML = visibleCols.map(c => `<th>${headMap[c.key] || c.label}</th>`).join('');
+
+      tbody.innerHTML = RIGS.map(r => {
+        const assetsAssigned = ASSETS.filter(a => a.rigName === r.name).length;
+        const cell = {
+          id: `<span class="tag">${r.id}</span>`,
+          name: `<span style="font-weight:500">${r.name || '-'}</span>`,
+          type: `${r.type || '-'}`,
+          location: `${r.location || '-'}`,
+          depth: `${r.depth || '-'}`,
+          status: `${statusBadge(r.status)}`,
+          assetsAssigned: `${assetsAssigned}`,
+          actions: `<button class="btn btn-ghost btn-icon" onclick="event.stopPropagation();openRigDetail('${r.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-ghost btn-icon" onclick="event.stopPropagation();openAddRigModal(RIGS.find(x=>x.id==='${r.id}'))"><i class="fas fa-edit"></i></button><button class="btn btn-ghost btn-icon" title="Delete" style="color:var(--sap-error)" onclick="event.stopPropagation();deleteRig('${r.id}')"><i class="fas fa-trash"></i></button>`
+        };
+        return `<tr onclick="openAddRigModal(RIGS.find(x=>x.id==='${r.id}'),'log')">${visibleCols.map(c => `<td>${cell[c.key] ?? '-'}</td>`).join('')}</tr>`;
+      }).join('') || `<tr><td colspan="${Math.max(1, visibleCols.length)}" style="text-align:center;padding:22px;color:var(--sap-text-muted)">No rigs available</td></tr>`;
     }
+
+    const RIG_PROFILE_CATEGORIES = [
+      'hoisting equipment',
+      'drilling equipment',
+      'well control equipment',
+      'engines',
+      'compressors',
+      'agitators',
+      'generators'
+    ];
+
+    function normalizeRigProfileCategory(value) {
+      return String(value || '').toLowerCase().trim().replace(/\s+/g, ' ');
+    }
+
+    const RIG_PROFILE_UI_STATE_KEY = 'ams_rig_profile_ui_state_v1';
+    let rigProfileDraggingCategory = null;
+
+    function getRigProfileUiState() {
+      try {
+        const raw = localStorage.getItem(RIG_PROFILE_UI_STATE_KEY);
+        const parsed = raw ? JSON.parse(raw) : {};
+        const order = Array.isArray(parsed.order) ? parsed.order.map(normalizeRigProfileCategory) : [];
+        const hidden = Array.isArray(parsed.hidden) ? parsed.hidden.map(normalizeRigProfileCategory) : [];
+        return { order, hidden };
+      } catch (_) {
+        return { order: [], hidden: [] };
+      }
+    }
+
+    function setRigProfileUiState(next) {
+      try { localStorage.setItem(RIG_PROFILE_UI_STATE_KEY, JSON.stringify(next || {})); } catch (_) {}
+    }
+
+    function buildRigProfileCategoryOrder(state) {
+      const all = [...RIG_PROFILE_CATEGORIES];
+      const fromState = (state.order || []).filter(c => all.includes(c));
+      const missing = all.filter(c => !fromState.includes(c));
+      return [...fromState, ...missing];
+    }
+
+    function getRigProfileData() {
+      const rigSel = document.getElementById('rigProfileRigFilter');
+      const selectedRig = rigSel?.value || '';
+      const state = getRigProfileUiState();
+      const order = buildRigProfileCategoryOrder(state);
+      const hiddenSet = new Set((state.hidden || []).filter(c => order.includes(c)));
+
+      const allowedCategories = new Set(RIG_PROFILE_CATEGORIES.map(normalizeRigProfileCategory));
+      const filteredAssets = ASSETS.filter(a => {
+        const category = normalizeRigProfileCategory(a.category);
+        const rigMatch = !selectedRig || a.rigName === selectedRig;
+        return rigMatch && allowedCategories.has(category);
+      });
+
+      const groupedAll = order.map(category => ({
+        category,
+        names: filteredAssets
+          .filter(a => normalizeRigProfileCategory(a.category) === category)
+          .map(a => (a.name || '').trim())
+          .filter(Boolean)
+      }));
+
+      const groupedVisible = groupedAll.filter(g => !hiddenSet.has(g.category));
+      return { selectedRig, filteredAssets, groupedAll, groupedVisible, order, hiddenSet };
+    }
+
+    function toggleRigProfileRowPanel() {
+      const panel = document.getElementById('rigProfileRowPanel');
+      if (!panel) return;
+      panel.classList.toggle('open');
+    }
+
+    function setRigProfileCategoryHidden(category, isVisible) {
+      const c = normalizeRigProfileCategory(category);
+      const state = getRigProfileUiState();
+      const hidden = new Set((state.hidden || []).map(normalizeRigProfileCategory));
+      if (isVisible) hidden.delete(c); else hidden.add(c);
+      setRigProfileUiState({ order: buildRigProfileCategoryOrder(state), hidden: [...hidden] });
+      renderRigProfile();
+    }
+
+    function hideRigProfileRow(category) {
+      setRigProfileCategoryHidden(category, false);
+    }
+
+    function onRigProfileRowDragStart(evt, category) {
+      rigProfileDraggingCategory = normalizeRigProfileCategory(category);
+      evt.dataTransfer.effectAllowed = 'move';
+      evt.dataTransfer.setData('text/plain', rigProfileDraggingCategory);
+      evt.currentTarget.classList.add('dragging');
+    }
+
+    function onRigProfileRowDragOver(evt) {
+      evt.preventDefault();
+      evt.dataTransfer.dropEffect = 'move';
+    }
+
+    function onRigProfileRowDrop(evt, targetCategory) {
+      evt.preventDefault();
+      const dragged = rigProfileDraggingCategory || normalizeRigProfileCategory(evt.dataTransfer.getData('text/plain'));
+      const target = normalizeRigProfileCategory(targetCategory);
+      if (!dragged || !target || dragged === target) return;
+
+      const state = getRigProfileUiState();
+      const order = buildRigProfileCategoryOrder(state).filter(c => c !== dragged);
+      const targetIdx = order.indexOf(target);
+      if (targetIdx < 0) return;
+      order.splice(targetIdx, 0, dragged);
+      setRigProfileUiState({ order, hidden: state.hidden || [] });
+      renderRigProfile();
+    }
+
+    function onRigProfileRowDragEnd(evt) {
+      rigProfileDraggingCategory = null;
+      evt.currentTarget.classList.remove('dragging');
+    }
+
+    function renderRigProfileRowPanel(order, hiddenSet) {
+      const panel = document.getElementById('rigProfileRowPanel');
+      if (!panel) return;
+      panel.innerHTML = order.map((category, i) => {
+        const checked = hiddenSet.has(category) ? '' : 'checked';
+        return `<label class="rig-profile-row-option"><input type="checkbox" ${checked} onchange="setRigProfileCategoryHidden('${category}', this.checked)"><span>${i + 1}. ${escapeHtml(category.toUpperCase())}</span></label>`;
+      }).join('') || '<div class="rig-profile-empty">No rows available.</div>';
+    }
+
+    function renderRigProfile() {
+      const rigSel = document.getElementById('rigProfileRigFilter');
+      const viewSel = document.getElementById('rigProfileViewMode');
+      const listEl = document.getElementById('rigProfileRows');
+      if (!rigSel || !listEl) return;
+
+      const current = rigSel.value;
+      const rigs = [...new Set(ASSETS.map(a => a.rigName).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+      rigSel.innerHTML = '<option value="">All Rigs</option>' + rigs.map(r => `<option value="${r}">${r}</option>`).join('');
+      rigSel.value = rigs.includes(current) ? current : '';
+
+      const viewMode = (viewSel?.value === 'wide') ? 'wide' : 'compact';
+      listEl.classList.remove('view-compact', 'view-wide');
+      listEl.classList.add(viewMode === 'wide' ? 'view-wide' : 'view-compact');
+
+      const { selectedRig, filteredAssets, groupedVisible, order, hiddenSet } = getRigProfileData();
+      const rigLabel = selectedRig || 'All Rigs';
+      const banner = document.getElementById('rigProfileBanner');
+      if (banner) banner.textContent = `${rigLabel} Rig Profile`;
+
+      document.getElementById('rigProfileCount').textContent = `(${filteredAssets.length} Assets)`;
+      renderRigProfileRowPanel(order, hiddenSet);
+
+      const rowsHtml = groupedVisible.map((row, idx) => {
+        const title = row.category.toUpperCase();
+        const details = row.names.length
+          ? row.names.map(name => `<div class="rig-profile-item">${escapeHtml(name)}</div>`).join('')
+          : '<div class="rig-profile-empty">No assets listed for this category.</div>';
+
+        return `
+          <div class="rig-profile-row" draggable="true"
+               ondragstart="onRigProfileRowDragStart(event, '${row.category}')"
+               ondragover="onRigProfileRowDragOver(event)"
+               ondrop="onRigProfileRowDrop(event, '${row.category}')"
+               ondragend="onRigProfileRowDragEnd(event)">
+            <div class="rig-profile-row-title">
+              <div class="rig-profile-row-title-wrap">
+                <span class="rig-profile-drag-handle" title="Drag to reorder"><i class="fas fa-grip-vertical"></i></span>
+                <span class="num">${idx + 1}.</span>${escapeHtml(title)}
+                <button class="rig-profile-row-hide" onclick="hideRigProfileRow('${row.category}')" title="Hide this row">Hide</button>
+              </div>
+            </div>
+            <div class="rig-profile-row-details">${details}</div>
+          </div>
+        `;
+      }).join('');
+
+      listEl.innerHTML = rowsHtml || '<div class="rig-profile-empty" style="padding:14px 0">All rows are hidden. Use Rows option to show categories.</div>';
+
+      const dateEl = document.getElementById('rigProfileDate');
+      if (dateEl) {
+        const now = new Date();
+        const dd = String(now.getDate()).padStart(2, '0');
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const yyyy = now.getFullYear();
+        dateEl.textContent = `${dd}-${mm}-${yyyy}`;
+      }
+    }
+
+    function exportRigProfilePDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+      const { selectedRig, groupedVisible, filteredAssets } = getRigProfileData();
+      const rigLabel = selectedRig || 'All Rigs';
+
+      doc.setFillColor(185, 154, 46);
+      doc.rect(24, 22, doc.internal.pageSize.getWidth() - 48, 28, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${rigLabel} Rig Profile`, doc.internal.pageSize.getWidth() / 2, 41, { align: 'center' });
+
+      doc.setTextColor(60, 60, 60);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Assets count: ${filteredAssets.length}`, 28, 66);
+
+      doc.autoTable({
+        startY: 76,
+        head: [['#', 'Category', 'Asset Names']],
+        body: groupedVisible.map((row, idx) => [
+          String(idx + 1),
+          row.category.toUpperCase(),
+          row.names.length ? row.names.join(', ') : 'No assets listed for this category.'
+        ]),
+        styles: { fontSize: 9, cellPadding: 5, overflow: 'linebreak' },
+        headStyles: { fillColor: [185, 154, 46], textColor: 255, fontStyle: 'bold' },
+        margin: { left: 24, right: 24 },
+        columnStyles: { 0: { cellWidth: 24 }, 1: { cellWidth: 180 } }
+      });
+
+      const now = new Date();
+      const dd = String(now.getDate()).padStart(2, '0');
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const yyyy = now.getFullYear();
+      doc.setFontSize(10);
+      doc.setTextColor(90);
+      doc.text(`${dd}-${mm}-${yyyy}`, doc.internal.pageSize.getWidth() - 24, doc.internal.pageSize.getHeight() - 18, { align: 'right' });
+      doc.save(`Rig_Profile_${rigLabel.replace(/\s+/g, '_')}.pdf`);
+      showToast('Rig profile exported to PDF.', 'success');
+    }
+
     let currentRig = null;
     function openRigDetail(rigId) {
       currentRig = RIGS.find(r => r.id === rigId);
@@ -9858,7 +10323,7 @@ This cannot be undone.`)) return;
       renderRigStatusLog();
     };
 
-    function openAddRigModal(rig) {
+    function openAddRigModal(rig, initialTab = 'details') {
       rigEditId = rig ? (rig.id || null) : null;
       window.rigEditId = rigEditId;
       document.getElementById('addRigModalTitle').textContent = rigEditId ? 'Edit Rig' : 'Add New Rig';
@@ -9889,7 +10354,7 @@ This cannot be undone.`)) return;
       const lf = document.getElementById('rig_log_from'); if (lf) lf.value = '';
       const lt = document.getElementById('rig_log_to'); if (lt) lt.value = '';
       const ls = document.getElementById('rig_log_status'); if (ls) ls.value = 'Operation';
-      switchRigModalTab('details');
+      switchRigModalTab(rig ? initialTab : 'details');
       openModal('addRigModal');
     }
     window.contractEditId = null;
@@ -13699,7 +14164,7 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
         if (typeof applyProjectFilters     === 'function') applyProjectFilters();
         if (typeof applyInspectionFilters  === 'function') applyInspectionFilters();
         rerender(
-          'renderAssets', 'renderContracts', 'renderRigs', 'renderWorkshops',
+          'renderAssets', 'renderContracts', 'renderRigs', 'renderRigProfile', 'renderWorkshops',
           'renderUsers', 'renderTransfers', 'renderMaintenance', 'renderCertificates',
           'renderBOMSection', 'renderNotifications', 'updateKPIs', 'updateReportKPIs',
           'updateCertKPIs', 'updateMaintKPIs', 'updateTransferKPIs', 'updateDrillingInsights', 'checkMaintAlerts',
@@ -15745,10 +16210,6 @@ This cannot be undone.`)) return;
 </body>
 
 </html>
-
-
-
-
 
 
 
