@@ -711,6 +711,78 @@
       scrollbar-color: #ccc transparent;
     }
 
+    .rig-profile-sheet {
+      background: #fff;
+      border: 1px solid #D5C58A;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .rig-profile-banner {
+      background: #B99A2E;
+      color: #fff;
+      text-align: center;
+      font-size: 27px;
+      font-weight: 700;
+      letter-spacing: .4px;
+      padding: 10px 14px;
+    }
+
+    .rig-profile-list {
+      padding: 0 18px 8px;
+      background: #F9F9F7;
+    }
+
+    .rig-profile-row {
+      display: grid;
+      grid-template-columns: 250px 1fr;
+      gap: 14px;
+      border-bottom: 1px solid #C8B66C;
+      padding: 12px 0;
+    }
+
+    .rig-profile-row-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1D1D1D;
+      text-transform: uppercase;
+      letter-spacing: .2px;
+    }
+
+    .rig-profile-row-title .num {
+      margin-right: 6px;
+      color: #4A4A4A;
+    }
+
+    .rig-profile-row-details {
+      font-size: 14px;
+      color: #232323;
+      line-height: 1.45;
+      white-space: pre-line;
+    }
+
+    .rig-profile-item + .rig-profile-item {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed #D9D9D9;
+    }
+
+    .rig-profile-empty {
+      color: var(--sap-text-muted);
+      font-style: italic;
+    }
+
+    .rig-profile-footer {
+      display: flex;
+      justify-content: flex-end;
+      color: #222;
+      font-weight: 700;
+      letter-spacing: 1px;
+      font-size: 16px;
+      padding: 10px 16px 12px;
+      background: #F9F9F7;
+    }
+
     .table-wrap::-webkit-scrollbar {
       height: 4px;
     }
@@ -3742,6 +3814,7 @@ function showLoginError(msg) {
     <button class="nav-tab" onclick="switchTab('transfers', this)"><i class="fas fa-exchange-alt"></i>
       Transfers</button>
     <button class="nav-tab" onclick="switchTab('rigs', this)"><i class="fas fa-oil-well"></i> Land Rigs</button>
+    <button class="nav-tab" onclick="switchTab('rig-profile', this)"><i class="fas fa-table"></i> Rig Profile</button>
     <button class="nav-tab" onclick="switchTab('bom', this)"><i class="fas fa-sitemap"></i> Bill of Materials</button>
     <button class="nav-tab" onclick="switchTab('certificates', this)"><i class="fas fa-certificate"></i> Certificates
       <span id="certAlertBadge"
@@ -4215,6 +4288,27 @@ function showLoginError(msg) {
               </thead>
               <tbody id="rigTbody"></tbody>
             </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section" id="section-rig-profile">
+      <div class="content">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Rig Profile <span class="record-count" id="rigProfileCount"></span></span>
+            <div class="filter-group">
+              <label class="filter-label">Rig</label>
+              <select class="filter-select" id="rigProfileRigFilter" onchange="renderRigProfile()" style="height:32px;min-width:220px">
+                <option value="">All Rigs</option>
+              </select>
+            </div>
+          </div>
+          <div class="rig-profile-sheet">
+            <div class="rig-profile-banner" id="rigProfileBanner">Rig Profile</div>
+            <div class="rig-profile-list" id="rigProfileRows"></div>
+            <div class="rig-profile-footer" id="rigProfileDate">-</div>
           </div>
         </div>
       </div>
@@ -8530,6 +8624,7 @@ This cannot be undone.`)) return;
       renderAssets();
       renderContracts();
       renderRigs();
+      renderRigProfile();
 
       renderUsers();
       updateKPIs();
@@ -8572,6 +8667,7 @@ This cannot be undone.`)) return;
         workshops:    () => { if (typeof renderWorkshops       === 'function') renderWorkshops(); },
         contracts:    () => { if (typeof renderContracts       === 'function') renderContracts(); },
         rigs:         () => { if (typeof renderRigs            === 'function') renderRigs(); },
+        'rig-profile':() => { if (typeof renderRigProfile      === 'function') renderRigProfile(); },
         users:        () => { if (typeof renderUsers           === 'function') renderUsers(); },
         clients:      () => { if (typeof renderClientsDashboard=== 'function') renderClientsDashboard(); },
       };
@@ -9586,6 +9682,80 @@ This cannot be undone.`)) return;
       <td><button class="btn btn-ghost btn-icon" onclick="openRigDetail('${r.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-ghost btn-icon" onclick="openAddRigModal(RIGS.find(x=>x.id==='${r.id}'))"><i class="fas fa-edit"></i></button><button class="btn btn-ghost btn-icon" title="Delete" style="color:var(--sap-error)" onclick="deleteRig('${r.id}')"><i class="fas fa-trash"></i></button></td>
     </tr>`).join('');
     }
+
+    const RIG_PROFILE_CATEGORIES = [
+      'hoisting equipment',
+      'drilling equipment',
+      'well control equipment',
+      'engines',
+      'compressors',
+      'agitators',
+      'generators'
+    ];
+
+    function normalizeRigProfileCategory(value) {
+      return String(value || '').toLowerCase().trim().replace(/\s+/g, ' ');
+    }
+
+    function renderRigProfile() {
+      const rigSel = document.getElementById('rigProfileRigFilter');
+      const listEl = document.getElementById('rigProfileRows');
+      if (!rigSel || !listEl) return;
+
+      const current = rigSel.value;
+      const rigs = [...new Set(ASSETS.map(a => a.rigName).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+      rigSel.innerHTML = '<option value="">All Rigs</option>' + rigs.map(r => `<option value="${r}">${r}</option>`).join('');
+      rigSel.value = rigs.includes(current) ? current : '';
+
+      const selectedRig = rigSel.value;
+      const rigLabel = selectedRig || 'All Rigs';
+      const banner = document.getElementById('rigProfileBanner');
+      if (banner) banner.textContent = `${rigLabel} Rig Profile`;
+
+      const allowedCategories = new Set(RIG_PROFILE_CATEGORIES.map(normalizeRigProfileCategory));
+      const filtered = ASSETS.filter(a => {
+        const category = normalizeRigProfileCategory(a.category);
+        const rigMatch = !selectedRig || a.rigName === selectedRig;
+        return rigMatch && allowedCategories.has(category);
+      });
+
+      document.getElementById('rigProfileCount').textContent = `(${filtered.length} Assets)`;
+
+      const rowsHtml = RIG_PROFILE_CATEGORIES.map((category, idx) => {
+        const catAssets = filtered.filter(a => normalizeRigProfileCategory(a.category) === category);
+        const title = category.toUpperCase();
+        const details = catAssets.length
+          ? catAssets.map(a => `
+              <div class="rig-profile-item">
+                <div><strong>Asset:</strong> ${a.name || '-'}</div>
+                <div><strong>Asset ID:</strong> ${a.assetId || '-'}</div>
+                <div><strong>Status:</strong> ${String(a.status || '-')}</div>
+                <div><strong>Location:</strong> ${a.location || '-'}</div>
+                <div><strong>Value:</strong> $${Number(a.value || 0).toLocaleString()}</div>
+              </div>
+            `).join('')
+          : '<div class="rig-profile-empty">No assets listed for this category.</div>';
+
+        return `
+          <div class="rig-profile-row">
+            <div class="rig-profile-row-title"><span class="num">${idx + 1}.</span>${title}</div>
+            <div class="rig-profile-row-details">${details}</div>
+          </div>
+        `;
+      }).join('');
+
+      listEl.innerHTML = rowsHtml;
+
+      const dateEl = document.getElementById('rigProfileDate');
+      if (dateEl) {
+        const now = new Date();
+        const dd = String(now.getDate()).padStart(2, '0');
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const yyyy = now.getFullYear();
+        dateEl.textContent = `${dd}-${mm}-${yyyy}`;
+      }
+    }
+
     let currentRig = null;
     function openRigDetail(rigId) {
       currentRig = RIGS.find(r => r.id === rigId);
@@ -13699,7 +13869,7 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
         if (typeof applyProjectFilters     === 'function') applyProjectFilters();
         if (typeof applyInspectionFilters  === 'function') applyInspectionFilters();
         rerender(
-          'renderAssets', 'renderContracts', 'renderRigs', 'renderWorkshops',
+          'renderAssets', 'renderContracts', 'renderRigs', 'renderRigProfile', 'renderWorkshops',
           'renderUsers', 'renderTransfers', 'renderMaintenance', 'renderCertificates',
           'renderBOMSection', 'renderNotifications', 'updateKPIs', 'updateReportKPIs',
           'updateCertKPIs', 'updateMaintKPIs', 'updateTransferKPIs', 'updateDrillingInsights', 'checkMaintAlerts',
@@ -15745,10 +15915,6 @@ This cannot be undone.`)) return;
 </body>
 
 </html>
-
-
-
-
 
 
 
