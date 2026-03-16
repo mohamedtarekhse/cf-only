@@ -711,10 +711,76 @@
       scrollbar-color: #ccc transparent;
     }
 
-    .rig-profile-table-wrap {
-      border: 1px solid var(--sap-border);
+    .rig-profile-sheet {
+      background: #fff;
+      border: 1px solid #D5C58A;
       border-radius: 8px;
       overflow: hidden;
+    }
+
+    .rig-profile-banner {
+      background: #B99A2E;
+      color: #fff;
+      text-align: center;
+      font-size: 27px;
+      font-weight: 700;
+      letter-spacing: .4px;
+      padding: 10px 14px;
+    }
+
+    .rig-profile-list {
+      padding: 0 18px 8px;
+      background: #F9F9F7;
+    }
+
+    .rig-profile-row {
+      display: grid;
+      grid-template-columns: 250px 1fr;
+      gap: 14px;
+      border-bottom: 1px solid #C8B66C;
+      padding: 12px 0;
+    }
+
+    .rig-profile-row-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1D1D1D;
+      text-transform: uppercase;
+      letter-spacing: .2px;
+    }
+
+    .rig-profile-row-title .num {
+      margin-right: 6px;
+      color: #4A4A4A;
+    }
+
+    .rig-profile-row-details {
+      font-size: 14px;
+      color: #232323;
+      line-height: 1.45;
+      white-space: pre-line;
+    }
+
+    .rig-profile-item + .rig-profile-item {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed #D9D9D9;
+    }
+
+    .rig-profile-empty {
+      color: var(--sap-text-muted);
+      font-style: italic;
+    }
+
+    .rig-profile-footer {
+      display: flex;
+      justify-content: flex-end;
+      color: #222;
+      font-weight: 700;
+      letter-spacing: 1px;
+      font-size: 16px;
+      padding: 10px 16px 12px;
+      background: #F9F9F7;
     }
 
     .table-wrap::-webkit-scrollbar {
@@ -4231,29 +4297,18 @@ function showLoginError(msg) {
       <div class="content">
         <div class="card">
           <div class="card-header">
-            <span class="card-title">Rig Profile Assets <span class="record-count" id="rigProfileCount"></span></span>
+            <span class="card-title">Rig Profile <span class="record-count" id="rigProfileCount"></span></span>
             <div class="filter-group">
               <label class="filter-label">Rig</label>
-              <select class="filter-select" id="rigProfileRigFilter" onchange="renderRigProfile()" style="height:32px;min-width:180px">
+              <select class="filter-select" id="rigProfileRigFilter" onchange="renderRigProfile()" style="height:32px;min-width:220px">
                 <option value="">All Rigs</option>
               </select>
             </div>
           </div>
-          <div class="table-wrap rig-profile-table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Asset ID</th>
-                  <th>Name</th>
-                  <th>Category</th>
-                  <th>Rig</th>
-                  <th>Location</th>
-                  <th>Status</th>
-                  <th>Value (USD)</th>
-                </tr>
-              </thead>
-              <tbody id="rigProfileTbody"></tbody>
-            </table>
+          <div class="rig-profile-sheet">
+            <div class="rig-profile-banner" id="rigProfileBanner">Rig Profile</div>
+            <div class="rig-profile-list" id="rigProfileRows"></div>
+            <div class="rig-profile-footer" id="rigProfileDate">-</div>
           </div>
         </div>
       </div>
@@ -9644,8 +9699,8 @@ This cannot be undone.`)) return;
 
     function renderRigProfile() {
       const rigSel = document.getElementById('rigProfileRigFilter');
-      const tbody = document.getElementById('rigProfileTbody');
-      if (!rigSel || !tbody) return;
+      const listEl = document.getElementById('rigProfileRows');
+      if (!rigSel || !listEl) return;
 
       const current = rigSel.value;
       const rigs = [...new Set(ASSETS.map(a => a.rigName).filter(Boolean))].sort((a, b) => a.localeCompare(b));
@@ -9653,6 +9708,10 @@ This cannot be undone.`)) return;
       rigSel.value = rigs.includes(current) ? current : '';
 
       const selectedRig = rigSel.value;
+      const rigLabel = selectedRig || 'All Rigs';
+      const banner = document.getElementById('rigProfileBanner');
+      if (banner) banner.textContent = `${rigLabel} Rig Profile`;
+
       const allowedCategories = new Set(RIG_PROFILE_CATEGORIES.map(normalizeRigProfileCategory));
       const filtered = ASSETS.filter(a => {
         const category = normalizeRigProfileCategory(a.category);
@@ -9660,19 +9719,41 @@ This cannot be undone.`)) return;
         return rigMatch && allowedCategories.has(category);
       });
 
-      document.getElementById('rigProfileCount').textContent = `(${filtered.length})`;
-      tbody.innerHTML = filtered.length
-        ? filtered.map(a => `
-          <tr>
-            <td><span class="tag blue">${a.assetId || '-'}</span></td>
-            <td style="font-weight:500">${a.name || '-'}</td>
-            <td>${a.category || '-'}</td>
-            <td>${a.rigName || '-'}</td>
-            <td>${a.location || '-'}</td>
-            <td>${statusBadge(a.status)}</td>
-            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">$${Number(a.value || 0).toLocaleString()}</td>
-          </tr>`).join('')
-        : '<tr><td colspan="7" style="text-align:center;padding:22px;color:var(--sap-text-muted)">No matching assets found for the selected rig/categories</td></tr>';
+      document.getElementById('rigProfileCount').textContent = `(${filtered.length} Assets)`;
+
+      const rowsHtml = RIG_PROFILE_CATEGORIES.map((category, idx) => {
+        const catAssets = filtered.filter(a => normalizeRigProfileCategory(a.category) === category);
+        const title = category.toUpperCase();
+        const details = catAssets.length
+          ? catAssets.map(a => `
+              <div class="rig-profile-item">
+                <div><strong>Asset:</strong> ${a.name || '-'}</div>
+                <div><strong>Asset ID:</strong> ${a.assetId || '-'}</div>
+                <div><strong>Status:</strong> ${String(a.status || '-')}</div>
+                <div><strong>Location:</strong> ${a.location || '-'}</div>
+                <div><strong>Value:</strong> $${Number(a.value || 0).toLocaleString()}</div>
+              </div>
+            `).join('')
+          : '<div class="rig-profile-empty">No assets listed for this category.</div>';
+
+        return `
+          <div class="rig-profile-row">
+            <div class="rig-profile-row-title"><span class="num">${idx + 1}.</span>${title}</div>
+            <div class="rig-profile-row-details">${details}</div>
+          </div>
+        `;
+      }).join('');
+
+      listEl.innerHTML = rowsHtml;
+
+      const dateEl = document.getElementById('rigProfileDate');
+      if (dateEl) {
+        const now = new Date();
+        const dd = String(now.getDate()).padStart(2, '0');
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const yyyy = now.getFullYear();
+        dateEl.textContent = `${dd}-${mm}-${yyyy}`;
+      }
     }
 
     let currentRig = null;
