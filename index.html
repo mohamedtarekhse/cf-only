@@ -733,6 +733,25 @@
       background: #F9F9F7;
     }
 
+    .rig-profile-list.view-compact .rig-profile-row {
+      padding: 8px 0;
+    }
+
+    .rig-profile-list.view-compact .rig-profile-row-title {
+      font-size: 15px;
+    }
+
+    .rig-profile-list.view-compact .rig-profile-row-details {
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .rig-profile-list.view-wide .rig-profile-row {
+      grid-template-columns: 290px 1fr;
+      padding: 14px 0;
+      gap: 18px;
+    }
+
     .rig-profile-row {
       display: grid;
       grid-template-columns: 250px 1fr;
@@ -4304,6 +4323,14 @@ function showLoginError(msg) {
                 <option value="">All Rigs</option>
               </select>
             </div>
+            <div class="filter-group">
+              <label class="filter-label">View</label>
+              <select class="filter-select" id="rigProfileViewMode" onchange="renderRigProfile()" style="height:32px;min-width:130px">
+                <option value="compact">Compact</option>
+                <option value="wide">Wide</option>
+              </select>
+            </div>
+            <button class="btn btn-secondary" onclick="exportRigProfilePDF()"><i class="fas fa-file-pdf"></i> Export PDF</button>
           </div>
           <div class="rig-profile-sheet">
             <div class="rig-profile-banner" id="rigProfileBanner">Rig Profile</div>
@@ -9697,8 +9724,28 @@ This cannot be undone.`)) return;
       return String(value || '').toLowerCase().trim().replace(/\s+/g, ' ');
     }
 
+    function getRigProfileData() {
+      const rigSel = document.getElementById('rigProfileRigFilter');
+      const selectedRig = rigSel?.value || '';
+      const allowedCategories = new Set(RIG_PROFILE_CATEGORIES.map(normalizeRigProfileCategory));
+      const filteredAssets = ASSETS.filter(a => {
+        const category = normalizeRigProfileCategory(a.category);
+        const rigMatch = !selectedRig || a.rigName === selectedRig;
+        return rigMatch && allowedCategories.has(category);
+      });
+      const grouped = RIG_PROFILE_CATEGORIES.map(category => ({
+        category,
+        names: filteredAssets
+          .filter(a => normalizeRigProfileCategory(a.category) === category)
+          .map(a => (a.name || '').trim())
+          .filter(Boolean)
+      }));
+      return { selectedRig, filteredAssets, grouped };
+    }
+
     function renderRigProfile() {
       const rigSel = document.getElementById('rigProfileRigFilter');
+      const viewSel = document.getElementById('rigProfileViewMode');
       const listEl = document.getElementById('rigProfileRows');
       if (!rigSel || !listEl) return;
 
@@ -9707,33 +9754,21 @@ This cannot be undone.`)) return;
       rigSel.innerHTML = '<option value="">All Rigs</option>' + rigs.map(r => `<option value="${r}">${r}</option>`).join('');
       rigSel.value = rigs.includes(current) ? current : '';
 
-      const selectedRig = rigSel.value;
+      const viewMode = (viewSel?.value === 'wide') ? 'wide' : 'compact';
+      listEl.classList.remove('view-compact', 'view-wide');
+      listEl.classList.add(viewMode === 'wide' ? 'view-wide' : 'view-compact');
+
+      const { selectedRig, filteredAssets, grouped } = getRigProfileData();
       const rigLabel = selectedRig || 'All Rigs';
       const banner = document.getElementById('rigProfileBanner');
       if (banner) banner.textContent = `${rigLabel} Rig Profile`;
 
-      const allowedCategories = new Set(RIG_PROFILE_CATEGORIES.map(normalizeRigProfileCategory));
-      const filtered = ASSETS.filter(a => {
-        const category = normalizeRigProfileCategory(a.category);
-        const rigMatch = !selectedRig || a.rigName === selectedRig;
-        return rigMatch && allowedCategories.has(category);
-      });
+      document.getElementById('rigProfileCount').textContent = `(${filteredAssets.length} Assets)`;
 
-      document.getElementById('rigProfileCount').textContent = `(${filtered.length} Assets)`;
-
-      const rowsHtml = RIG_PROFILE_CATEGORIES.map((category, idx) => {
-        const catAssets = filtered.filter(a => normalizeRigProfileCategory(a.category) === category);
-        const title = category.toUpperCase();
-        const details = catAssets.length
-          ? catAssets.map(a => `
-              <div class="rig-profile-item">
-                <div><strong>Asset:</strong> ${a.name || '-'}</div>
-                <div><strong>Asset ID:</strong> ${a.assetId || '-'}</div>
-                <div><strong>Status:</strong> ${String(a.status || '-')}</div>
-                <div><strong>Location:</strong> ${a.location || '-'}</div>
-                <div><strong>Value:</strong> $${Number(a.value || 0).toLocaleString()}</div>
-              </div>
-            `).join('')
+      const rowsHtml = grouped.map((row, idx) => {
+        const title = row.category.toUpperCase();
+        const details = row.names.length
+          ? row.names.map(name => `<div class="rig-profile-item">${escapeHtml(name)}</div>`).join('')
           : '<div class="rig-profile-empty">No assets listed for this category.</div>';
 
         return `
@@ -9754,6 +9789,49 @@ This cannot be undone.`)) return;
         const yyyy = now.getFullYear();
         dateEl.textContent = `${dd}-${mm}-${yyyy}`;
       }
+    }
+
+    function exportRigProfilePDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+      const { selectedRig, grouped, filteredAssets } = getRigProfileData();
+      const rigLabel = selectedRig || 'All Rigs';
+
+      doc.setFillColor(185, 154, 46);
+      doc.rect(24, 22, doc.internal.pageSize.getWidth() - 48, 28, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${rigLabel} Rig Profile`, doc.internal.pageSize.getWidth() / 2, 41, { align: 'center' });
+
+      doc.setTextColor(60, 60, 60);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Assets count: ${filteredAssets.length}`, 28, 66);
+
+      doc.autoTable({
+        startY: 76,
+        head: [['#', 'Category', 'Asset Names']],
+        body: grouped.map((row, idx) => [
+          String(idx + 1),
+          row.category.toUpperCase(),
+          row.names.length ? row.names.join(', ') : 'No assets listed for this category.'
+        ]),
+        styles: { fontSize: 9, cellPadding: 5, overflow: 'linebreak' },
+        headStyles: { fillColor: [185, 154, 46], textColor: 255, fontStyle: 'bold' },
+        margin: { left: 24, right: 24 },
+        columnStyles: { 0: { cellWidth: 24 }, 1: { cellWidth: 180 } }
+      });
+
+      const now = new Date();
+      const dd = String(now.getDate()).padStart(2, '0');
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const yyyy = now.getFullYear();
+      doc.setFontSize(10);
+      doc.setTextColor(90);
+      doc.text(`${dd}-${mm}-${yyyy}`, doc.internal.pageSize.getWidth() - 24, doc.internal.pageSize.getHeight() - 18, { align: 'right' });
+      doc.save(`Rig_Profile_${rigLabel.replace(/\s+/g, '_')}.pdf`);
+      showToast('Rig profile exported to PDF.', 'success');
     }
 
     let currentRig = null;
