@@ -711,6 +711,12 @@
       scrollbar-color: #ccc transparent;
     }
 
+    .rig-profile-table-wrap {
+      border: 1px solid var(--sap-border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
     .table-wrap::-webkit-scrollbar {
       height: 4px;
     }
@@ -3742,6 +3748,7 @@ function showLoginError(msg) {
     <button class="nav-tab" onclick="switchTab('transfers', this)"><i class="fas fa-exchange-alt"></i>
       Transfers</button>
     <button class="nav-tab" onclick="switchTab('rigs', this)"><i class="fas fa-oil-well"></i> Land Rigs</button>
+    <button class="nav-tab" onclick="switchTab('rig-profile', this)"><i class="fas fa-table"></i> Rig Profile</button>
     <button class="nav-tab" onclick="switchTab('bom', this)"><i class="fas fa-sitemap"></i> Bill of Materials</button>
     <button class="nav-tab" onclick="switchTab('certificates', this)"><i class="fas fa-certificate"></i> Certificates
       <span id="certAlertBadge"
@@ -4214,6 +4221,38 @@ function showLoginError(msg) {
                 </tr>
               </thead>
               <tbody id="rigTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section" id="section-rig-profile">
+      <div class="content">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Rig Profile Assets <span class="record-count" id="rigProfileCount"></span></span>
+            <div class="filter-group">
+              <label class="filter-label">Rig</label>
+              <select class="filter-select" id="rigProfileRigFilter" onchange="renderRigProfile()" style="height:32px;min-width:180px">
+                <option value="">All Rigs</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrap rig-profile-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Asset ID</th>
+                  <th>Name</th>
+                  <th>Category</th>
+                  <th>Rig</th>
+                  <th>Location</th>
+                  <th>Status</th>
+                  <th>Value (USD)</th>
+                </tr>
+              </thead>
+              <tbody id="rigProfileTbody"></tbody>
             </table>
           </div>
         </div>
@@ -8530,6 +8569,7 @@ This cannot be undone.`)) return;
       renderAssets();
       renderContracts();
       renderRigs();
+      renderRigProfile();
 
       renderUsers();
       updateKPIs();
@@ -8572,6 +8612,7 @@ This cannot be undone.`)) return;
         workshops:    () => { if (typeof renderWorkshops       === 'function') renderWorkshops(); },
         contracts:    () => { if (typeof renderContracts       === 'function') renderContracts(); },
         rigs:         () => { if (typeof renderRigs            === 'function') renderRigs(); },
+        'rig-profile':() => { if (typeof renderRigProfile      === 'function') renderRigProfile(); },
         users:        () => { if (typeof renderUsers           === 'function') renderUsers(); },
         clients:      () => { if (typeof renderClientsDashboard=== 'function') renderClientsDashboard(); },
       };
@@ -9586,6 +9627,54 @@ This cannot be undone.`)) return;
       <td><button class="btn btn-ghost btn-icon" onclick="openRigDetail('${r.id}')"><i class="fas fa-eye"></i></button><button class="btn btn-ghost btn-icon" onclick="openAddRigModal(RIGS.find(x=>x.id==='${r.id}'))"><i class="fas fa-edit"></i></button><button class="btn btn-ghost btn-icon" title="Delete" style="color:var(--sap-error)" onclick="deleteRig('${r.id}')"><i class="fas fa-trash"></i></button></td>
     </tr>`).join('');
     }
+
+    const RIG_PROFILE_CATEGORIES = [
+      'hoisting equipment',
+      'drilling equipment',
+      'well control equipment',
+      'engines',
+      'compressors',
+      'agitators',
+      'generators'
+    ];
+
+    function normalizeRigProfileCategory(value) {
+      return String(value || '').toLowerCase().trim().replace(/\s+/g, ' ');
+    }
+
+    function renderRigProfile() {
+      const rigSel = document.getElementById('rigProfileRigFilter');
+      const tbody = document.getElementById('rigProfileTbody');
+      if (!rigSel || !tbody) return;
+
+      const current = rigSel.value;
+      const rigs = [...new Set(ASSETS.map(a => a.rigName).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+      rigSel.innerHTML = '<option value="">All Rigs</option>' + rigs.map(r => `<option value="${r}">${r}</option>`).join('');
+      rigSel.value = rigs.includes(current) ? current : '';
+
+      const selectedRig = rigSel.value;
+      const allowedCategories = new Set(RIG_PROFILE_CATEGORIES.map(normalizeRigProfileCategory));
+      const filtered = ASSETS.filter(a => {
+        const category = normalizeRigProfileCategory(a.category);
+        const rigMatch = !selectedRig || a.rigName === selectedRig;
+        return rigMatch && allowedCategories.has(category);
+      });
+
+      document.getElementById('rigProfileCount').textContent = `(${filtered.length})`;
+      tbody.innerHTML = filtered.length
+        ? filtered.map(a => `
+          <tr>
+            <td><span class="tag blue">${a.assetId || '-'}</span></td>
+            <td style="font-weight:500">${a.name || '-'}</td>
+            <td>${a.category || '-'}</td>
+            <td>${a.rigName || '-'}</td>
+            <td>${a.location || '-'}</td>
+            <td>${statusBadge(a.status)}</td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">$${Number(a.value || 0).toLocaleString()}</td>
+          </tr>`).join('')
+        : '<tr><td colspan="7" style="text-align:center;padding:22px;color:var(--sap-text-muted)">No matching assets found for the selected rig/categories</td></tr>';
+    }
+
     let currentRig = null;
     function openRigDetail(rigId) {
       currentRig = RIGS.find(r => r.id === rigId);
@@ -13699,7 +13788,7 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
         if (typeof applyProjectFilters     === 'function') applyProjectFilters();
         if (typeof applyInspectionFilters  === 'function') applyInspectionFilters();
         rerender(
-          'renderAssets', 'renderContracts', 'renderRigs', 'renderWorkshops',
+          'renderAssets', 'renderContracts', 'renderRigs', 'renderRigProfile', 'renderWorkshops',
           'renderUsers', 'renderTransfers', 'renderMaintenance', 'renderCertificates',
           'renderBOMSection', 'renderNotifications', 'updateKPIs', 'updateReportKPIs',
           'updateCertKPIs', 'updateMaintKPIs', 'updateTransferKPIs', 'updateDrillingInsights', 'checkMaintAlerts',
@@ -15745,10 +15834,6 @@ This cannot be undone.`)) return;
 </body>
 
 </html>
-
-
-
-
 
 
 
