@@ -9006,13 +9006,14 @@ This cannot be undone.`)) return;
       showToast(`Deleting ${ids.length} asset(s)...`, 'info');
 
       const deletedIds = new Set();
-      if (typeof DELETE === 'undefined') {
-        showToast('Delete API is not available in this mode.', 'error');
+      const deleteApi = window.__apiDelete || window.DELETE;
+      if (typeof deleteApi !== 'function') {
+        showToast('Delete API is not ready. Please sign in again and retry.', 'error');
         return;
       }
 
       const results = await Promise.allSettled(ids.map(async id => {
-        const res = await DELETE(`/assets/${id}`);
+        const res = await deleteApi(`/assets/${id}`);
         if (res?.data?.delete_request) {
           requested += 1;
           if (res.data.request) upsertDeleteRequestNotice(res.data.request);
@@ -14074,6 +14075,7 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
       const PUT = (p, b) => api(p, { method: 'PUT', body: JSON.stringify(b) });
       const PATCH = (p, b) => api(p, { method: 'PATCH', body: JSON.stringify(b) });
       const DELETE = (p) => api(p, { method: 'DELETE' });
+      window.__apiDelete = DELETE;
 
       function handleDeleteResult(result, requestMessage) {
         if (result?.data?.delete_request) {
