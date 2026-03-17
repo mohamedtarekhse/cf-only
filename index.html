@@ -5210,7 +5210,7 @@ function showLoginError(msg) {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
           <div class="form-group">
             <label class="form-label">Contract ID <span style="color:#b00">*</span></label>
-            <input class="form-control" id="contract_id" placeholder="e.g. CTR-2025-001">
+            <input class="form-control" id="contract_id" placeholder="e.g. CTR-2025-001" readonly style="background:#F5F6F7;color:var(--sap-text-muted)">
           </div>
 
           <div class="form-group">
@@ -5502,7 +5502,7 @@ function showLoginError(msg) {
           
           <div class="form-group">
             <label class="form-label">Project ID</label>
-            <input class="form-control" id="prj_id" placeholder="Auto-generated if blank">
+            <input class="form-control" id="prj_id" placeholder="Auto-generated if blank" readonly style="background:#F5F6F7;color:var(--sap-text-muted)">
           </div>
           <div class="form-group">
             <label class="form-label">Project Description <span style="color:#b00">*</span></label>
@@ -5892,7 +5892,7 @@ Asset Management System</textarea>
       <div class="modal-body">
         <div class="form-row">
           <div class="form-group"><label class="form-label">Asset ID</label><input class="form-input" id="f_assetId"
-              placeholder="AST-0001"></div>
+              placeholder="AST-0001" readonly style="background:#F5F6F7;color:var(--sap-text-muted)"></div>
           <div class="form-group"><label class="form-label">Asset Name</label><input class="form-input" id="f_name"
               placeholder="Asset name"></div>
         </div>
@@ -6961,7 +6961,7 @@ Asset Management System</textarea>
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Workshop ID <span style="color:var(--sap-error)">*</span></label>
-            <input class="form-input" id="ws_id" placeholder="WS-001">
+            <input class="form-input" id="ws_id" placeholder="WS-001" readonly style="background:#F5F6F7;color:var(--sap-text-muted)">
           </div>
           <div class="form-group">
             <label class="form-label">Workshop Name <span style="color:var(--sap-error)">*</span></label>
@@ -7603,7 +7603,7 @@ Asset Management System</textarea>
         document.getElementById('prj_notes').value            = p.notes || '';
       } else {
         document.getElementById('prj_editId').value = '';
-        document.getElementById('prj_id').readOnly = false;
+        document.getElementById('prj_id').readOnly = true;
         ['prj_desc', 'prj_location', 'prj_manager', 'prj_supervisor_name',
          'prj_supervisor_contact', 'prj_initiation', 'prj_start', 'prj_end', 'prj_notes'
         ].forEach(i => { document.getElementById(i).value = ''; });
@@ -9002,29 +9002,46 @@ This cannot be undone.`)) return;
       if (!ids.length) return;
       if (!confirm(`Delete ${ids.length} selected asset(s)? This cannot be undone.`)) return;
 
-      let deleted = 0, failed = 0;
+      let deleted = 0, failed = 0, requested = 0;
       showToast(`Deleting ${ids.length} asset(s)...`, 'info');
 
-      if (typeof DELETE !== 'undefined') {
-        const results = await Promise.allSettled(ids.map(id => DELETE(`/assets/${id}`)));
-        deleted = results.filter(r => r.status === 'fulfilled').length;
-        failed  = results.filter(r => r.status === 'rejected').length;
-      } else {
-        deleted = ids.length;
+      const deletedIds = new Set();
+      const deleteApi = window.__apiDelete || window.DELETE;
+      if (typeof deleteApi !== 'function') {
+        showToast('Delete API is not ready. Please sign in again and retry.', 'error');
+        return;
       }
-      ids.forEach(id => {
-        const i = ASSETS.findIndex(a => a.assetId === id);
-        if (i >= 0) ASSETS.splice(i, 1);
-      });
-      filteredAssets = filteredAssets.filter(a => !ids.includes(a.assetId));
+
+      const results = await Promise.allSettled(ids.map(async id => {
+        const res = await deleteApi(`/assets/${id}`);
+        if (res?.data?.delete_request) {
+          requested += 1;
+          if (res.data.request) upsertDeleteRequestNotice(res.data.request);
+          return;
+        }
+        deletedIds.add(id);
+      }));
+
+      failed = results.filter(r => r.status === 'rejected').length;
+      deleted = deletedIds.size;
+
+      if (deletedIds.size) {
+        refill(ASSETS, ASSETS.filter(a => !deletedIds.has(a.assetId)));
+        filteredAssets = ASSETS.slice();
+      }
 
       _selectedAssets.clear();
       renderAssets();
       updateKPIs();
-      const msg = failed
-        ? `Deleted ${deleted} asset(s), ${failed} failed.`
-        : `${deleted} asset(s) deleted `;
-      showToast(msg, failed ? 'warning' : 'success');
+
+      if (requested) {
+        refreshDeleteRequests({ silent: true });
+      }
+
+      let msg = `${deleted} asset(s) deleted.`;
+      if (requested) msg += ` ${requested} sent for approval.`;
+      if (failed) msg += ` ${failed} failed.`;
+      showToast(msg, failed ? 'warning' : (requested ? 'info' : 'success'));
     }
     function openMassEditModal() {
       const ids = getSelectedAssetIds();
@@ -9600,7 +9617,7 @@ This cannot be undone.`)) return;
         const w = WORKSHOPS.find(x => x.workshopId === workshopId);
         if (!w) return;
         document.getElementById('ws_id').value          = w.workshopId;
-        document.getElementById('ws_id').disabled       = true;
+        document.getElementById('ws_id').readOnly       = true;
         document.getElementById('ws_name').value        = w.workshopName;
         document.getElementById('ws_location').value    = w.location;
         if (rSel) rSel.value                            = w.assignedRig;
@@ -9615,7 +9632,7 @@ This cannot be undone.`)) return;
         document.getElementById('ws_contact').value     = w.contact;
         document.getElementById('ws_notes').value       = w.notes;
       } else {
-        document.getElementById('ws_id').disabled = false;
+        document.getElementById('ws_id').readOnly = true;
         document.getElementById('ws_id').value    = generateWorkshopId();
         ['ws_name','ws_location','ws_assetName','ws_assetSerial','ws_scopeOfWork',
          'ws_startDate','ws_endDate','ws_technician','ws_contact','ws_notes'].forEach(id => {
@@ -10402,7 +10419,7 @@ This cannot be undone.`)) return;
       if (contract) {
         document.getElementById('contract_editId').value = contract.id || '';
         document.getElementById('contract_id').value = contract.id || '';
-        document.getElementById('contract_id').disabled = !!contractEditId;
+        document.getElementById('contract_id').readOnly = true;
 
         document.getElementById('contract_rig').value = contract.rig_id || findRigIdByInput(contract.rig) || '';
         document.getElementById('contract_value').value = contract.value || '';
@@ -10413,7 +10430,7 @@ This cannot be undone.`)) return;
       } else {
         document.getElementById('contract_editId').value = '';
         document.getElementById('contract_id').value = generateContractId();
-        document.getElementById('contract_id').disabled = false;
+        document.getElementById('contract_id').readOnly = true;
         ['contract_rig', 'contract_value', 'contract_start', 'contract_end', 'contract_notes'].forEach(id => document.getElementById(id).value = '');
         document.getElementById('contract_status_field').value = 'Pending';
       }
@@ -14058,6 +14075,7 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
       const PUT = (p, b) => api(p, { method: 'PUT', body: JSON.stringify(b) });
       const PATCH = (p, b) => api(p, { method: 'PATCH', body: JSON.stringify(b) });
       const DELETE = (p) => api(p, { method: 'DELETE' });
+      window.__apiDelete = DELETE;
 
       function handleDeleteResult(result, requestMessage) {
         if (result?.data?.delete_request) {
@@ -15928,6 +15946,10 @@ This cannot be undone.`)) return;
         if (!m.selected) return 'ipv-row-desel';
         return m.isDup ? 'ipv-row-update' : 'ipv-row-new';
       }
+      function __ipvIsImmutableIdCol(col) {
+        const k = String(col || '').trim().toLowerCase();
+        return k === 'id' || k.endsWith(' id') || k.endsWith('_id') || k.endsWith('id');
+      }
       function __ipvRender() {
         const { rowMeta, cols, activeCols } = __ipvS;
         const visIdxs  = __ipvGetVisible();
@@ -15971,13 +15993,13 @@ This cannot be undone.`)) return;
               if (changed) {
                 tbhtml += '<td><div class="ipv-diff-cell">'
                   +'<div class="ipv-diff-old" title="Current value: '+escIpvAttr(oldVal)+'">'+escIpv(oldVal.length>45?oldVal.slice(0,43)+'...':oldVal)+'</div>'
-                  +'<input class="ipv-edit ipv-diff-new" value="'+escIpvAttr(newVal)+'" data-ri="'+i+'" data-col="'+escIpvAttr(col)+'" oninput="ipvEdit(this)">'
+                  +'<input class="ipv-edit ipv-diff-new" value="'+escIpvAttr(newVal)+'" data-ri="'+i+'" data-col="'+escIpvAttr(col)+'" '+(__ipvIsImmutableIdCol(col)?'readonly title="ID columns are locked"':'oninput="ipvEdit(this)"')+'>'
                   +'</div></td>';
               } else {
-                tbhtml += '<td><input class="ipv-edit ipv-diff-same" value="'+escIpvAttr(newVal)+'" data-ri="'+i+'" data-col="'+escIpvAttr(col)+'" oninput="ipvEdit(this)"></td>';
+                tbhtml += '<td><input class="ipv-edit ipv-diff-same" value="'+escIpvAttr(newVal)+'" data-ri="'+i+'" data-col="'+escIpvAttr(col)+'" '+(__ipvIsImmutableIdCol(col)?'readonly title="ID columns are locked"':'oninput="ipvEdit(this)"')+'></td>';
               }
             } else {
-              tbhtml += '<td><input class="ipv-edit" value="'+escIpvAttr(newVal)+'" data-ri="'+i+'" data-col="'+escIpvAttr(col)+'" oninput="ipvEdit(this)"></td>';
+              tbhtml += '<td><input class="ipv-edit" value="'+escIpvAttr(newVal)+'" data-ri="'+i+'" data-col="'+escIpvAttr(col)+'" '+(__ipvIsImmutableIdCol(col)?'readonly title="ID columns are locked"':'oninput="ipvEdit(this)"')+'></td>';
             }
           });
           tbhtml += '</tr>';
@@ -15991,6 +16013,7 @@ This cannot be undone.`)) return;
       }
       window.ipvRender = __ipvRender;
       window.ipvEdit = function(input) {
+        if (__ipvIsImmutableIdCol(input?.dataset?.col)) return;
         __ipvS.rowMeta[parseInt(input.dataset.ri)].rowData[input.dataset.col] = input.value;
       };
       window.ipvConfirm = async function() {
@@ -16210,7 +16233,6 @@ This cannot be undone.`)) return;
 </body>
 
 </html>
-
 
 
 
