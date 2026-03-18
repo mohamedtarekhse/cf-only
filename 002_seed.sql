@@ -212,6 +212,14 @@ ON CONFLICT (id) DO UPDATE SET
   asset_id=EXCLUDED.asset_id, asset_name=EXCLUDED.asset_name,
   status=EXCLUDED.status, priority=EXCLUDED.priority;
 
+-- ─── CLIENTS ──────────────────────────────────────────────────────────────────
+INSERT INTO clients (id,name,code,active) VALUES
+  ('client-adc','ADC Drilling','ADC',true),
+  ('client-kjo','Khafji Joint Operations','KJO',true),
+  ('client-nabors','Nabors','NBR',true)
+ON CONFLICT (id) DO UPDATE SET
+  name=EXCLUDED.name, code=EXCLUDED.code, active=EXCLUDED.active;
+
 -- ─── USERS ────────────────────────────────────────────────────────────────────
 INSERT INTO app_users (client_id,name,role,dept,email,color,initials,active) VALUES
   ('00000000-0000-0000-0000-000000000001','Ahmad Mohammed','Admin',        'Asset Management','a.mohammed@rig.com','#0070F2','AM',true),
@@ -223,7 +231,8 @@ INSERT INTO app_users (client_id,name,role,dept,email,color,initials,active) VAL
 ON CONFLICT (email) DO UPDATE SET
   client_id=EXCLUDED.client_id,
   name=EXCLUDED.name, role=EXCLUDED.role, dept=EXCLUDED.dept,
-  color=EXCLUDED.color, initials=EXCLUDED.initials, active=EXCLUDED.active;
+  color=EXCLUDED.color, initials=EXCLUDED.initials, active=EXCLUDED.active,
+  client_id=EXCLUDED.client_id;
 
 -- ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
 INSERT INTO notifications (client_id,icon,kind,title,description,time_label,is_read) VALUES
