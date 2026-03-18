@@ -47,8 +47,29 @@ export default {
 
 // Module-level role context ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â set per request in router()
 let _corsAllowOrigin = '*';
-const _allowedRoles = new Set(['Admin','Manager','Superintendent','Drilling Manager','Asset Manager','Maintenance Manager','Project Manager','Engineer','Assistant','Viewer']);
+const CANONICAL_ROLES = ['Admin','Manager','Superintendent','Drilling Manager','Asset Manager','Maintenance Manager','Project Manager','Engineer','Assistant','Viewer'];
+const _allowedRoles = new Set(CANONICAL_ROLES);
+const MANAGER_TIER = ['Manager','Superintendent','Drilling Manager','Asset Manager','Maintenance Manager','Project Manager'];
+const LEGACY_ROLE_MAP = Object.freeze({
+  'Supervisor': 'Superintendent',
+  'Technician': 'Assistant',
+  'Editor': 'Engineer',
+});
 const BCRYPT_COST = 10;
+
+function normalizeAppRole(role) {
+  const rawRole = String(role || '').trim();
+  if (!rawRole) return '';
+  if (_allowedRoles.has(rawRole)) return rawRole;
+  return LEGACY_ROLE_MAP[rawRole] || '';
+}
+
+function normalizeRoleField(input) {
+  if (!Object.prototype.hasOwnProperty.call(input || {}, 'role')) return input;
+  const normalizedRole = normalizeAppRole(input.role);
+  if (!normalizedRole) throw new Error('INVALID_ROLE');
+  return { ...input, role: normalizedRole };
+}
 
 function b64urlEncodeBytes(bytes) {
   let binary = '';
@@ -767,8 +788,8 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     } catch (_) {
       return respond({ success:false, error:'Invalid or expired token' }, 401);
     }
-    const claimRole = String(claims.app_role || '');
-    if (!_allowedRoles.has(claimRole)) return respond({ success:false, code:'INVALID_ROLE', error:'Invalid role in token' }, 403);
+    const claimRole = normalizeAppRole(claims.app_role);
+    if (!claimRole) return respond({ success:false, code:'INVALID_ROLE', error:'Invalid role in token' }, 403);
     ctx.reqRole = claimRole;
     ctx.reqName = String(claims.name || claims.user_metadata?.name || '');
     ctx.reqUserId = String(claims.sub || '');
@@ -804,18 +825,17 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     ctx.reqActive = true;
   }
 
-  // ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Per-request permission flags ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
-  // Admin              ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ full access
-  // Manager tier       ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ view + approve (no add/edit/delete)
-  //   Manager          ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ approve all 3 stages
-  //   Superintendent   ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ approve stage 1 only
-  //   Drilling Manager ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ approve stage 2 only
-  //   Asset Manager    ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ approve stage 3 only
-  //   Maintenance/Project Manager ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ view only
-  // Engineer           ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ edit + view (no add/delete)
-  // Assistant          ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ edit + delete + view (delete flagged)
+  // Per-request permission flags
+  // Admin              -> full access
+  // Manager tier       -> add projects/transfers, review delete requests, and approve assigned stages
+  //   Manager          -> approve all 3 stages
+  //   Superintendent   -> approve stage 1 only
+  //   Drilling Manager -> approve stage 2 only
+  //   Asset Manager    -> approve stage 3 only
+  //   Maintenance/Project Manager -> add projects/transfers + review delete requests
+  // Engineer           -> view only
+  // Assistant          -> view only
   const R = ctx.reqRole;
-  const MANAGER_TIER = ['Manager','Superintendent','Drilling Manager','Asset Manager','Maintenance Manager','Project Manager'];
   const perm = {
     canView:    true,
     canAdd:     R === 'Admin',
@@ -1113,8 +1133,8 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       console.warn('[login] User', user?.email, 'has no password set ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â open login allowed');
     }
 
-    const normalizedRole = String(user.role || '');
-    if (!_allowedRoles.has(normalizedRole)) return respond({ success:false, code:'INVALID_ROLE', error:'User role is not allowed' }, 403);
+    const normalizedRole = normalizeAppRole(user.role);
+    if (!normalizedRole) return respond({ success:false, code:'INVALID_ROLE', error:'User role is not allowed' }, 403);
     const safeUser = { ...user, role: normalizedRole };
     delete safeUser.password;
     const clientId = String(safeUser.client_id || '');
@@ -1174,7 +1194,8 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       }
     }
 
-    const roleValid = _allowedRoles.has(String(user.role || ''));
+    const resolvedRole = normalizeAppRole(user.role);
+    const roleValid = Boolean(resolvedRole);
 
     return respond({ success: true, debug: {
       found: true,
@@ -1182,6 +1203,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       email: user.email,
       name: user.name,
       role: user.role,
+      normalizedRole: resolvedRole || null,
       roleValid,
       active: user.active,
       hasPassword,
@@ -1431,7 +1453,13 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     }
     if(method==='POST') {
       if (ctx.reqRole !== 'Admin') return forbidden(ctx, 'create user accounts');
-      const payload = applyClientPayload({ ...body }, body.client_id || currentClientId());
+      let payload;
+      try {
+        payload = applyClientPayload(normalizeRoleField({ ...body }), body.client_id || currentClientId());
+      } catch (e) {
+        if (String(e?.message || e) === 'INVALID_ROLE') return respond({ success:false, code:'INVALID_ROLE', error:'User role is not allowed' }, 400);
+        throw e;
+      }
       const hadPassword = typeof payload.password === 'string' && payload.password.trim();
       if (hadPassword) {
         payload.password = await hashPassword(SB, dbAuth, payload.password, BCRYPT_COST, ctx);
@@ -1457,7 +1485,13 @@ async function router(path, method, url, request, SB, KEY, env={}) {
         delete u.active;
         delete u.client_id;
       }
-      const payload = applyClientPayload(u, u.client_id || currentClientId());
+      let payload;
+      try {
+        payload = applyClientPayload(normalizeRoleField(u), u.client_id || currentClientId());
+      } catch (e) {
+        if (String(e?.message || e) === 'INVALID_ROLE') return respond({ success:false, code:'INVALID_ROLE', error:'User role is not allowed' }, 400);
+        throw e;
+      }
       const hadPassword = typeof payload.password === 'string' && payload.password.trim();
       if (typeof payload.password === 'string') {
         if (hadPassword) {
