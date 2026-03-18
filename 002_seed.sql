@@ -215,12 +215,12 @@ ON CONFLICT (email) DO UPDATE SET
   color=EXCLUDED.color, initials=EXCLUDED.initials, active=EXCLUDED.active;
 
 -- ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
-INSERT INTO notifications (icon,kind,title,description,time_label,is_read) VALUES
-  ('fas fa-exclamation-triangle','warning','Contract Expiry Warning', 'ADC Rig #7 contract expires in 15 days (Jan 14, 2025)','2 hours ago',false),
-  ('fas fa-tools',               'warning','Maintenance Alert',        'Asset AST-004 (Mud Pumps) requires scheduled maintenance','4 hours ago',false),
-  ('fas fa-file-import',         'info',   'Import Completed',         '12 assets imported successfully from Excel file',          'Yesterday',  false),
-  ('fas fa-check-circle',        'success','Asset Activated',          'AST-009 (Rotary Table) has been activated',                '2 days ago', false),
-  ('fas fa-envelope',            'info',   'Email Alert Sent',         'Maintenance report sent to 3 recipients',                  '3 days ago', true)
+INSERT INTO notifications (icon,kind,title,description,link,user_id,client_id,event_type,is_read,created_at) VALUES
+  ('fas fa-exclamation-triangle','orange','Contract Expiry Warning','ADC Rig #7 contract expires in 15 days (Jan 14, 2025)','/?tab=contracts',NULL,NULL,'contract_expiry_warning',false,NOW() - INTERVAL '2 hours'),
+  ('fas fa-tools',               'orange','Maintenance Alert','Asset AST-004 (Mud Pumps) requires scheduled maintenance','/?tab=maintenance',NULL,NULL,'maintenance_alert',false,NOW() - INTERVAL '4 hours'),
+  ('fas fa-file-import',         'blue',  'Import Completed','12 assets imported successfully from Excel file','/?tab=assets',NULL,NULL,'asset_import_completed',false,NOW() - INTERVAL '1 day'),
+  ('fas fa-check-circle',        'green', 'Asset Activated','AST-009 (Rotary Table) has been activated','/?tab=assets',NULL,NULL,'asset_activated',false,NOW() - INTERVAL '2 days'),
+  ('fas fa-envelope',            'blue',  'Email Alert Sent','Maintenance report sent to 3 recipients','/?tab=maintenance',NULL,NULL,'email_alert_sent',true,NOW() - INTERVAL '3 days')
 ON CONFLICT DO NOTHING;
 
 -- ─── VERIFY ───────────────────────────────────────────────────────────────────

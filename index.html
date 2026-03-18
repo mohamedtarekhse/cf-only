@@ -14224,9 +14224,21 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
           refreshClientScopedFormState();
           if (typeof PROJECTS !== 'undefined') refill(PROJECTS, (prjR.data || []).map(normP));
           if (typeof INSPECTIONS !== 'undefined') refill(INSPECTIONS, (inspR.data || []).map(normInsp));
-          const liveNotifications = (nR.data || []).map(n => ({
-            ...n, type: 'ni-' + n.kind, desc: n.description, read: n.is_read
-          }));
+          const liveNotifications = (nR.data || []).map(n => {
+            const rawKind = (n.kind || n.type || 'blue').toString().toLowerCase();
+            const kind = rawKind === 'warning' ? 'orange'
+              : rawKind === 'info' ? 'blue'
+                : rawKind === 'success' ? 'green'
+                  : rawKind === 'error' ? 'red'
+                    : rawKind.replace(/^ni-/, '') || 'blue';
+            return {
+              ...n,
+              kind,
+              type: 'ni-' + kind,
+              desc: n.description,
+              read: n.is_read
+            };
+          });
           const deleteRequestNotifications = (drR.data || []).map(normalizeDeleteRequestNotice);
           refill(NOTIFICATIONS, [...deleteRequestNotifications, ...liveNotifications]);
           notifyDesktopForFreshItems([...deleteRequestNotifications, ...liveNotifications]).catch(err => console.warn('[desktop notify]', err));
@@ -16233,7 +16245,6 @@ This cannot be undone.`)) return;
 </body>
 
 </html>
-
 
 
 
