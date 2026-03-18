@@ -14199,7 +14199,7 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
             GET('/rigs'),
             GET('/workshops', { limit: 500 }),
             GET('/contracts', { limit: 200 }),
-            GET('/maintenance', { limit: 500 }),
+            GET('/maintenance_schedules', { limit: 500 }),
             GET('/transfers', { limit: 200 }),
             GET('/certificates', { limit: 500 }),
             GET('/bom', { limit: 1000 }),
@@ -14687,12 +14687,12 @@ This will affect ${linkedUsers} user(s) and ${linkedRigs} rig(s) linked to it.`)
 
         try {
           if (editingMaintId) {
-            const r = await PUT(`/maintenance/${editingMaintId}`, payload);
+            const r = await PUT(`/maintenance_schedules/${editingMaintId}`, payload);
             const idx = MAINT_SCHEDULES.findIndex(m => m.id === editingMaintId);
             if (idx >= 0) MAINT_SCHEDULES[idx] = normM(r.data);
             showToast('Maintenance schedule updated ', 'success');
           } else {
-            const r = await POST('/maintenance', payload);
+            const r = await POST('/maintenance_schedules', payload);
             MAINT_SCHEDULES.push(normM(r.data));
             showToast(`Schedule ${r.data.id} created `, 'success');
           }
@@ -14716,7 +14716,7 @@ This will affect ${linkedUsers} user(s) and ${linkedRigs} rig(s) linked to it.`)
         };
 
         try {
-          const r = await POST(`/maintenance/${logTargetMaintId}/complete`, body);
+          const r = await POST(`/maintenance_schedules/${logTargetMaintId}/complete`, body);
           const idx = MAINT_SCHEDULES.findIndex(m => m.id === logTargetMaintId);
           if (idx >= 0) MAINT_SCHEDULES[idx] = normM(r.data.schedule);
           showToast(` Marked complete. Next due: ${r.data.schedule.next_due}`, 'success');
@@ -14728,7 +14728,7 @@ This will affect ${linkedUsers} user(s) and ${linkedRigs} rig(s) linked to it.`)
         const m = MAINT_SCHEDULES.find(x => x.id === id);
         if (!confirm(`Delete maintenance schedule "${m?.task}"?`)) return;
         try {
-          const res = await DELETE(`/maintenance/${id}`);
+          const res = await DELETE(`/maintenance_schedules/${id}`);
           if (!handleDeleteResult(res, 'Delete request submitted for maintenance schedule approval.')) return;
           refill(MAINT_SCHEDULES, MAINT_SCHEDULES.filter(x => x.id !== id));
           rerender('renderMaintenance', 'updateMaintKPIs');
@@ -15449,11 +15449,11 @@ This cannot be undone.`)) return;
             try {
               const existing = MAINT_SCHEDULES.find(m => m.id === id);
               if (existing) {
-                const res = await PUT(`/maintenance/${id}`, payload);
+                const res = await PUT(`/maintenance_schedules/${id}`, payload);
                 const idx = MAINT_SCHEDULES.findIndex(m => m.id === id);
                 if (idx >= 0) MAINT_SCHEDULES[idx] = normM(res.data);
               } else {
-                const res = await POST('/maintenance', payload);
+                const res = await POST('/maintenance_schedules', payload);
                 MAINT_SCHEDULES.push(normM(res.data));
               }
               added++;
@@ -16159,8 +16159,8 @@ This cannot be undone.`)) return;
         if (r.__isDup && r.__action==='skip') return 'skipped';
         const payload={id,asset_id,task:r['Task']||'Inspection',type:r['Type']||'Inspection',priority:r['Priority']||'Normal',freq:Number(r['Frequency']||r['Freq']||90)||90,last_done:r['Last Done']||null,next_due,tech:r['Technician']||r['Tech']||'',hours:Number(r['Hours']||0)||null,cost:Number(r['Cost']||0)||null,status:r['Status']||'Scheduled',alert_days:Number(r['Alert Days']||14)||14,notes:r['Notes']||''};
         const arr=typeof MAINT_SCHEDULES!=='undefined'?MAINT_SCHEDULES:[];
-        if (r.__isDup) { const res=await PUT(`/maintenance/${id}`,payload); const idx=arr.findIndex(m=>m.id===id); if(idx>=0) arr[idx]=typeof normM==='function'?normM(res.data):res.data; return 'updated'; }
-        else           { const res=await POST('/maintenance',payload); arr.push(typeof normM==='function'?normM(res.data):res.data); return 'added'; }
+        if (r.__isDup) { const res=await PUT(`/maintenance_schedules/${id}`,payload); const idx=arr.findIndex(m=>m.id===id); if(idx>=0) arr[idx]=typeof normM==='function'?normM(res.data):res.data; return 'updated'; }
+        else           { const res=await POST('/maintenance_schedules',payload); arr.push(typeof normM==='function'?normM(res.data):res.data); return 'added'; }
       }
 
       async function __ipvDoCert(r) {

@@ -840,7 +840,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     inspections: { table: 'inspections', idColumn: 'id', labelFields: ['inspection_type', 'id'] },
     workshops: { table: 'workshops', idColumn: 'workshop_id', labelFields: ['name', 'workshop_id'] },
     bom: { table: 'bom_items', idColumn: 'id', labelFields: ['name', 'part_no', 'id'] },
-    maintenance: { table: 'maintenance_schedules', idColumn: 'id', labelFields: ['task', 'asset_id', 'id'] },
+    maintenance_schedules: { table: 'maintenance_schedules', idColumn: 'id', labelFields: ['task', 'asset_id', 'id'] },
     certificates: { table: 'certificates', idColumn: 'cert_id', labelFields: ['name', 'cert_id'] },
   };
 
@@ -1322,8 +1322,8 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     if(method==='DELETE'){const r=await sbDelete(SB,KEY,'certificates',scopedFilters({cert_id:`eq.${id}`}));if(r.error)return err500(r.error);return ok({deleted:id});}
   }
 
-  // MAINTENANCE
-  if (res==='maintenance') {
+  // MAINTENANCE SCHEDULES
+  if (res==='maintenance_schedules') {
     if(method==='POST'&&id&&act==='complete'){
       const {completion_date,performed_by,hours,cost,parts_used,notes,next_due_override}=body;
       if(!completion_date||!performed_by) return respond({success:false,error:'completion_date and performed_by required'},400);
