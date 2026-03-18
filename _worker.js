@@ -271,6 +271,84 @@ function isMissingColumnError(error, column='password_changed_at') {
   return msg.toLowerCase().includes(String(column).toLowerCase()) && /column|schema cache/i.test(msg);
 }
 
+function appUserOptionalColumns() {
+  return ['client_id', 'password_changed_at'];
+}
+
+function omitColumnsFromSelect(select, columns=[]) {
+  const remove = new Set((columns || []).map(c => String(c || '').trim()).filter(Boolean));
+  return String(select || '*')
+    .split(',')
+    .map(part => String(part || '').trim())
+    .filter(part => part && !remove.has(part))
+    .join(',') || '*';
+}
+
+function omitColumnsFromPayload(payload={}, columns=[]) {
+  const next = { ...(payload || {}) };
+  for (const column of columns || []) delete next[column];
+  return next;
+}
+
+function omitColumnsFromFilters(filters={}, columns=[]) {
+  const next = { ...(filters || {}) };
+  for (const column of columns || []) delete next[column];
+  return next;
+}
+
+async function sbGetAppUsers(base, auth, opts={}, ctx=null) {
+  const optional = appUserOptionalColumns();
+  let currentSelect = opts?.select || '*';
+  let currentFilters = { ...(opts?.filters || {}) };
+  for (let attempt = 0; attempt <= optional.length * 2; attempt++) {
+    const res = await sbGetCore(base, auth, 'app_users', { ...opts, select: currentSelect, filters: currentFilters, bypass: true }, ctx);
+    if (!res.error) return res;
+    const missingInSelect = optional.find(column => currentSelect.includes(column) && isMissingColumnError(res.error, column));
+    if (missingInSelect) {
+      currentSelect = omitColumnsFromSelect(currentSelect, [missingInSelect]);
+      continue;
+    }
+    const missingInFilters = optional.find(column => Object.prototype.hasOwnProperty.call(currentFilters, column) && isMissingColumnError(res.error, column));
+    if (missingInFilters) {
+      currentFilters = omitColumnsFromFilters(currentFilters, [missingInFilters]);
+      continue;
+    }
+    return res;
+  }
+  return await sbGetCore(base, auth, 'app_users', {
+    ...opts,
+    select: omitColumnsFromSelect(currentSelect, optional),
+    filters: omitColumnsFromFilters(currentFilters, optional),
+    bypass: true
+  }, ctx);
+}
+
+async function sbPostAppUser(base, auth, payload, ctx=null) {
+  const optional = appUserOptionalColumns();
+  let currentPayload = { ...(payload || {}) };
+  for (let attempt = 0; attempt <= optional.length; attempt++) {
+    const res = await sbPostCore(base, auth, 'app_users', currentPayload, { bypass:true }, ctx);
+    if (!res.error) return res;
+    const missing = optional.find(column => Object.prototype.hasOwnProperty.call(currentPayload, column) && isMissingColumnError(res.error, column));
+    if (!missing) return res;
+    currentPayload = omitColumnsFromPayload(currentPayload, [missing]);
+  }
+  return await sbPostCore(base, auth, 'app_users', omitColumnsFromPayload(currentPayload, optional), { bypass:true }, ctx);
+}
+
+async function sbPatchAppUser(base, auth, filters, payload, ctx=null) {
+  const optional = appUserOptionalColumns();
+  let currentPayload = { ...(payload || {}) };
+  for (let attempt = 0; attempt <= optional.length; attempt++) {
+    const res = await sbPatchCore(base, auth, 'app_users', filters, currentPayload, { bypass:true }, ctx);
+    if (!res.error) return res;
+    const missing = optional.find(column => Object.prototype.hasOwnProperty.call(currentPayload, column) && isMissingColumnError(res.error, column));
+    if (!missing) return res;
+    currentPayload = omitColumnsFromPayload(currentPayload, [missing]);
+  }
+  return await sbPatchCore(base, auth, 'app_users', filters, omitColumnsFromPayload(currentPayload, optional), { bypass:true }, ctx);
+}
+
 function parseTimestampSeconds(value) {
   if (!value) return null;
   const ms = Date.parse(String(value));
@@ -550,28 +628,28 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     const normalized = raw.toLowerCase();
     const filters = clientId ? { client_id: `eq.${clientId}` } : {};
     if (normalized.includes('@')) {
-      const exact = await sbGetBypass(SB, KEY, 'app_users', {
+      const exact = await sbGetAppUsers(SB, dbAuth, {
         select: 'id,email,name,role,active,client_id',
         filters: { ...filters, email: `eq.${normalized}` },
         single: true
-      });
+      }, ctx);
       if (!exact.error && exact.data) return exact.data;
-      const fuzzy = await sbGetBypass(SB, KEY, 'app_users', {
+      const fuzzy = await sbGetAppUsers(SB, dbAuth, {
         select: 'id,email,name,role,active,client_id',
         filters: { ...filters, email: `ilike.*${normalized}*` },
         limit: 5
-      });
+      }, ctx);
       if (!fuzzy.error && Array.isArray(fuzzy.data)) {
         const match = fuzzy.data.find(u => String(u.email || '').trim().toLowerCase() === normalized);
         if (match) return match;
       }
       return null;
     }
-    const byName = await sbGetBypass(SB, KEY, 'app_users', {
+    const byName = await sbGetAppUsers(SB, dbAuth, {
       select: 'id,email,name,role,active,client_id',
       filters: { ...filters, name: `ilike.*${raw}*` },
       limit: 20
-    });
+    }, ctx);
     if (byName.error || !Array.isArray(byName.data)) return null;
     const exactName = byName.data.find(u => String(u.name || '').trim().toLowerCase() === normalized);
     return exactName || byName.data[0] || null;
@@ -634,7 +712,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
   async function listTransferRecipients(transfer, eventType) {
     const clientId = String(transfer?.client_id || await lookupAssetClientId(transfer?.asset_id) || await lookupRigClientId(transfer?.dest_rig) || currentClientId()).trim();
     const targetRoles = new Set(transferEventRoleTargets(eventType));
-    const approvers = await sbGetBypass(SB, KEY, 'app_users', {
+    const approvers = await sbGetAppUsers(SB, dbAuth, {
       select: 'id,name,email,role,client_id,active',
       filters: {
         client_id: clientId ? `eq.${clientId}` : 'eq.__missing_client__',
@@ -642,7 +720,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       },
       limit: 200,
       order: 'name.asc'
-    });
+    }, ctx);
     const recipients = [];
     if (!approvers.error && Array.isArray(approvers.data)) {
       for (const user of approvers.data) {
@@ -1021,11 +1099,10 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     const userSelect = 'id,name,role,dept,email,color,initials,password,active,client_id';
 
     for (const table of ['app_users']) {
-      const exact = await sbGetBypass(SB, KEY, table, {
+      const exact = await sbGetAppUsers(SB, dbAuth, {
         select: userSelect,
         filters: { email: 'eq.' + email },
-        single: true,
-        bypass: true
+        single: true
       }, ctx);
       if (!exact.error && exact.data) {
         user = exact.data;
@@ -1034,12 +1111,11 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       }
 
       // Legacy compatibility: mixed-case or padded emails.
-      const fuzzy = await sbGetBypass(SB, KEY, table, {
+      const fuzzy = await sbGetAppUsers(SB, dbAuth, {
         select: userSelect,
         filters: { email: 'ilike.*' + email + '*' },
         order: 'email.asc',
-        limit: 50,
-        bypass: true
+        limit: 50
       }, ctx);
       if (fuzzy.error) {
         continue;
@@ -1056,12 +1132,11 @@ async function router(path, method, url, request, SB, KEY, env={}) {
 
     if (!user) {
       for (const table of ['app_users']) {
-        const byName = await sbGetBypass(SB, KEY, table, {
+        const byName = await sbGetAppUsers(SB, dbAuth, {
           select: userSelect,
           filters: { name: 'ilike.*' + identifierRaw + '*' },
           order: 'name.asc',
-          limit: 50,
-          bypass: true
+          limit: 50
         }, ctx);
         if (byName.error) continue;
         const rows = Array.isArray(byName.data) ? byName.data : [];
@@ -1409,23 +1484,20 @@ async function router(path, method, url, request, SB, KEY, env={}) {
   if (res==='users') {
     if (method==='GET' && !id) {
       if (ctx.reqRole === 'Admin') {
-        return ok(await sbGetBypass(SB,KEY,'app_users',{select:'id,name,role,dept,email,color,initials,active,client_id',order:'name.asc',bypass:true}));
+        return ok(await sbGetAppUsers(SB, dbAuth, { select:'id,name,role,dept,email,color,initials,active,client_id', order:'name.asc' }, ctx));
       }
-      return ok(await sbGetBypass(SB,KEY,'app_users',{select:'id,name,role,dept,email,color,initials,active,client_id',filters:{id:`eq.${ctx.reqUserId}`},single:false,bypass:true}));
+      return ok(await sbGetAppUsers(SB, dbAuth, { select:'id,name,role,dept,email,color,initials,active,client_id', filters:{id:`eq.${ctx.reqUserId}`}, single:false }, ctx));
     }
     if (method==='GET' && id) {
       if (ctx.reqRole !== 'Admin' && String(id) !== String(ctx.reqUserId)) return forbidden(ctx, 'view other user accounts');
-      return ok(await sbGetBypass(SB,KEY,'app_users',{select:'id,name,role,dept,email,color,initials,active,client_id',filters:{id:`eq.${id}`},single:true,bypass:true}));
+      return ok(await sbGetAppUsers(SB, dbAuth, { select:'id,name,role,dept,email,color,initials,active,client_id', filters:{id:`eq.${id}`}, single:true }, ctx));
     }
     if(method==='POST'&&id&&act==='reset-password') {
       if (ctx.reqRole !== 'Admin') return respond({ success:false, error:'Forbidden' }, 403);
       const newPassword = String(body.new_password || '').trim();
       if (newPassword.length < 4) return respond({ success:false, error:'new_password must be at least 4 characters' }, 400);
       const hashed = await hashPassword(SB, dbAuth, newPassword, BCRYPT_COST, ctx);
-      let r = await sbPatch(SB, KEY, 'app_users', { id:`eq.${id}` }, { password: hashed, password_changed_at: nowIso() });
-      if (r?.error && isMissingColumnError(r.error)) {
-        r = await sbPatch(SB, KEY, 'app_users', { id:`eq.${id}` }, { password: hashed });
-      }
+      const r = await sbPatchAppUser(SB, dbAuth, { id:`eq.${id}` }, { password: hashed, password_changed_at: nowIso() }, ctx);
       if (r?.error) return err500(r.error);
       return respond({ success:true, data:{ id, password_updated:true, session_revoked:true } });
     }
@@ -1439,11 +1511,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       } else {
         delete payload.password;
       }
-      let r = await sbPost(SB, KEY, 'app_users', payload);
-      if (r?.error && hadPassword && isMissingColumnError(r.error)) {
-        delete payload.password_changed_at;
-        r = await sbPost(SB, KEY, 'app_users', payload);
-      }
+      const r = await sbPostAppUser(SB, dbAuth, payload, ctx);
       if (r?.data) delete r.data.password;
       return ok(r);
     }
@@ -1467,11 +1535,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
           delete payload.password;
         }
       }
-      let r = await sbPatch(SB,KEY,'app_users',{id:`eq.${id}`},payload);
-      if (r?.error && hadPassword && isMissingColumnError(r.error)) {
-        delete payload.password_changed_at;
-        r = await sbPatch(SB,KEY,'app_users',{id:`eq.${id}`},payload);
-      }
+      const r = await sbPatchAppUser(SB, dbAuth, {id:`eq.${id}`}, payload, ctx);
       if (r?.data) delete r.data.password;
       return ok(r);
     }
