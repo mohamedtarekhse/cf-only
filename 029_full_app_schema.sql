@@ -178,6 +178,16 @@ CREATE TABLE IF NOT EXISTS app_users (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS login_history (
+  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id      UUID NOT NULL,
+  logged_in_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  ip_address   TEXT,
+  user_agent   TEXT,
+  CONSTRAINT login_history_user_id_fkey
+    FOREIGN KEY (user_id) REFERENCES app_users(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS inspections (
   id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   reg_id           TEXT,
@@ -195,20 +205,9 @@ CREATE TABLE IF NOT EXISTS inspections (
   updated_at       TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE SEQUENCE IF NOT EXISTS projects_project_id_seq;
-
-CREATE OR REPLACE FUNCTION generate_project_id()
-RETURNS TEXT
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  RETURN 'PRJ-' || LPAD(nextval('projects_project_id_seq')::TEXT, 8, '0');
-END;
-$$;
-
 CREATE TABLE IF NOT EXISTS projects (
   id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  project_id     TEXT UNIQUE NOT NULL DEFAULT generate_project_id(),
+  project_id     TEXT UNIQUE NOT NULL,
   name           TEXT,
   rig_name       TEXT,
   status         TEXT,
@@ -223,28 +222,6 @@ CREATE TABLE IF NOT EXISTS projects (
   created_at     TIMESTAMPTZ DEFAULT NOW(),
   updated_at     TIMESTAMPTZ DEFAULT NOW()
 );
-
-ALTER TABLE projects
-  ALTER COLUMN project_id SET DEFAULT generate_project_id();
-
-SELECT setval(
-  'projects_project_id_seq',
-  GREATEST(COALESCE((
-    SELECT MAX((regexp_match(project_id, '^PRJ-(\d+)$'))[1]::BIGINT)
-    FROM projects
-    WHERE project_id ~ '^PRJ-(\d+)$'
-  ), 0), 1),
-  EXISTS (
-    SELECT 1
-    FROM projects
-    WHERE project_id ~ '^PRJ-(\d+)$'
-  )
-);
-
-UPDATE projects
-SET project_id = generate_project_id()
-WHERE project_id IS NULL
-   OR project_id !~ '^PRJ-(\d+)$';
 
 CREATE TABLE IF NOT EXISTS workshops (
   id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -350,6 +327,8 @@ CREATE INDEX IF NOT EXISTS idx_maint_sched_next_due ON maintenance_schedules(nex
 CREATE INDEX IF NOT EXISTS idx_maint_logs_schedule_id ON maintenance_logs(schedule_id);
 CREATE INDEX IF NOT EXISTS idx_transfers_asset_id ON transfers(asset_id);
 CREATE INDEX IF NOT EXISTS idx_transfers_status ON transfers(status);
+CREATE INDEX IF NOT EXISTS idx_login_history_user_id ON login_history(user_id);
+CREATE INDEX IF NOT EXISTS idx_login_history_logged_in_at ON login_history(logged_in_at DESC);
 CREATE INDEX IF NOT EXISTS idx_projects_project_id ON projects(project_id);
 CREATE INDEX IF NOT EXISTS idx_workshops_workshop_id ON workshops(workshop_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
