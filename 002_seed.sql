@@ -202,17 +202,26 @@ ON CONFLICT (id) DO UPDATE SET
   asset_id=EXCLUDED.asset_id, asset_name=EXCLUDED.asset_name,
   status=EXCLUDED.status, priority=EXCLUDED.priority;
 
+-- ─── CLIENTS ──────────────────────────────────────────────────────────────────
+INSERT INTO clients (id,name,code,active) VALUES
+  ('client-adc','ADC Drilling','ADC',true),
+  ('client-kjo','Khafji Joint Operations','KJO',true),
+  ('client-nabors','Nabors','NBR',true)
+ON CONFLICT (id) DO UPDATE SET
+  name=EXCLUDED.name, code=EXCLUDED.code, active=EXCLUDED.active;
+
 -- ─── USERS ────────────────────────────────────────────────────────────────────
-INSERT INTO app_users (name,role,dept,email,color,initials,active) VALUES
-  ('Ahmad Mohammed','Admin',        'Asset Management','a.mohammed@rig.com','#0070F2','AM',true),
-  ('Sara Al-Rashid','Asset Manager','Operations',      's.alrashid@rig.com','#8B5CF6','SR',true),
-  ('James Miller',  'Viewer',       'Finance',          'j.miller@rig.com', '#107E3E','JM',true),
-  ('Layla Hassan',  'Editor',       'Contracts',        'l.hassan@rig.com', '#E9730C','LH',true),
-  ('David Chen',    'Viewer',       'Engineering',      'd.chen@rig.com',   '#BB0000','DC',true),
-  ('Fatima Al-Zahra','Editor',      'Maintenance',      'f.alzahra@rig.com','#0070F2','FZ',true)
+INSERT INTO app_users (name,role,dept,email,color,initials,active,client_id) VALUES
+  ('Ahmad Mohammed','Admin',             'Asset Management','a.mohammed@rig.com','#0070F2','AM',true,NULL),
+  ('Sara Al-Rashid','Asset Manager',     'Operations',      's.alrashid@rig.com','#8B5CF6','SR',true,'client-adc'),
+  ('James Miller',  'Viewer',            'Finance',         'j.miller@rig.com', '#107E3E','JM',true,'client-adc'),
+  ('Layla Hassan',  'Project Manager',   'Contracts',       'l.hassan@rig.com', '#E9730C','LH',true,'client-adc'),
+  ('David Chen',    'Viewer',            'Engineering',     'd.chen@rig.com',   '#BB0000','DC',true,'client-kjo'),
+  ('Fatima Al-Zahra','Maintenance Manager','Maintenance',   'f.alzahra@rig.com','#0070F2','FZ',true,'client-kjo')
 ON CONFLICT (email) DO UPDATE SET
   name=EXCLUDED.name, role=EXCLUDED.role, dept=EXCLUDED.dept,
-  color=EXCLUDED.color, initials=EXCLUDED.initials, active=EXCLUDED.active;
+  color=EXCLUDED.color, initials=EXCLUDED.initials, active=EXCLUDED.active,
+  client_id=EXCLUDED.client_id;
 
 -- ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
 INSERT INTO notifications (icon,kind,title,description,time_label,is_read) VALUES
