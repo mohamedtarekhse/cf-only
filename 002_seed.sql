@@ -202,25 +202,34 @@ ON CONFLICT (id) DO UPDATE SET
   asset_id=EXCLUDED.asset_id, asset_name=EXCLUDED.asset_name,
   status=EXCLUDED.status, priority=EXCLUDED.priority;
 
+-- ─── CLIENTS ──────────────────────────────────────────────────────────────────
+INSERT INTO clients (id,name,code,active) VALUES
+  ('client-adc','ADC Drilling','ADC',true),
+  ('client-kjo','Khafji Joint Operations','KJO',true),
+  ('client-nabors','Nabors','NBR',true)
+ON CONFLICT (id) DO UPDATE SET
+  name=EXCLUDED.name, code=EXCLUDED.code, active=EXCLUDED.active;
+
 -- ─── USERS ────────────────────────────────────────────────────────────────────
-INSERT INTO app_users (name,role,dept,email,color,initials,active) VALUES
-  ('Ahmad Mohammed','Admin',        'Asset Management','a.mohammed@rig.com','#0070F2','AM',true),
-  ('Sara Al-Rashid','Asset Manager','Operations',      's.alrashid@rig.com','#8B5CF6','SR',true),
-  ('James Miller',  'Viewer',       'Finance',          'j.miller@rig.com', '#107E3E','JM',true),
-  ('Layla Hassan',  'Editor',       'Contracts',        'l.hassan@rig.com', '#E9730C','LH',true),
-  ('David Chen',    'Viewer',       'Engineering',      'd.chen@rig.com',   '#BB0000','DC',true),
-  ('Fatima Al-Zahra','Editor',      'Maintenance',      'f.alzahra@rig.com','#0070F2','FZ',true)
+INSERT INTO app_users (name,role,dept,email,color,initials,active,client_id) VALUES
+  ('Ahmad Mohammed','Admin',             'Asset Management','a.mohammed@rig.com','#0070F2','AM',true,NULL),
+  ('Sara Al-Rashid','Asset Manager',     'Operations',      's.alrashid@rig.com','#8B5CF6','SR',true,'client-adc'),
+  ('James Miller',  'Viewer',            'Finance',         'j.miller@rig.com', '#107E3E','JM',true,'client-adc'),
+  ('Layla Hassan',  'Project Manager',   'Contracts',       'l.hassan@rig.com', '#E9730C','LH',true,'client-adc'),
+  ('David Chen',    'Viewer',            'Engineering',     'd.chen@rig.com',   '#BB0000','DC',true,'client-kjo'),
+  ('Fatima Al-Zahra','Maintenance Manager','Maintenance',   'f.alzahra@rig.com','#0070F2','FZ',true,'client-kjo')
 ON CONFLICT (email) DO UPDATE SET
   name=EXCLUDED.name, role=EXCLUDED.role, dept=EXCLUDED.dept,
-  color=EXCLUDED.color, initials=EXCLUDED.initials, active=EXCLUDED.active;
+  color=EXCLUDED.color, initials=EXCLUDED.initials, active=EXCLUDED.active,
+  client_id=EXCLUDED.client_id;
 
 -- ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
-INSERT INTO notifications (icon,kind,title,description,time_label,is_read) VALUES
-  ('fas fa-exclamation-triangle','warning','Contract Expiry Warning', 'ADC Rig #7 contract expires in 15 days (Jan 14, 2025)','2 hours ago',false),
-  ('fas fa-tools',               'warning','Maintenance Alert',        'Asset AST-004 (Mud Pumps) requires scheduled maintenance','4 hours ago',false),
-  ('fas fa-file-import',         'info',   'Import Completed',         '12 assets imported successfully from Excel file',          'Yesterday',  false),
-  ('fas fa-check-circle',        'success','Asset Activated',          'AST-009 (Rotary Table) has been activated',                '2 days ago', false),
-  ('fas fa-envelope',            'info',   'Email Alert Sent',         'Maintenance report sent to 3 recipients',                  '3 days ago', true)
+INSERT INTO notifications (icon,kind,title,description,time_label,link,user_id,client_id,event_type,is_read) VALUES
+  ('fas fa-exclamation-triangle','warning','Contract Expiry Warning', 'ADC Rig #7 contract expires in 15 days (Jan 14, 2025)','2 hours ago','/?tab=contracts',NULL,NULL,'contract_expiry',false),
+  ('fas fa-tools',               'warning','Maintenance Alert',        'Asset AST-004 (Mud Pumps) requires scheduled maintenance','4 hours ago','/?tab=maintenance',NULL,NULL,'maintenance_due',false),
+  ('fas fa-file-import',         'info',   'Import Completed',         '12 assets imported successfully from Excel file',          'Yesterday', '/?tab=assets',NULL,NULL,'asset_import',false),
+  ('fas fa-check-circle',        'success','Asset Activated',          'AST-009 (Rotary Table) has been activated',                '2 days ago', '/?tab=assets',NULL,NULL,'asset_activated',false),
+  ('fas fa-envelope',            'info',   'Email Alert Sent',         'Maintenance report sent to 3 recipients',                  '3 days ago', '/?tab=maintenance',NULL,NULL,'email_sent',true)
 ON CONFLICT DO NOTHING;
 
 -- ─── VERIFY ───────────────────────────────────────────────────────────────────
