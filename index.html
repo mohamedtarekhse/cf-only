@@ -10571,10 +10571,46 @@ This cannot be undone.`)) return;
           </div>`;
       }).join('');
     }
+    function notificationClassFromKind(kind) {
+      const tone = String(kind || '').trim().toLowerCase();
+      switch (tone) {
+        case 'success':
+        case 'green':
+          return 'ni-green';
+        case 'error':
+        case 'danger':
+        case 'red':
+          return 'ni-red';
+        case 'warning':
+        case 'warn':
+        case 'orange':
+          return 'ni-orange';
+        default:
+          return 'ni-blue';
+      }
+    }
+
+    function normalizeNotification(item) {
+      if (!item) return {};
+      const kind = String(item.kind || item.type || 'info').trim() || 'info';
+      const time = item.time || item.time_label || (item.created_at ? new Date(item.created_at).toLocaleString() : 'Just now');
+      const read = item.read != null ? !!item.read : !!item.is_read;
+      return {
+        ...item,
+        kind,
+        type: notificationClassFromKind(kind),
+        desc: item.desc || item.description || '',
+        time,
+        read,
+        is_read: read,
+        link: item.link || ''
+      };
+    }
+
     function normalizeDeleteRequestNotice(req) {
       const status = String(req.status || 'Pending');
       const statusTone = status === 'Approved' ? 'green' : status === 'Rejected' ? 'red' : 'orange';
-      return {
+      return normalizeNotification({
         id: req.id,
         deleteRequest: true,
         requestId: req.id,
@@ -10586,15 +10622,14 @@ This cannot be undone.`)) return;
         reviewComment: req.review_comment || '',
         status,
         icon: 'fas fa-trash-alt',
-        type: 'ni-' + statusTone,
+        kind: statusTone,
         title: `Delete Request: ${req.record_label || req.record_id}`,
-        desc: status === 'Pending'
+        description: status === 'Pending'
           ? `${req.requested_by_name || 'Assistant'} requested deletion of ${req.record_label || req.record_id}.`
           : `${req.record_label || req.record_id} delete request ${status.toLowerCase()} by ${req.reviewed_by_name || 'manager'}.`,
-        time: req.created_at ? new Date(req.created_at).toLocaleString() : 'Just now',
-        read: status !== 'Pending',
+        time_label: req.created_at ? new Date(req.created_at).toLocaleString() : 'Just now',
         is_read: status !== 'Pending'
-      };
+      });
     }
 
     function upsertDeleteRequestNotice(req) {
@@ -10842,7 +10877,7 @@ This cannot be undone.`)) return;
       if (!to || !subject) { showToast('Please fill in recipient and subject.', 'error'); return; }
       closeEmailModal();
       showToast('Email alert sent to ' + to.split(';').length + ' recipient(s).', 'success');
-      NOTIFICATIONS.unshift({ icon: 'fas fa-envelope', type: 'ni-blue', title: 'Email Alert Sent', desc: 'Alert "' + subject + '" was sent.', time: 'Just now', read: false });
+      NOTIFICATIONS.unshift(normalizeNotification({ icon: 'fas fa-envelope', kind: 'info', title: 'Email Alert Sent', description: 'Alert "' + subject + '" was sent.', time_label: 'Just now', is_read: false }));
       renderNotifications();
     }
     function updateEmailBody() {
@@ -12043,15 +12078,15 @@ This cannot be undone.`)) return;
       renderTransfers();
     }
     function addNotification(type, icon, title, desc, time, meta = {}) {
-      const entry = {
+      const entry = normalizeNotification({
         icon: 'fas fa-' + icon,
-        type: 'ni-' + (type === 'success' ? 'green' : type === 'error' ? 'red' : type === 'warning' ? 'orange' : 'blue'),
+        kind: type,
         title,
-        desc,
-        time,
-        read: false,
+        description: desc,
+        time_label: time,
+        is_read: false,
         ...meta
-      };
+      });
       NOTIFICATIONS.unshift(entry);
       const badge = document.getElementById('notifBadge');
       const unread = NOTIFICATIONS.filter(n => !n.read).length;
@@ -14224,9 +14259,7 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
           refreshClientScopedFormState();
           if (typeof PROJECTS !== 'undefined') refill(PROJECTS, (prjR.data || []).map(normP));
           if (typeof INSPECTIONS !== 'undefined') refill(INSPECTIONS, (inspR.data || []).map(normInsp));
-          const liveNotifications = (nR.data || []).map(n => ({
-            ...n, type: 'ni-' + n.kind, desc: n.description, read: n.is_read
-          }));
+          const liveNotifications = (nR.data || []).map(normalizeNotification);
           const deleteRequestNotifications = (drR.data || []).map(normalizeDeleteRequestNotice);
           refill(NOTIFICATIONS, [...deleteRequestNotifications, ...liveNotifications]);
           notifyDesktopForFreshItems([...deleteRequestNotifications, ...liveNotifications]).catch(err => console.warn('[desktop notify]', err));
@@ -15186,7 +15219,7 @@ This cannot be undone.`)) return;
           }
           if (typeof applyFilters === 'function') applyFilters();
           else { filteredAssets = [...ASSETS]; rerender('renderAssets', 'updateKPIs'); }
-          NOTIFICATIONS.unshift({ icon: 'fas fa-file-import', type: 'ni-blue', title: 'Assets Imported', desc: `${added} assets from ${file.name}`, time: 'Just now', read: false });
+          NOTIFICATIONS.unshift(normalizeNotification({ icon: 'fas fa-file-import', kind: 'info', title: 'Assets Imported', description: `${added} assets from ${file.name}`, time_label: 'Just now', is_read: false }));
           renderNotifications();
           showImportResults('Assets', file.name, added, failedRows);
         } catch (err) { showToast('Import failed: ' + err.message, 'error'); }
