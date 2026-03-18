@@ -266,6 +266,24 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function requestIpAddress(request) {
+  const candidates = [
+    request.headers.get('cf-connecting-ip'),
+    request.headers.get('x-forwarded-for'),
+    request.headers.get('x-real-ip')
+  ];
+  for (const candidate of candidates) {
+    const value = String(candidate || '').split(',')[0].trim();
+    if (value) return value;
+  }
+  return null;
+}
+
+function requestUserAgent(request) {
+  const value = String(request.headers.get('user-agent') || '').trim();
+  return value || null;
+}
+
 function isMissingColumnError(error, column='password_changed_at') {
   const msg = String(error?.message || error || '');
   return msg.toLowerCase().includes(String(column).toLowerCase()) && /column|schema cache/i.test(msg);
@@ -518,6 +536,40 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     if (currentClientId()) return null;
     return respond({ success:false, error:'Your account is not linked to a client.' }, 403);
   };
+  async function createLoginHistoryEntry(userRecord) {
+    const payload = {
+      user_id: userRecord?.id || null,
+      email: String(userRecord?.email || '').trim().toLowerCase() || null,
+      logged_in_at: nowIso(),
+      ip_address: requestIpAddress(request),
+      user_agent: requestUserAgent(request),
+      client_id: String(userRecord?.client_id || '').trim() || null,
+      status: 'success'
+    };
+    const result = await sbPostBypass(SB, KEY, 'auth_login_events', payload);
+    if (result.error) console.error('[login-history] Failed to record login event:', result.error.message || result.error);
+    return result;
+  }
+  async function getLoginHistory(targetUserId='') {
+    const filters = {};
+    const requestedUserId = String(targetUserId || '').trim();
+    if (requestedUserId) {
+      filters.user_id = `eq.${requestedUserId}`;
+    } else if (ctx.reqUserId) {
+      filters.user_id = `eq.${ctx.reqUserId}`;
+    }
+    if (!isClientAdmin()) {
+      if (ctx.reqUserId) filters.user_id = `eq.${ctx.reqUserId}`;
+      const clientId = currentClientId();
+      if (clientId) filters.client_id = `eq.${clientId}`;
+    }
+    return await sbGetBypass(SB, KEY, 'auth_login_events', {
+      filters,
+      order: 'logged_in_at.desc',
+      limit: +(q.get('limit') || 50),
+      bypass: true
+    }, ctx);
+  }
   const applyClientPayload = (payload = {}, fallbackClientId = currentClientId()) => {
     const next = { ...payload };
     if (!isClientAdmin() && fallbackClientId) next.client_id = fallbackClientId;
@@ -981,6 +1033,17 @@ async function router(path, method, url, request, SB, KEY, env={}) {
   // Transfer approve endpoint requires canApprove (stage check is inside the handler)
   if (res === 'transfers' && act === 'approve' && !perm.canApprove) return forbidden(ctx, 'approve transfers');
 
+  if (res === 'auth' && id === 'login-history' && method === 'GET') {
+    return ok(await getLoginHistory(String(q.get('user_id') || '')));
+  }
+
+  if (res === 'users' && id && act === 'login-history' && method === 'GET') {
+    if (ctx.reqRole !== 'Admin' && String(id) !== String(ctx.reqUserId || '')) {
+      return forbidden(ctx, "view other users' login history");
+    }
+    return ok(await getLoginHistory(id));
+  }
+
   if (res === 'delete-requests') {
     if (method === 'GET' && !id) {
       if (perm.canReviewDeleteRequests) {
@@ -1120,6 +1183,8 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     const clientId = String(safeUser.client_id || '');
     const clientName = await enrichClientName(clientId);
     if (clientName) safeUser.client_name = clientName;
+    await createLoginHistoryEntry(safeUser);
+
     const token = await signJwt(
       {
         sub: String(safeUser.id || ''),
