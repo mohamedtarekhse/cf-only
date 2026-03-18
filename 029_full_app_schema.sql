@@ -6,6 +6,20 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+CREATE SEQUENCE IF NOT EXISTS public.transfers_id_seq;
+
+CREATE OR REPLACE FUNCTION public.generate_transfer_id()
+RETURNS TEXT
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  next_value BIGINT;
+BEGIN
+  next_value := nextval('public.transfers_id_seq');
+  RETURN 'TR-' || lpad(next_value::TEXT, 6, '0');
+END;
+$$;
+
 -- Core master tables
 CREATE TABLE IF NOT EXISTS assets (
   id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -126,7 +140,7 @@ CREATE TABLE IF NOT EXISTS maintenance_logs (
 );
 
 CREATE TABLE IF NOT EXISTS transfers (
-  id                 TEXT PRIMARY KEY,
+  id                 TEXT PRIMARY KEY DEFAULT public.generate_transfer_id(),
   asset_id           TEXT REFERENCES assets(asset_id) ON DELETE SET NULL,
   asset_name         TEXT,
   current_loc        TEXT,
@@ -315,6 +329,32 @@ CREATE INDEX IF NOT EXISTS idx_certificates_asset_id ON certificates(asset_id);
 CREATE INDEX IF NOT EXISTS idx_maint_sched_asset_id ON maintenance_schedules(asset_id);
 CREATE INDEX IF NOT EXISTS idx_maint_sched_next_due ON maintenance_schedules(next_due);
 CREATE INDEX IF NOT EXISTS idx_maint_logs_schedule_id ON maintenance_logs(schedule_id);
+
+ALTER TABLE transfers
+  ALTER COLUMN id SET DEFAULT public.generate_transfer_id();
+
+DO $$
+DECLARE
+  next_start BIGINT;
+BEGIN
+  SELECT COALESCE(MAX((regexp_match(id, '^TR-(\d+)$'))[1]::BIGINT), 0) + 1
+    INTO next_start
+  FROM transfers;
+
+  PERFORM setval('public.transfers_id_seq', next_start, false);
+EXCEPTION
+  WHEN undefined_table THEN
+    NULL;
+END;
+$$;
+
+ALTER TABLE transfers
+  DROP CONSTRAINT IF EXISTS transfers_id_not_blank;
+
+ALTER TABLE transfers
+  ADD CONSTRAINT transfers_id_not_blank
+  CHECK (btrim(id) <> '');
+
 CREATE INDEX IF NOT EXISTS idx_transfers_asset_id ON transfers(asset_id);
 CREATE INDEX IF NOT EXISTS idx_transfers_status ON transfers(status);
 CREATE INDEX IF NOT EXISTS idx_projects_project_id ON projects(project_id);
