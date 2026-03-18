@@ -195,9 +195,20 @@ CREATE TABLE IF NOT EXISTS inspections (
   updated_at       TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE SEQUENCE IF NOT EXISTS projects_project_id_seq;
+
+CREATE OR REPLACE FUNCTION generate_project_id()
+RETURNS TEXT
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN 'PRJ-' || LPAD(nextval('projects_project_id_seq')::TEXT, 8, '0');
+END;
+$$;
+
 CREATE TABLE IF NOT EXISTS projects (
   id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  project_id     TEXT UNIQUE NOT NULL,
+  project_id     TEXT UNIQUE NOT NULL DEFAULT generate_project_id(),
   name           TEXT,
   rig_name       TEXT,
   status         TEXT,
@@ -212,6 +223,28 @@ CREATE TABLE IF NOT EXISTS projects (
   created_at     TIMESTAMPTZ DEFAULT NOW(),
   updated_at     TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE projects
+  ALTER COLUMN project_id SET DEFAULT generate_project_id();
+
+SELECT setval(
+  'projects_project_id_seq',
+  GREATEST(COALESCE((
+    SELECT MAX((regexp_match(project_id, '^PRJ-(\d+)$'))[1]::BIGINT)
+    FROM projects
+    WHERE project_id ~ '^PRJ-(\d+)$'
+  ), 0), 1),
+  EXISTS (
+    SELECT 1
+    FROM projects
+    WHERE project_id ~ '^PRJ-(\d+)$'
+  )
+);
+
+UPDATE projects
+SET project_id = generate_project_id()
+WHERE project_id IS NULL
+   OR project_id !~ '^PRJ-(\d+)$';
 
 CREATE TABLE IF NOT EXISTS workshops (
   id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
