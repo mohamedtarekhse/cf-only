@@ -363,7 +363,16 @@ async function sbCountCore(base, auth, table, { bypass=false }={}, ctx=null) {
 async function parseRes(r, single) {
   const text = await r.text();
   let data; try{data=JSON.parse(text)}catch(_){data=null}
-  if (!r.ok) return { data:null, error:{ message: data?.message||data?.error||`HTTP ${r.status}: ${text.slice(0,300)}` }};
+  if (!r.ok) return {
+    data:null,
+    error:{
+      status: r.status,
+      code: data?.code || data?.error_code || null,
+      details: data?.details || null,
+      hint: data?.hint || null,
+      message: data?.message||data?.error||`HTTP ${r.status}: ${text.slice(0,300)}`
+    }
+  };
   if (single) return { data: Array.isArray(data)?(data[0]??null):data, error:null };
   return { data: data??[], error:null };
 }
@@ -1396,11 +1405,20 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       return ok(await sbGet(SB,KEY,'transfers',{filters:f,order:'created_at.desc',limit:+(q.get('limit')||200)}));
     }
     if(method==='POST'){
-      if(!body.id) body.id='TR-'+String((await sbCount(SB,KEY,'transfers'))+1).padStart(3,'0');
+      if (body.id != null && !String(body.id).trim()) delete body.id;
       if(!body.request_date) body.request_date=new Date().toISOString().slice(0,10);
       if(!body.asset_name&&body.asset_id){ const {data:a}=await sbGet(SB,KEY,'assets',{select:'name,location',filters:{asset_id:`eq.${body.asset_id}`},single:true}); if(a){body.asset_name=a.name;if(!body.current_loc)body.current_loc=a.location;} }
       const created = await sbPost(SB,KEY,'transfers',body);
-      if (created.error) return err500(created.error);
+      if (created.error) {
+        if (created.error.code === '23505') {
+          return dbErrorResponse(created.error, {
+            status: 409,
+            code: 'DUPLICATE_TRANSFER_ID',
+            message: 'Transfer ID already exists. Retry without providing an ID to let the database generate one atomically.'
+          });
+        }
+        return dbErrorResponse(created.error);
+      }
       await fanOutTransferNotification(created.data || body, 'transfer_request', body.requested_by || ctx.reqName || ctx.reqEmail || '');
       return ok(created);
     }
@@ -1778,8 +1796,32 @@ function liveStatus(m) {
   if(due-today<=(m.alert_days||14)*86400000) return 'Due Soon';
   return 'Scheduled';
 }
-function ok(r)     { if(r?.error) return err500(r.error); return respond({success:true, data:r?.data??r}); }
-function err500(e) { return respond({success:false, error:e?.message||String(e)}, 500); }
+function ok(r)     { if(r?.error) return dbErrorResponse(r.error); return respond({success:true, data:r?.data??r}); }
+function dbErrorStatus(error) {
+  if (!error) return 500;
+  if (error.status === 409 || error.code === '23505') return 409;
+  if (error.status === 400 || error.code === '23514' || error.code === '22P02' || error.code === '23502') return 400;
+  return 500;
+}
+function dbErrorCode(error, fallback='DB_ERROR') {
+  if (!error) return fallback;
+  if (error.code === '23505') return 'UNIQUE_CONFLICT';
+  if (error.code === '23514') return 'CHECK_VIOLATION';
+  if (error.code === '23502') return 'NOT_NULL_VIOLATION';
+  if (error.code === '22P02') return 'INVALID_INPUT';
+  return error.code || fallback;
+}
+function dbErrorResponse(error, overrides={}) {
+  const status = overrides.status || dbErrorStatus(error);
+  const body = {
+    success:false,
+    code: overrides.code || dbErrorCode(error),
+    error: overrides.message || error?.message || 'Database error'
+  };
+  if (overrides.details || error?.details) body.details = overrides.details || error.details;
+  return respond(body, status);
+}
+function err500(e) { return dbErrorResponse(e); }
 function respond(body, status=200) {
   return new Response(JSON.stringify(body), { status, headers:{
     'Content-Type':'application/json',
