@@ -47,8 +47,20 @@ export default {
 
 // Module-level role context ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â set per request in router()
 let _corsAllowOrigin = '*';
-const _allowedRoles = new Set(['Admin','Manager','Superintendent','Drilling Manager','Asset Manager','Maintenance Manager','Project Manager','Engineer','Assistant','Viewer']);
+const ROLE_NAMES = ['Admin','Manager','Superintendent','Drilling Manager','Asset Manager','Maintenance Manager','Project Manager','Engineer','Assistant','Viewer'];
+const _allowedRoles = new Set(ROLE_NAMES);
+const LEGACY_ROLE_MAP = Object.freeze({
+  'Editor': 'Engineer',
+  'Supervisor': 'Superintendent',
+  'Technician': 'Assistant'
+});
+const MANAGER_TIER = ['Manager','Superintendent','Drilling Manager','Asset Manager','Maintenance Manager','Project Manager'];
 const BCRYPT_COST = 10;
+
+function normalizeAppRole(role) {
+  const trimmed = String(role || '').trim();
+  return LEGACY_ROLE_MAP[trimmed] || trimmed;
+}
 
 function b64urlEncodeBytes(bytes) {
   let binary = '';
@@ -767,7 +779,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     } catch (_) {
       return respond({ success:false, error:'Invalid or expired token' }, 401);
     }
-    const claimRole = String(claims.app_role || '');
+    const claimRole = normalizeAppRole(claims.app_role || '');
     if (!_allowedRoles.has(claimRole)) return respond({ success:false, code:'INVALID_ROLE', error:'Invalid role in token' }, 403);
     ctx.reqRole = claimRole;
     ctx.reqName = String(claims.name || claims.user_metadata?.name || '');
@@ -815,7 +827,6 @@ async function router(path, method, url, request, SB, KEY, env={}) {
   // Engineer           ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ edit + view (no add/delete)
   // Assistant          ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ edit + delete + view (delete flagged)
   const R = ctx.reqRole;
-  const MANAGER_TIER = ['Manager','Superintendent','Drilling Manager','Asset Manager','Maintenance Manager','Project Manager'];
   const perm = {
     canView:    true,
     canAdd:     R === 'Admin',
@@ -1113,7 +1124,7 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       console.warn('[login] User', user?.email, 'has no password set ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â open login allowed');
     }
 
-    const normalizedRole = String(user.role || '');
+    const normalizedRole = normalizeAppRole(user.role || '');
     if (!_allowedRoles.has(normalizedRole)) return respond({ success:false, code:'INVALID_ROLE', error:'User role is not allowed' }, 403);
     const safeUser = { ...user, role: normalizedRole };
     delete safeUser.password;
@@ -1174,14 +1185,14 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       }
     }
 
-    const roleValid = _allowedRoles.has(String(user.role || ''));
+    const roleValid = _allowedRoles.has(normalizeAppRole(user.role || ''));
 
     return respond({ success: true, debug: {
       found: true,
       table: userSource,
       email: user.email,
       name: user.name,
-      role: user.role,
+      role: normalizeAppRole(user.role),
       roleValid,
       active: user.active,
       hasPassword,

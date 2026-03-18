@@ -207,9 +207,9 @@ INSERT INTO app_users (name,role,dept,email,color,initials,active) VALUES
   ('Ahmad Mohammed','Admin',        'Asset Management','a.mohammed@rig.com','#0070F2','AM',true),
   ('Sara Al-Rashid','Asset Manager','Operations',      's.alrashid@rig.com','#8B5CF6','SR',true),
   ('James Miller',  'Viewer',       'Finance',          'j.miller@rig.com', '#107E3E','JM',true),
-  ('Layla Hassan',  'Editor',       'Contracts',        'l.hassan@rig.com', '#E9730C','LH',true),
+  ('Layla Hassan',  'Engineer',     'Contracts',        'l.hassan@rig.com', '#E9730C','LH',true),
   ('David Chen',    'Viewer',       'Engineering',      'd.chen@rig.com',   '#BB0000','DC',true),
-  ('Fatima Al-Zahra','Editor',      'Maintenance',      'f.alzahra@rig.com','#0070F2','FZ',true)
+  ('Fatima Al-Zahra','Engineer',    'Maintenance',      'f.alzahra@rig.com','#0070F2','FZ',true)
 ON CONFLICT (email) DO UPDATE SET
   name=EXCLUDED.name, role=EXCLUDED.role, dept=EXCLUDED.dept,
   color=EXCLUDED.color, initials=EXCLUDED.initials, active=EXCLUDED.active;
