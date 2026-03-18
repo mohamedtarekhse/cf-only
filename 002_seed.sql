@@ -203,16 +203,18 @@ ON CONFLICT (id) DO UPDATE SET
   status=EXCLUDED.status, priority=EXCLUDED.priority;
 
 -- ─── USERS ────────────────────────────────────────────────────────────────────
-INSERT INTO app_users (name,role,dept,email,color,initials,active) VALUES
-  ('Ahmad Mohammed','Admin',        'Asset Management','a.mohammed@rig.com','#0070F2','AM',true),
-  ('Sara Al-Rashid','Asset Manager','Operations',      's.alrashid@rig.com','#8B5CF6','SR',true),
-  ('James Miller',  'Viewer',       'Finance',          'j.miller@rig.com', '#107E3E','JM',true),
-  ('Layla Hassan',  'Editor',       'Contracts',        'l.hassan@rig.com', '#E9730C','LH',true),
-  ('David Chen',    'Viewer',       'Engineering',      'd.chen@rig.com',   '#BB0000','DC',true),
-  ('Fatima Al-Zahra','Editor',      'Maintenance',      'f.alzahra@rig.com','#0070F2','FZ',true)
+INSERT INTO app_users (name,role,dept,email,color,initials,active,client_id,password_changed_at) VALUES
+  ('Ahmad Mohammed','Admin',        'Asset Management','a.mohammed@rig.com','#0070F2','AM',true,NULL,NULL),
+  ('Sara Al-Rashid','Asset Manager','Operations',      's.alrashid@rig.com','#8B5CF6','SR',true,NULL,NULL),
+  ('James Miller',  'Viewer',       'Finance',          'j.miller@rig.com', '#107E3E','JM',true,NULL,NULL),
+  ('Layla Hassan',  'Editor',       'Contracts',        'l.hassan@rig.com', '#E9730C','LH',true,NULL,NULL),
+  ('David Chen',    'Viewer',       'Engineering',      'd.chen@rig.com',   '#BB0000','DC',true,NULL,NULL),
+  ('Fatima Al-Zahra','Editor',      'Maintenance',      'f.alzahra@rig.com','#0070F2','FZ',true,NULL,NULL)
 ON CONFLICT (email) DO UPDATE SET
   name=EXCLUDED.name, role=EXCLUDED.role, dept=EXCLUDED.dept,
-  color=EXCLUDED.color, initials=EXCLUDED.initials, active=EXCLUDED.active;
+  color=EXCLUDED.color, initials=EXCLUDED.initials, active=EXCLUDED.active,
+  client_id=EXCLUDED.client_id,
+  password_changed_at=COALESCE(app_users.password_changed_at, EXCLUDED.password_changed_at);
 
 -- ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
 INSERT INTO notifications (icon,kind,title,description,time_label,is_read) VALUES
