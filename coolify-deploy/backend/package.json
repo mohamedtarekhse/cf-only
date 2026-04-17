@@ -1,0 +1,23 @@
+{
+  "name": "asset-management-backend",
+  "version": "1.0.0",
+  "description": "Asset Management System Backend API for Coolify",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "keywords": ["asset", "management", "mysql", "api"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "mysql2": "^3.9.7",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "web-push": "^3.6.7"
+  }
+}
