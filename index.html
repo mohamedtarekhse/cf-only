@@ -13066,20 +13066,21 @@ This cannot be undone.`)) return;
     const ANTHROPIC_KEY_STORE = 'ams_anthropic_key';
     const GEMINI_KEY_STORE = 'ams_gemini_key';
     const OPENAI_KEY_STORE = 'ams_openai_key';
+    const OPENROUTER_KEY_STORE = 'ams_openrouter_key';
 
     function getChatKey(provider) {
-      const store = provider === 'gemini' ? GEMINI_KEY_STORE : provider === 'openai' ? OPENAI_KEY_STORE : ANTHROPIC_KEY_STORE;
+      const store = provider === 'gemini' ? GEMINI_KEY_STORE : provider === 'openai' ? OPENAI_KEY_STORE : provider === 'openrouter' ? OPENROUTER_KEY_STORE : ANTHROPIC_KEY_STORE;
       try { return localStorage.getItem(store) || ''; } catch (e) { return ''; }
     }
     function setChatKey(provider, val) {
-      const store = provider === 'gemini' ? GEMINI_KEY_STORE : provider === 'openai' ? OPENAI_KEY_STORE : ANTHROPIC_KEY_STORE;
+      const store = provider === 'gemini' ? GEMINI_KEY_STORE : provider === 'openai' ? OPENAI_KEY_STORE : provider === 'openrouter' ? OPENROUTER_KEY_STORE : ANTHROPIC_KEY_STORE;
       try { localStorage.setItem(store, val); } catch (e) { }
     }
     function switchChatProvider(prov) {
       chatProvider = prov;
       try { localStorage.setItem('ams_chat_provider', prov); } catch (e) { }
       document.querySelectorAll('.provider-btn').forEach(b => b.classList.toggle('active', b.dataset.prov === prov));
-      const labels = { anthropic: 'Claude  ?  Haiku 4.5', gemini: 'Gemini  ?  2.0 Flash', openai: 'GPT-4o Mini' };
+      const labels = { anthropic: 'Claude  •  Haiku 4.5', gemini: 'Gemini  •  2.0 Flash', openai: 'GPT-4o Mini', openrouter: 'GPT-OSS 120B (Free)' };
       document.getElementById('chatProviderLabel').textContent = labels[prov] || prov;
       refreshKeyBar();
     }
@@ -13090,7 +13091,7 @@ This cannot be undone.`)) return;
       const input = document.getElementById('chatApiKeyInput');
       if (!key) {
         bar.style.display = 'flex';
-        const hints = { anthropic: 'Enter Anthropic API key  (sk-ant-...)', gemini: 'Enter Google AI API key  (AIza...)', openai: 'Enter OpenAI API key  (sk-...)' };
+        const hints = { anthropic: 'Enter Anthropic API key  (sk-ant-...)', gemini: 'Enter Google AI API key  (AIza...)', openai: 'Enter OpenAI API key  (sk-...)', openrouter: 'Enter OpenRouter API key  (sk-or-...)' };
         input.placeholder = hints[chatProvider] || 'Enter API key...';
         input.value = '';
       } else {
@@ -13103,13 +13104,13 @@ This cannot be undone.`)) return;
       if (!val) return;
       setChatKey(chatProvider, val);
       document.getElementById('chatApiKeyBar').style.display = 'none';
-      const provName = chatProvider === 'gemini' ? 'Gemini' : chatProvider === 'openai' ? 'OpenAI' : 'Claude';
+      const provName = chatProvider === 'gemini' ? 'Gemini' : chatProvider === 'openai' ? 'OpenAI' : chatProvider === 'openrouter' ? 'OpenRouter' : 'Claude';
       appendChatMsg('assistant', `**${provName} API key saved.** You can now chat with the AI assistant!`);
     }
 
     function forgetApiKeys() {
       if (!confirm('Remove saved API keys for all providers?')) return;
-      try { localStorage.removeItem(ANTHROPIC_KEY_STORE); localStorage.removeItem(GEMINI_KEY_STORE); localStorage.removeItem(OPENAI_KEY_STORE); } catch (e) { }
+      try { localStorage.removeItem(ANTHROPIC_KEY_STORE); localStorage.removeItem(GEMINI_KEY_STORE); localStorage.removeItem(OPENAI_KEY_STORE); localStorage.removeItem(OPENROUTER_KEY_STORE); } catch (e) { }
       refreshKeyBar();
       appendChatMsg('assistant', 'API keys removed. Please enter a new key to continue.');
     }
@@ -13122,7 +13123,7 @@ This cannot be undone.`)) return;
       if (chatOpen && chatHistory.length === 0) {
         switchChatProvider(chatProvider);
         if (!getChatKey(chatProvider)) refreshKeyBar();
-        const provNames = { anthropic: 'Anthropic Claude', gemini: 'Google Gemini', openai: 'OpenAI GPT-4o Mini' };
+        const provNames = { anthropic: 'Anthropic Claude', gemini: 'Google Gemini', openai: 'OpenAI GPT-4o Mini', openrouter: 'OpenRouter GPT-OSS 120B' };
         appendChatMsg('assistant', `Hello! I'm your AI Assistant powered by **${provNames[chatProvider] || chatProvider}**.\n\nI have full access to your live database: **${ASSETS.length} assets**, **${CERTIFICATES.length} certificates**, **${MAINT_SCHEDULES.length} maintenance schedules**, **${CONTRACTS.length} contracts**, **${RIGS.length} rigs**.\n\nSwitch providers anytime using the buttons in the header. Ask me anything!`);
       }
     }
@@ -13178,7 +13179,7 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
       const key = getChatKey(chatProvider);
       if (!key) {
         setChatTyping(false);
-        const provName = chatProvider === 'gemini' ? 'Gemini' : chatProvider === 'openai' ? 'OpenAI' : 'Anthropic';
+        const provName = chatProvider === 'gemini' ? 'Gemini' : chatProvider === 'openai' ? 'OpenAI' : chatProvider === 'openrouter' ? 'OpenRouter' : 'Anthropic';
         appendChatMsg('assistant', `Please enter your **${provName} API key** in the yellow bar above to use the AI assistant.`);
         document.getElementById('chatApiKeyBar').style.display = 'flex';
         return;
@@ -13188,7 +13189,7 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
         let reply = '';
         if (chatProvider === 'gemini') {
           reply = await callGemini(key, msg);
-        } else if (chatProvider === 'openai') {
+        } else if (chatProvider === 'openai' || chatProvider === 'openrouter') {
           reply = await callOpenAI(key);
         } else {
           reply = await callAnthropic(key);
@@ -13255,11 +13256,11 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
         { role: 'system', content: buildSystemPrompt() },
         ...chatHistory.slice(-12)
       ];
-      const isOpenRouter = key.startsWith('sk-or-');
+      const isOpenRouter = key.startsWith('sk-or-') || chatProvider === 'openrouter';
       const endpoint = isOpenRouter
         ? 'https://openrouter.ai/api/v1/chat/completions'
         : 'https://api.openai.com/v1/chat/completions';
-      const model = isOpenRouter ? 'openai/gpt-4o-mini' : 'gpt-4o-mini';
+      const model = isOpenRouter ? 'openai/gpt-oss-120b:free' : 'gpt-4o-mini';
       const headers = {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + key,
@@ -13287,7 +13288,7 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
       const provIcon = role === 'assistant'
         ? (chatProvider === 'gemini'
           ? '<div class="chat-avatar-icon gemini-icon"><i class="fas fa-gem"></i></div>'
-          : chatProvider === 'openai'
+          : chatProvider === 'openai' || chatProvider === 'openrouter'
             ? '<div class="chat-avatar-icon openai-icon"><i class="fas fa-brain"></i></div>'
             : '<div class="chat-avatar-icon"><i class="fas fa-robot"></i></div>')
         : '';
@@ -13860,6 +13861,9 @@ Instructions: - Answer ONLY from the data above. Do not invent data. - For numbe
         </button>
         <button class="provider-btn" data-prov="openai" onclick="switchChatProvider('openai')">
           <i class="fas fa-brain" style="font-size:10px"></i> GPT
+        </button>
+        <button class="provider-btn" data-prov="openrouter" onclick="switchChatProvider('openrouter')">
+          <i class="fas fa-cloud" style="font-size:10px"></i> OpenRouter
         </button>
       </div>
       <div class="chat-header-actions">
