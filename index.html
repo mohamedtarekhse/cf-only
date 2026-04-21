@@ -3504,6 +3504,29 @@
     try { localStorage.removeItem('ams_token'); } catch (e) { }
     updatePushUi();
   }
+  async function recordAuthActivity(eventType, options = {}) {
+    const token = String(options.token || window.__authToken || '').trim();
+    if (!token) return;
+    try {
+      const apiCfg = window.__API_CONFIG__ || {};
+      const baseUrl = (apiCfg.baseUrl || '/api').replace(/\/$/, '');
+      await fetch(baseUrl + '/auth/activity', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({
+          event_type: eventType,
+          event_source: options.eventSource || 'web',
+          session_storage: options.sessionStorage || null,
+          metadata: options.metadata && typeof options.metadata === 'object' ? options.metadata : {}
+        })
+      });
+    } catch (error) {
+      console.warn('[Auth Activity]', eventType, error?.message || error);
+    }
+  }
 
   async function doLogin() {
     const email = document.getElementById('loginEmail').value.trim().toLowerCase();
@@ -3681,6 +3704,15 @@ function showLoginError(msg) {
       });
       window.__sessionRestored = true;
       updatePushUi();
+      const restoredFrom = localStorage.getItem('ams_token') ? 'localStorage' : 'sessionStorage';
+      recordAuthActivity('session_restored', {
+        token,
+        sessionStorage: restoredFrom,
+        metadata: {
+          reason: 'app_open',
+          path: window.location.pathname || '/'
+        }
+      });
 
       function applySessionUI() {
         const ls = document.getElementById('loginScreen');

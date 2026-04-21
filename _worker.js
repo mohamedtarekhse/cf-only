@@ -540,6 +540,30 @@ async function router(path, method, url, request, SB, KEY, env={}) {
     const res = await sbGetBypass(SB, KEY, 'clients', { select: 'id,name', filters: { id: `eq.${clientId}` }, single: true });
     return String(res?.data?.name || '');
   }
+  function getRequestIp() {
+    return String(
+      request.headers.get('cf-connecting-ip') ||
+      request.headers.get('x-forwarded-for') ||
+      request.headers.get('x-real-ip') ||
+      ''
+    ).split(',')[0].trim();
+  }
+  async function recordAuthActivity(activity = {}) {
+    const eventType = String(activity.event_type || '').trim();
+    if (!eventType) return { error: { message: 'event_type is required' } };
+    const payload = {
+      user_id: String(activity.user_id || ctx.reqUserId || '').trim() || null,
+      email: String(activity.email || ctx.reqEmail || '').trim().toLowerCase() || null,
+      client_id: String(activity.client_id || ctx.reqClientId || '').trim() || null,
+      event_type: eventType,
+      event_source: String(activity.event_source || 'web').trim() || 'web',
+      session_storage: String(activity.session_storage || '').trim() || null,
+      ip_address: String(activity.ip_address || getRequestIp() || '').trim() || null,
+      user_agent: String(activity.user_agent || request.headers.get('user-agent') || '').trim() || null,
+      metadata: activity.metadata && typeof activity.metadata === 'object' ? activity.metadata : {}
+    };
+    return await sbPostBypass(SB, KEY, 'auth_activity', payload);
+  }
   function notificationScopeFilters(userId) {
     const or = userId ? `(user_id.is.null,user_id.eq.${userId})` : '(user_id.is.null)';
     return { or };
@@ -1144,6 +1168,18 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       env.JWT_SECRET || '',
       Number(env.JWT_EXPIRES_SEC || 28800)
     );
+    try {
+      await recordAuthActivity({
+        user_id: safeUser.id,
+        email: safeUser.email,
+        client_id: clientId,
+        event_type: 'login',
+        event_source: 'web',
+        metadata: { via: 'password' }
+      });
+    } catch (activityError) {
+      console.warn('[auth activity] login record failed:', activityError?.message || activityError);
+    }
     return respond({ success:true, data: { token, user: safeUser } });
   }
 
@@ -1205,6 +1241,43 @@ async function router(path, method, url, request, SB, KEY, env={}) {
       success:true,
       data: { id: ctx.reqUserId || null, email: ctx.reqEmail || null, name: ctx.reqName || null, role: ctx.reqRole || 'Viewer', active: ctx.reqActive !== false, client_id: ctx.reqClientId || null, client_name: ctx.reqClientName || null }
     });
+  }
+
+  if (res === 'auth' && id === 'activity') {
+    if (method === 'POST') {
+      const eventType = String(body.event_type || '').trim();
+      const allowedEvents = new Set(['session_restored']);
+      if (!allowedEvents.has(eventType)) {
+        return respond({ success:false, error:'Unsupported auth activity type' }, 400);
+      }
+      const created = await recordAuthActivity({
+        event_type: eventType,
+        event_source: body.event_source || 'web',
+        session_storage: body.session_storage || null,
+        metadata: body.metadata && typeof body.metadata === 'object' ? body.metadata : {}
+      });
+      if (created.error) return err500(created.error);
+      return ok(created);
+    }
+    if (method === 'GET') {
+      const limit = Math.min(Math.max(Number(q.get('limit') || 50) || 50, 1), 200);
+      const filters = {};
+      if (isClientAdmin()) {
+        const userIdFilter = String(q.get('user_id') || '').trim();
+        const emailFilter = String(q.get('email') || '').trim().toLowerCase();
+        if (userIdFilter) filters.user_id = `eq.${userIdFilter}`;
+        if (emailFilter) filters.email = `eq.${emailFilter}`;
+      } else {
+        filters.user_id = `eq.${ctx.reqUserId}`;
+      }
+      const activity = await sbGetBypass(SB, KEY, 'auth_activity', {
+        filters,
+        order: 'created_at.desc',
+        limit
+      });
+      if (activity.error) return err500(activity.error);
+      return ok(activity);
+    }
   }
 
   if (res === 'clients') {
