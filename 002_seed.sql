@@ -4,23 +4,30 @@
 -- ══════════════════════════════════════════════════════════════════════════════
 
 
--- ─── RIGS ─────────────────────────────────────────────────────────────────────
-INSERT INTO rigs (id,name,type,location,depth,hp,status) VALUES
-  ('RIG01','Rig 1', 'AC Drive',   'Ghawar Field – Block A',    '25,000 ft',2000,'Active'),
-  ('RIG02','Rig 2', 'Mechanical', 'Ghawar Field – Block B',    '20,000 ft',1500,'Active'),
-  ('RIG03','Rig 3', 'Electric',   'Permian Basin, TX',         '30,000 ft',3000,'Active'),
-  ('RIG04','Rig 4', 'SCR',        'Permian Basin – South',     '28,000 ft',2500,'Maintenance'),
-  ('RIG05','Rig 5', 'AC Drive',   'DJ Basin, CO',              '22,000 ft',2000,'Active'),
-  ('RIG06','Rig 6', 'SCR',        'Eagle Ford, TX',            '18,000 ft',1500,'Active'),
-  ('RIG07','Rig 7', 'Mechanical', 'Khafji Field – North',      '18,000 ft',1200,'Active'),
-  ('RIG08','Rig 8', 'AC Drive',   'Khafji Field – South',      '20,000 ft',1800,'Standby'),
-  ('RIG09','Rig 9', 'Electric',   'Safaniyah Offshore Tie-in', '24,000 ft',2200,'Active'),
-  ('RIG10','Rig 10','SCR',        'Empty Quarter – Block C',   '26,000 ft',2000,'Active'),
-  ('RIG11','Rig 11','AC Drive',   'Empty Quarter – Block D',   '24,000 ft',2000,'Maintenance'),
-  ('RIG12','Rig 12','Mechanical', 'Abqaiq Field',              '21,000 ft',1600,'Active'),
-  ('RIG13','Rig 13','Electric',   'Haradh Gas Field',          '32,000 ft',3000,'Active'),
-  ('RIG14','Rig 14','AC Drive',   'Hawiyah Gas Field',         '28,000 ft',2500,'Standby')
+-- ─── CLIENTS ──────────────────────────────────────────────────────────────────
+INSERT INTO clients (id,name,code,active) VALUES
+  ('00000000-0000-0000-0000-000000000001','Default Client','DEFAULT',true)
 ON CONFLICT (id) DO UPDATE SET
+  name=EXCLUDED.name, code=EXCLUDED.code, active=EXCLUDED.active;
+
+-- ─── RIGS ─────────────────────────────────────────────────────────────────────
+INSERT INTO rigs (id,client_id,name,type,location,depth,hp,status) VALUES
+  ('RIG01','00000000-0000-0000-0000-000000000001','Rig 1', 'AC Drive',   'Ghawar Field – Block A',    '25,000 ft',2000,'Active'),
+  ('RIG02','00000000-0000-0000-0000-000000000001','Rig 2', 'Mechanical', 'Ghawar Field – Block B',    '20,000 ft',1500,'Active'),
+  ('RIG03','00000000-0000-0000-0000-000000000001','Rig 3', 'Electric',   'Permian Basin, TX',         '30,000 ft',3000,'Active'),
+  ('RIG04','00000000-0000-0000-0000-000000000001','Rig 4', 'SCR',        'Permian Basin – South',     '28,000 ft',2500,'Maintenance'),
+  ('RIG05','00000000-0000-0000-0000-000000000001','Rig 5', 'AC Drive',   'DJ Basin, CO',              '22,000 ft',2000,'Active'),
+  ('RIG06','00000000-0000-0000-0000-000000000001','Rig 6', 'SCR',        'Eagle Ford, TX',            '18,000 ft',1500,'Active'),
+  ('RIG07','00000000-0000-0000-0000-000000000001','Rig 7', 'Mechanical', 'Khafji Field – North',      '18,000 ft',1200,'Active'),
+  ('RIG08','00000000-0000-0000-0000-000000000001','Rig 8', 'AC Drive',   'Khafji Field – South',      '20,000 ft',1800,'Standby'),
+  ('RIG09','00000000-0000-0000-0000-000000000001','Rig 9', 'Electric',   'Safaniyah Offshore Tie-in', '24,000 ft',2200,'Active'),
+  ('RIG10','00000000-0000-0000-0000-000000000001','Rig 10','SCR',        'Empty Quarter – Block C',   '26,000 ft',2000,'Active'),
+  ('RIG11','00000000-0000-0000-0000-000000000001','Rig 11','AC Drive',   'Empty Quarter – Block D',   '24,000 ft',2000,'Maintenance'),
+  ('RIG12','00000000-0000-0000-0000-000000000001','Rig 12','Mechanical', 'Abqaiq Field',              '21,000 ft',1600,'Active'),
+  ('RIG13','00000000-0000-0000-0000-000000000001','Rig 13','Electric',   'Haradh Gas Field',          '32,000 ft',3000,'Active'),
+  ('RIG14','00000000-0000-0000-0000-000000000001','Rig 14','AC Drive',   'Hawiyah Gas Field',         '28,000 ft',2500,'Standby')
+ON CONFLICT (id) DO UPDATE SET
+  client_id=EXCLUDED.client_id,
   name=EXCLUDED.name, type=EXCLUDED.type,
   location=EXCLUDED.location, depth=EXCLUDED.depth, hp=EXCLUDED.hp, status=EXCLUDED.status;
 
@@ -35,32 +42,33 @@ ON CONFLICT (id) DO UPDATE SET
   start_date=EXCLUDED.start_date, end_date=EXCLUDED.end_date, status=EXCLUDED.status;
 
 -- ─── ASSETS ───────────────────────────────────────────────────────────────────
-INSERT INTO assets (asset_id,name,category,rig_name,location,status,value,acquisition_date,serial,notes,last_inspection,inspection_type,cert_link) VALUES
-  ('AST-001','Top Drive System',          'Well Head Equipment',    'Rig 1', 'Assigned Rig', 'Contracted', 1200000,'2021-03-15','TD-7821',   'High-capacity 1000T top drive',          '2024-10-01','Cat III',                 'https://example.com/cert/AST-001'),
-  ('AST-002','BOP Stack 18-3/4"',         'Well Control Equipment', 'Rig 1', 'Assigned Rig', 'Contracted',  850000,'2020-07-20','BOP-4422',  'Cameron BOP Stack',                      '2024-09-15','Pressure Test',           'https://example.com/cert/AST-002'),
-  ('AST-003','Derrick Structure 142''',   'Handling Tools',         'Rig 2', 'Workshop',     'Active',     2100000,'2018-05-01','DRK-0078',  'IRI 142ft mast structure',               '2024-08-20','Cat IV',                  ''),
-  ('AST-004','Mud Pumps (3x)',             'Well Control Equipment', 'Rig 2', 'Sukhna Yard',  'Maintenance', 620000,'2019-11-05','MP-1103',   'National 14-P-220 pumps',                '2024-07-10','Pressure Test',           'https://example.com/cert/AST-004'),
-  ('AST-005','Drawworks 1500HP',          'Handling Tools',         'Rig 3', 'Assigned Rig', 'Active',     1800000,'2020-08-12','DW-3312',   'National 1500HP drawworks',              '2024-11-01','Calibration',             'https://example.com/cert/AST-005'),
-  ('AST-006','CAT 3516 Generator Set',    'Well Head Equipment',    'Rig 3', 'Free Zone',    'Active',      480000,'2022-01-10','GEN-7712',  '2000kW prime power generator',           '2024-06-15','Calibration',             ''),
-  ('AST-007','Casing Running Tool',       'Handling Tools',         'Rig 4', 'Workshop',     'Inactive',    130000,'2020-03-15','CRT-9910',  'Hydraulic CRT for 13-3/8" casing',      '2024-05-20','Cat III',                 'https://example.com/cert/AST-007'),
-  ('AST-008','H2S Detection System',      'Well Control Equipment', 'Rig 4', 'Assigned Rig', 'Active',       75000,'2022-06-15','SFT-2291',  'Multi-point H2S gas detection',          '2024-10-20','Calibration',             ''),
-  ('AST-009','Rotary Table 37.5"',        'Well Head Equipment',    'Rig 5', 'Assigned Rig', 'Active',      320000,'2021-06-20','RT-5501',   '37.5" rotary table 500T capacity',       '2024-09-01','Cat IV',                  'https://example.com/cert/AST-009'),
-  ('AST-010','Emergency Fire Suppression','Well Control Equipment', 'Rig 5', 'Sukhna Yard',  'Active',       88000,'2023-05-20','SFT-4451',  'Dry chemical fire suppression',          NULL,        '',                        ''),
-  ('AST-011','Tubular String 5" DP',      'Tubular',                'Rig 6', 'Free Zone',    'Active',      145000,'2021-09-01','TUB-8811',  '5" drill pipe string',                   '2024-11-10','Tubular Inspection DS1',  'https://example.com/cert/AST-011'),
-  ('AST-012','Rig Mover & Substructure',  'Handling Tools',         'Rig 6', 'Assigned Rig', 'Active',      950000,'2019-03-10','RMV-0601',  'Self-propelled walking system',          '2024-08-01','Cat III',                 ''),
-  ('AST-013','Drill Collar 8" Slick DC',  'Tubular',                'Rig 7', 'Sukhna Yard',  'Active',       95000,'2023-02-28','DC-0341',   '8" slick drill collars x12',             '2024-10-15','Wall Thickness',           'https://example.com/cert/AST-013'),
-  ('AST-014','Heavy Weight Drill Pipe',   'Tubular',                'Rig 7', 'Free Zone',    'Maintenance',  42000,'2021-11-15','HWDP-1102', '5" HWDP 30 joints',                      '2024-09-20','Tubular Inspection DS1',  'https://example.com/cert/AST-014'),
-  ('AST-015','Drilling Jars – Hydraulic', 'Well Control Equipment', 'Rig 8', 'Assigned Rig', 'Active',      210000,'2022-12-01','JAR-3301',  'Hydraulic drilling jars set',            '2024-07-05','Pressure Test',           ''),
-  ('AST-016','Wellhead Christmas Tree',   'Well Head Equipment',    'Rig 9', 'Workshop',     'Active',     1050000,'2022-04-18','WHD-9901',  'Wellhead Christmas tree 5K psi',         '2024-11-05','Pressure Test',           'https://example.com/cert/AST-016'),
-  ('AST-017','Accumulator Unit 120 Gal',  'Well Control Equipment', 'Rig 9', 'Sukhna Yard',  'Active',      185000,'2021-07-22','ACC-0091',  '120 gal hydraulic accumulator',          '2024-08-12','Pressure Test',           ''),
-  ('AST-018','Centrifugal Pump Set',      'Well Control Equipment', 'Rig 10','Workshop',     'Active',      160000,'2023-01-15','CP-1001',   '3x centrifugal charge pumps',            '2024-07-22','Pressure Test',           ''),
-  ('AST-019','SCR Control House',         'Well Head Equipment',    'Rig 11','Sukhna Yard',  'Maintenance', 420000,'2020-09-30','SCR-1101',  'Silicon controlled rectifier house',     '2024-06-10','Calibration',             ''),
-  ('AST-020','BOP Annular 13-5/8"',       'Well Control Equipment', 'Rig 12','Assigned Rig', 'Active',      740000,'2021-02-14','BOP-1201',  '13-5/8" 10K annular BOP',                '2024-11-01','Pressure Test',           'https://example.com/cert/AST-020'),
-  ('AST-021','Tubing String 2-7/8"',      'Tubular',                'Rig 12','Free Zone',    'Active',       95000,'2022-08-05','TUB-1201',  '2-7/8" EUE tubing 200 joints',           '2024-10-05','Tubular Inspection DS1',  'https://example.com/cert/AST-021'),
-  ('AST-022','Iron Roughneck',            'Handling Tools',         'Rig 13','Assigned Rig', 'Active',      580000,'2022-11-20','IRN-1301',  'Automated iron roughneck 60k ft-lb',     '2024-09-12','Cat III',                 ''),
-  ('AST-023','Shale Shaker 4-Panel',      'Well Control Equipment', 'Rig 14','Workshop',     'Standby',     220000,'2023-06-01','SS-1401',   '4-panel linear motion shaker',           NULL,        '',                        ''),
-  ('AST-024','Casing Hanger Tool',        'Well Head Equipment',    'Rig 14','Sukhna Yard',  'Active',      195000,'2022-03-10','CSH-1401',  'Casing hanger running tool',             '2024-08-30','Cat IV',                  'https://example.com/cert/AST-024')
+INSERT INTO assets (asset_id,client_id,name,category,rig_name,location,status,value,acquisition_date,serial,notes,last_inspection,inspection_type,cert_link) VALUES
+  ('AST-001','00000000-0000-0000-0000-000000000001','Top Drive System',          'Well Head Equipment',    'Rig 1', 'Assigned Rig', 'Contracted', 1200000,'2021-03-15','TD-7821',   'High-capacity 1000T top drive',          '2024-10-01','Cat III',                 'https://example.com/cert/AST-001'),
+  ('AST-002','00000000-0000-0000-0000-000000000001','BOP Stack 18-3/4"',         'Well Control Equipment', 'Rig 1', 'Assigned Rig', 'Contracted',  850000,'2020-07-20','BOP-4422',  'Cameron BOP Stack',                      '2024-09-15','Pressure Test',           'https://example.com/cert/AST-002'),
+  ('AST-003','00000000-0000-0000-0000-000000000001','Derrick Structure 142''',   'Handling Tools',         'Rig 2', 'Workshop',     'Active',     2100000,'2018-05-01','DRK-0078',  'IRI 142ft mast structure',               '2024-08-20','Cat IV',                  ''),
+  ('AST-004','00000000-0000-0000-0000-000000000001','Mud Pumps (3x)',             'Well Control Equipment', 'Rig 2', 'Sukhna Yard',  'Maintenance', 620000,'2019-11-05','MP-1103',   'National 14-P-220 pumps',                '2024-07-10','Pressure Test',           'https://example.com/cert/AST-004'),
+  ('AST-005','00000000-0000-0000-0000-000000000001','Drawworks 1500HP',          'Handling Tools',         'Rig 3', 'Assigned Rig', 'Active',     1800000,'2020-08-12','DW-3312',   'National 1500HP drawworks',              '2024-11-01','Calibration',             'https://example.com/cert/AST-005'),
+  ('AST-006','00000000-0000-0000-0000-000000000001','CAT 3516 Generator Set',    'Well Head Equipment',    'Rig 3', 'Free Zone',    'Active',      480000,'2022-01-10','GEN-7712',  '2000kW prime power generator',           '2024-06-15','Calibration',             ''),
+  ('AST-007','00000000-0000-0000-0000-000000000001','Casing Running Tool',       'Handling Tools',         'Rig 4', 'Workshop',     'Inactive',    130000,'2020-03-15','CRT-9910',  'Hydraulic CRT for 13-3/8" casing',      '2024-05-20','Cat III',                 'https://example.com/cert/AST-007'),
+  ('AST-008','00000000-0000-0000-0000-000000000001','H2S Detection System',      'Well Control Equipment', 'Rig 4', 'Assigned Rig', 'Active',       75000,'2022-06-15','SFT-2291',  'Multi-point H2S gas detection',          '2024-10-20','Calibration',             ''),
+  ('AST-009','00000000-0000-0000-0000-000000000001','Rotary Table 37.5"',        'Well Head Equipment',    'Rig 5', 'Assigned Rig', 'Active',      320000,'2021-06-20','RT-5501',   '37.5" rotary table 500T capacity',       '2024-09-01','Cat IV',                  'https://example.com/cert/AST-009'),
+  ('AST-010','00000000-0000-0000-0000-000000000001','Emergency Fire Suppression','Well Control Equipment', 'Rig 5', 'Sukhna Yard',  'Active',       88000,'2023-05-20','SFT-4451',  'Dry chemical fire suppression',          NULL,        '',                        ''),
+  ('AST-011','00000000-0000-0000-0000-000000000001','Tubular String 5" DP',      'Tubular',                'Rig 6', 'Free Zone',    'Active',      145000,'2021-09-01','TUB-8811',  '5" drill pipe string',                   '2024-11-10','Tubular Inspection DS1',  'https://example.com/cert/AST-011'),
+  ('AST-012','00000000-0000-0000-0000-000000000001','Rig Mover & Substructure',  'Handling Tools',         'Rig 6', 'Assigned Rig', 'Active',      950000,'2019-03-10','RMV-0601',  'Self-propelled walking system',          '2024-08-01','Cat III',                 ''),
+  ('AST-013','00000000-0000-0000-0000-000000000001','Drill Collar 8" Slick DC',  'Tubular',                'Rig 7', 'Sukhna Yard',  'Active',       95000,'2023-02-28','DC-0341',   '8" slick drill collars x12',             '2024-10-15','Wall Thickness',           'https://example.com/cert/AST-013'),
+  ('AST-014','00000000-0000-0000-0000-000000000001','Heavy Weight Drill Pipe',   'Tubular',                'Rig 7', 'Free Zone',    'Maintenance',  42000,'2021-11-15','HWDP-1102', '5" HWDP 30 joints',                      '2024-09-20','Tubular Inspection DS1',  'https://example.com/cert/AST-014'),
+  ('AST-015','00000000-0000-0000-0000-000000000001','Drilling Jars – Hydraulic', 'Well Control Equipment', 'Rig 8', 'Assigned Rig', 'Active',      210000,'2022-12-01','JAR-3301',  'Hydraulic drilling jars set',            '2024-07-05','Pressure Test',           ''),
+  ('AST-016','00000000-0000-0000-0000-000000000001','Wellhead Christmas Tree',   'Well Head Equipment',    'Rig 9', 'Workshop',     'Active',     1050000,'2022-04-18','WHD-9901',  'Wellhead Christmas tree 5K psi',         '2024-11-05','Pressure Test',           'https://example.com/cert/AST-016'),
+  ('AST-017','00000000-0000-0000-0000-000000000001','Accumulator Unit 120 Gal',  'Well Control Equipment', 'Rig 9', 'Sukhna Yard',  'Active',      185000,'2021-07-22','ACC-0091',  '120 gal hydraulic accumulator',          '2024-08-12','Pressure Test',           ''),
+  ('AST-018','00000000-0000-0000-0000-000000000001','Centrifugal Pump Set',      'Well Control Equipment', 'Rig 10','Workshop',     'Active',      160000,'2023-01-15','CP-1001',   '3x centrifugal charge pumps',            '2024-07-22','Pressure Test',           ''),
+  ('AST-019','00000000-0000-0000-0000-000000000001','SCR Control House',         'Well Head Equipment',    'Rig 11','Sukhna Yard',  'Maintenance', 420000,'2020-09-30','SCR-1101',  'Silicon controlled rectifier house',     '2024-06-10','Calibration',             ''),
+  ('AST-020','00000000-0000-0000-0000-000000000001','BOP Annular 13-5/8"',       'Well Control Equipment', 'Rig 12','Assigned Rig', 'Active',      740000,'2021-02-14','BOP-1201',  '13-5/8" 10K annular BOP',                '2024-11-01','Pressure Test',           'https://example.com/cert/AST-020'),
+  ('AST-021','00000000-0000-0000-0000-000000000001','Tubing String 2-7/8"',      'Tubular',                'Rig 12','Free Zone',    'Active',       95000,'2022-08-05','TUB-1201',  '2-7/8" EUE tubing 200 joints',           '2024-10-05','Tubular Inspection DS1',  'https://example.com/cert/AST-021'),
+  ('AST-022','00000000-0000-0000-0000-000000000001','Iron Roughneck',            'Handling Tools',         'Rig 13','Assigned Rig', 'Active',      580000,'2022-11-20','IRN-1301',  'Automated iron roughneck 60k ft-lb',     '2024-09-12','Cat III',                 ''),
+  ('AST-023','00000000-0000-0000-0000-000000000001','Shale Shaker 4-Panel',      'Well Control Equipment', 'Rig 14','Workshop',     'Standby',     220000,'2023-06-01','SS-1401',   '4-panel linear motion shaker',           NULL,        '',                        ''),
+  ('AST-024','00000000-0000-0000-0000-000000000001','Casing Hanger Tool',        'Well Head Equipment',    'Rig 14','Sukhna Yard',  'Active',      195000,'2022-03-10','CSH-1401',  'Casing hanger running tool',             '2024-08-30','Cat IV',                  'https://example.com/cert/AST-024')
 ON CONFLICT (asset_id) DO UPDATE SET
+  client_id=EXCLUDED.client_id,
   name=EXCLUDED.name, category=EXCLUDED.category,
   rig_name=EXCLUDED.rig_name, location=EXCLUDED.location, status=EXCLUDED.status,
   value=EXCLUDED.value, acquisition_date=EXCLUDED.acquisition_date,
@@ -119,29 +127,30 @@ ON CONFLICT (id) DO UPDATE SET
   status=EXCLUDED.status, notes=EXCLUDED.notes;
 
 -- ─── CERTIFICATES ─────────────────────────────────────────────────────────────
-INSERT INTO certificates (cert_id,asset_id,inspection_type,last_inspection,next_inspection,validity_days,alert_days,cert_link,notes) VALUES
-  ('CERT-001','AST-001','Cat III',               '2024-10-01','2025-10-01',365,30,'https://example.com/cert/AST-001',''),
-  ('CERT-002','AST-002','Pressure Test',         '2024-09-15','2025-09-15',365,30,'https://example.com/cert/AST-002',''),
-  ('CERT-003','AST-003','Cat IV',                '2024-08-20','2025-08-20',365,30,'',''),
-  ('CERT-004','AST-004','Pressure Test',         '2024-07-10','2025-07-10',365,30,'https://example.com/cert/AST-004',''),
-  ('CERT-005','AST-005','Calibration',           '2024-11-01','2025-11-01',365,30,'https://example.com/cert/AST-005',''),
-  ('CERT-006','AST-006','Calibration',           '2024-06-15','2025-06-15',365,30,'',''),
-  ('CERT-007','AST-007','Cat III',               '2024-05-20','2025-05-20',365,30,'https://example.com/cert/AST-007',''),
-  ('CERT-008','AST-008','Calibration',           '2024-10-20','2025-10-20',365,30,'',''),
-  ('CERT-009','AST-009','Cat IV',                '2024-09-01','2025-09-01',365,30,'https://example.com/cert/AST-009',''),
-  ('CERT-010','AST-011','Tubular Inspection DS1','2024-11-10','2025-11-10',365,30,'https://example.com/cert/AST-011',''),
-  ('CERT-011','AST-012','Cat III',               '2024-08-01','2025-08-01',365,30,'',''),
-  ('CERT-012','AST-013','Wall Thickness',        '2024-10-15','2025-10-15',365,30,'https://example.com/cert/AST-013',''),
-  ('CERT-013','AST-014','Tubular Inspection DS1','2024-09-20','2025-09-20',365,30,'https://example.com/cert/AST-014',''),
-  ('CERT-014','AST-016','Pressure Test',         '2024-11-05','2025-11-05',365,30,'https://example.com/cert/AST-016',''),
-  ('CERT-015','AST-017','Pressure Test',         '2024-08-12','2025-08-12',365,30,'',''),
-  ('CERT-016','AST-018','Pressure Test',         '2024-07-22','2025-07-22',365,30,'',''),
-  ('CERT-017','AST-019','Calibration',           '2024-06-10','2025-06-10',365,30,'',''),
-  ('CERT-018','AST-020','Pressure Test',         '2024-11-01','2025-11-01',365,30,'https://example.com/cert/AST-020',''),
-  ('CERT-019','AST-021','Tubular Inspection DS1','2024-10-05','2025-10-05',365,30,'https://example.com/cert/AST-021',''),
-  ('CERT-020','AST-022','Cat III',               '2024-09-12','2025-09-12',365,30,'',''),
-  ('CERT-021','AST-024','Cat IV',                '2024-08-30','2025-08-30',365,30,'https://example.com/cert/AST-024','')
+INSERT INTO certificates (cert_id,client_id,asset_id,inspection_type,last_inspection,next_inspection,validity_days,alert_days,cert_link,notes) VALUES
+  ('CERT-001','00000000-0000-0000-0000-000000000001','AST-001','Cat III',               '2024-10-01','2025-10-01',365,30,'https://example.com/cert/AST-001',''),
+  ('CERT-002','00000000-0000-0000-0000-000000000001','AST-002','Pressure Test',         '2024-09-15','2025-09-15',365,30,'https://example.com/cert/AST-002',''),
+  ('CERT-003','00000000-0000-0000-0000-000000000001','AST-003','Cat IV',                '2024-08-20','2025-08-20',365,30,'',''),
+  ('CERT-004','00000000-0000-0000-0000-000000000001','AST-004','Pressure Test',         '2024-07-10','2025-07-10',365,30,'https://example.com/cert/AST-004',''),
+  ('CERT-005','00000000-0000-0000-0000-000000000001','AST-005','Calibration',           '2024-11-01','2025-11-01',365,30,'https://example.com/cert/AST-005',''),
+  ('CERT-006','00000000-0000-0000-0000-000000000001','AST-006','Calibration',           '2024-06-15','2025-06-15',365,30,'',''),
+  ('CERT-007','00000000-0000-0000-0000-000000000001','AST-007','Cat III',               '2024-05-20','2025-05-20',365,30,'https://example.com/cert/AST-007',''),
+  ('CERT-008','00000000-0000-0000-0000-000000000001','AST-008','Calibration',           '2024-10-20','2025-10-20',365,30,'',''),
+  ('CERT-009','00000000-0000-0000-0000-000000000001','AST-009','Cat IV',                '2024-09-01','2025-09-01',365,30,'https://example.com/cert/AST-009',''),
+  ('CERT-010','00000000-0000-0000-0000-000000000001','AST-011','Tubular Inspection DS1','2024-11-10','2025-11-10',365,30,'https://example.com/cert/AST-011',''),
+  ('CERT-011','00000000-0000-0000-0000-000000000001','AST-012','Cat III',               '2024-08-01','2025-08-01',365,30,'',''),
+  ('CERT-012','00000000-0000-0000-0000-000000000001','AST-013','Wall Thickness',        '2024-10-15','2025-10-15',365,30,'https://example.com/cert/AST-013',''),
+  ('CERT-013','00000000-0000-0000-0000-000000000001','AST-014','Tubular Inspection DS1','2024-09-20','2025-09-20',365,30,'https://example.com/cert/AST-014',''),
+  ('CERT-014','00000000-0000-0000-0000-000000000001','AST-016','Pressure Test',         '2024-11-05','2025-11-05',365,30,'https://example.com/cert/AST-016',''),
+  ('CERT-015','00000000-0000-0000-0000-000000000001','AST-017','Pressure Test',         '2024-08-12','2025-08-12',365,30,'',''),
+  ('CERT-016','00000000-0000-0000-0000-000000000001','AST-018','Pressure Test',         '2024-07-22','2025-07-22',365,30,'',''),
+  ('CERT-017','00000000-0000-0000-0000-000000000001','AST-019','Calibration',           '2024-06-10','2025-06-10',365,30,'',''),
+  ('CERT-018','00000000-0000-0000-0000-000000000001','AST-020','Pressure Test',         '2024-11-01','2025-11-01',365,30,'https://example.com/cert/AST-020',''),
+  ('CERT-019','00000000-0000-0000-0000-000000000001','AST-021','Tubular Inspection DS1','2024-10-05','2025-10-05',365,30,'https://example.com/cert/AST-021',''),
+  ('CERT-020','00000000-0000-0000-0000-000000000001','AST-022','Cat III',               '2024-09-12','2025-09-12',365,30,'',''),
+  ('CERT-021','00000000-0000-0000-0000-000000000001','AST-024','Cat IV',                '2024-08-30','2025-08-30',365,30,'https://example.com/cert/AST-024','')
 ON CONFLICT (cert_id) DO UPDATE SET
+  client_id=EXCLUDED.client_id,
   inspection_type=EXCLUDED.inspection_type, last_inspection=EXCLUDED.last_inspection,
   next_inspection=EXCLUDED.next_inspection, validity_days=EXCLUDED.validity_days,
   alert_days=EXCLUDED.alert_days, cert_link=EXCLUDED.cert_link, notes=EXCLUDED.notes;
@@ -178,14 +187,14 @@ INSERT INTO maintenance_logs (schedule_id,completion_date,performed_by,hours,cos
 ON CONFLICT DO NOTHING;
 
 -- ─── TRANSFERS ────────────────────────────────────────────────────────────────
-INSERT INTO transfers (id,asset_id,asset_name,current_loc,destination,dest_rig,priority,type,requested_by,request_date,required_date,reason,instructions,status,ops_approved_by,ops_approved_date,ops_action,ops_comment,mgr_approved_by,mgr_approved_date,mgr_action,mgr_comment) VALUES
-  ('TR-001','AST-001','Top Drive System','Ghawar Field','NABORS 1250-E – Permian Basin','NABORS 1250-E',
+INSERT INTO transfers (id,client_id,asset_id,asset_name,current_loc,destination,dest_rig,priority,type,requested_by,request_date,required_date,reason,instructions,status,ops_approved_by,ops_approved_date,ops_action,ops_comment,mgr_approved_by,mgr_approved_date,mgr_action,mgr_comment) VALUES
+  ('TR-001','00000000-0000-0000-0000-000000000001','AST-001','Top Drive System','Ghawar Field','NABORS 1250-E – Permian Basin','NABORS 1250-E',
    'High','Rig to Rig','Sara Al-Rashid','2025-01-10','2025-01-25',
    'Top drive required for well P-44 spud at Permian Basin.',
    'Handle with crane only. Do not tilt >15°.',
    'Ops Approved','James Miller','2025-01-11','approve',
    'Approved. Coordinate with logistics.',NULL,NULL,NULL,NULL),
-  ('TR-002','AST-004','Mud Pumps (3x)','Permian Basin','Workshop – Bay 4 (Overhaul)',NULL,
+  ('TR-002','00000000-0000-0000-0000-000000000001','AST-004','Mud Pumps (3x)','Permian Basin','Workshop – Bay 4 (Overhaul)',NULL,
    'Critical','For Maintenance','Ahmad Mohammed','2025-01-08','2025-01-12',
    'Mud pumps require emergency overhaul. Liner wear detected on all 3 units.',
    'Transport on flatbed. Keep units upright. Drain fluid before transport.',
@@ -193,12 +202,13 @@ INSERT INTO transfers (id,asset_id,asset_name,current_loc,destination,dest_rig,p
    'Critical – approved immediately.',
    'Sara Al-Rashid','2025-01-09','approve',
    'Approved. Schedule overhaul ASAP. Budget pre-approved.'),
-  ('TR-003','AST-008','H2S Detection System','Permian Basin','Khafji Field – KJO Land Rig #3','KJO Land Rig #3',
+  ('TR-003','00000000-0000-0000-0000-000000000001','AST-008','H2S Detection System','Permian Basin','Khafji Field – KJO Land Rig #3','KJO Land Rig #3',
    'Normal','Field to Field','David Chen','2025-01-15','2025-01-30',
    'H2S detection system requested by KJO site.',
    'Calibrate before transport. Include all sensor heads.',
    'Pending',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL)
 ON CONFLICT (id) DO UPDATE SET
+  client_id=EXCLUDED.client_id,
   asset_id=EXCLUDED.asset_id, asset_name=EXCLUDED.asset_name,
   status=EXCLUDED.status, priority=EXCLUDED.priority;
 
@@ -211,28 +221,30 @@ ON CONFLICT (id) DO UPDATE SET
   name=EXCLUDED.name, code=EXCLUDED.code, active=EXCLUDED.active;
 
 -- ─── USERS ────────────────────────────────────────────────────────────────────
-INSERT INTO app_users (name,role,dept,email,color,initials,active,client_id) VALUES
-  ('Ahmad Mohammed','Admin',             'Asset Management','a.mohammed@rig.com','#0070F2','AM',true,NULL),
-  ('Sara Al-Rashid','Asset Manager',     'Operations',      's.alrashid@rig.com','#8B5CF6','SR',true,'client-adc'),
-  ('James Miller',  'Viewer',            'Finance',         'j.miller@rig.com', '#107E3E','JM',true,'client-adc'),
-  ('Layla Hassan',  'Project Manager',   'Contracts',       'l.hassan@rig.com', '#E9730C','LH',true,'client-adc'),
-  ('David Chen',    'Viewer',            'Engineering',     'd.chen@rig.com',   '#BB0000','DC',true,'client-kjo'),
-  ('Fatima Al-Zahra','Maintenance Manager','Maintenance',   'f.alzahra@rig.com','#0070F2','FZ',true,'client-kjo')
+INSERT INTO app_users (client_id,name,role,dept,email,color,initials,active) VALUES
+  ('00000000-0000-0000-0000-000000000001','Ahmad Mohammed','Admin',        'Asset Management','a.mohammed@rig.com','#0070F2','AM',true),
+  ('00000000-0000-0000-0000-000000000001','Sara Al-Rashid','Asset Manager','Operations',      's.alrashid@rig.com','#8B5CF6','SR',true),
+  ('00000000-0000-0000-0000-000000000001','James Miller',  'Viewer',       'Finance',          'j.miller@rig.com', '#107E3E','JM',true),
+  ('00000000-0000-0000-0000-000000000001','Layla Hassan',  'Editor',       'Contracts',        'l.hassan@rig.com', '#E9730C','LH',true),
+  ('00000000-0000-0000-0000-000000000001','David Chen',    'Viewer',       'Engineering',      'd.chen@rig.com',   '#BB0000','DC',true),
+  ('00000000-0000-0000-0000-000000000001','Fatima Al-Zahra','Editor',      'Maintenance',      'f.alzahra@rig.com','#0070F2','FZ',true)
 ON CONFLICT (email) DO UPDATE SET
+  client_id=EXCLUDED.client_id,
   name=EXCLUDED.name, role=EXCLUDED.role, dept=EXCLUDED.dept,
   color=EXCLUDED.color, initials=EXCLUDED.initials, active=EXCLUDED.active,
   client_id=EXCLUDED.client_id;
 
 -- ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
-INSERT INTO notifications (icon,kind,title,description,time_label,link,user_id,client_id,event_type,is_read) VALUES
-  ('fas fa-exclamation-triangle','warning','Contract Expiry Warning', 'ADC Rig #7 contract expires in 15 days (Jan 14, 2025)','2 hours ago','/?tab=contracts',NULL,NULL,'contract_expiry',false),
-  ('fas fa-tools',               'warning','Maintenance Alert',        'Asset AST-004 (Mud Pumps) requires scheduled maintenance','4 hours ago','/?tab=maintenance',NULL,NULL,'maintenance_due',false),
-  ('fas fa-file-import',         'info',   'Import Completed',         '12 assets imported successfully from Excel file',          'Yesterday', '/?tab=assets',NULL,NULL,'asset_import',false),
-  ('fas fa-check-circle',        'success','Asset Activated',          'AST-009 (Rotary Table) has been activated',                '2 days ago', '/?tab=assets',NULL,NULL,'asset_activated',false),
-  ('fas fa-envelope',            'info',   'Email Alert Sent',         'Maintenance report sent to 3 recipients',                  '3 days ago', '/?tab=maintenance',NULL,NULL,'email_sent',true)
+INSERT INTO notifications (client_id,icon,kind,title,description,time_label,is_read) VALUES
+  ('00000000-0000-0000-0000-000000000001','fas fa-exclamation-triangle','warning','Contract Expiry Warning', 'ADC Rig #7 contract expires in 15 days (Jan 14, 2025)','2 hours ago',false),
+  ('00000000-0000-0000-0000-000000000001','fas fa-tools',               'warning','Maintenance Alert',        'Asset AST-004 (Mud Pumps) requires scheduled maintenance','4 hours ago',false),
+  ('00000000-0000-0000-0000-000000000001','fas fa-file-import',         'info',   'Import Completed',         '12 assets imported successfully from Excel file',          'Yesterday',  false),
+  ('00000000-0000-0000-0000-000000000001','fas fa-check-circle',        'success','Asset Activated',          'AST-009 (Rotary Table) has been activated',                '2 days ago', false),
+  ('00000000-0000-0000-0000-000000000001','fas fa-envelope',            'info',   'Email Alert Sent',         'Maintenance report sent to 3 recipients',                  '3 days ago', true)
 ON CONFLICT DO NOTHING;
 
 -- ─── VERIFY ───────────────────────────────────────────────────────────────────
+SELECT 'clients'     ,COUNT(*) FROM clients
 UNION ALL SELECT 'rigs'        ,COUNT(*) FROM rigs
 UNION ALL SELECT 'assets'      ,COUNT(*) FROM assets
 UNION ALL SELECT 'contracts'   ,COUNT(*) FROM contracts
@@ -241,4 +253,6 @@ UNION ALL SELECT 'certificates',COUNT(*) FROM certificates
 UNION ALL SELECT 'maintenance' ,COUNT(*) FROM maintenance_schedules
 UNION ALL SELECT 'transfers'   ,COUNT(*) FROM transfers
 UNION ALL SELECT 'users'       ,COUNT(*) FROM app_users
-UNION ALL SELECT 'notifications',COUNT(*) FROM notifications;
+UNION ALL SELECT 'notifications',COUNT(*) FROM notifications
+UNION ALL SELECT 'push_subscriptions',COUNT(*) FROM push_subscriptions
+UNION ALL SELECT 'delete_requests',COUNT(*) FROM delete_requests;
